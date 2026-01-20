@@ -1,0 +1,238 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EventStatus {
+  PLANNED
+  LIVE
+  ENDED
+}
+
+enum RequestType {
+  CREATE_EVENT
+  UPDATE_EVENT
+  REPORT_START
+  REPORT_END
+  REPORT_MOVE
+  CREATE_RIVAL_EVENT
+  UPDATE_RIVAL_EVENT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DUPLICATE
+}
+
+model Candidate {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  imageUrl  String?
+  region    String?  // 例: 選挙区や運用上の地域
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events    SpeechEvent[]
+}
+
+model SpeechEvent {
+  id          String      @id @default(cuid())
+  candidateId String
+  candidate   Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  status      EventStatus @default(PLANNED)
+
+  // 時間未定（方式C）対応：null可＋フラグ
+  startAt     DateTime?
+  endAt       DateTime?
+  timeUnknown Boolean     @default(false)
+
+  // 公式地点
+  lat         Float
+  lng         Float
+  locationText String
+
+  // 予約入力時刻（公開表示するため、承認時刻ではない）
+  submittedAt DateTime    @default(now())
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  histories   EventHistory[]
+  moveHints   MoveHint[]
+  reports     PublicReport[]
+
+  @@index([candidateId])
+  @@index([status])
+  @@index([startAt])
+}
+
+model RivalEvent {
+  id          String   @id @default(cuid())
+  name        String
+  startAt     DateTime?
+  endAt       DateTime?
+  timeUnknown Boolean  @default(false)
+  lat         Float
+  lng         Float
+  locationText String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startAt])
+}
+
+model EventHistory {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       SpeechEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // 変更前→変更後
+  fromLat     Float?
+  fromLng     Float?
+  fromText    String?
+  fromStartAt DateTime?
+  fromEndAt   DateTime?
+
+  toLat       Float?
+  toLng       Float?
+  toText      String?
+  toStartAt   DateTime?
+  toEndAt     DateTime?
+
+  reason      String?
+  changedByUserId String?
+  changedAt   DateTime @default(now())
+
+  @@index([eventId])
+}
+
+model PublicRequest {
+  id          String        @id @default(cuid())
+  type        RequestType
+  status      RequestStatus @default(PENDING)
+
+  candidateId String?
+  eventId     String?
+  rivalEventId String?
+
+  // 提案内容（create/update向け）
+  payload     Json
+
+  // 重複判定キー（同一候補・同日・同時間帯・位置グリッド）
+  dedupeKey   String?
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  reviewedByUserId String?
+
+  @@index([status])
+  @@index([candidateId])
+  @@index([dedupeKey])
+  @@index([createdAt])
+}
+
+model PublicReport {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     SpeechEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  kind      String   // "start" | "end" | "move"
+  lat       Float?
+  lng       Float?
+
+  // 個人特定しない形でのユニーク判定用（salted hash）
+  reporterHash String
+  createdAt DateTime @default(now())
+
+  @@index([eventId, kind, createdAt])
+  @@unique([eventId, kind, reporterHash])
+}
+
+model MoveHint {
+  id        String @id @default(cuid())
+  eventId   String
+  event     SpeechEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // 推定地点（クラスター代表）
+  lat       Float
+  lng       Float
+  count     Int
+  lastReportAt DateTime
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, active])
+}
+
+model Facility {
+  id        String @id @default(cuid())
+  category  String // "school" "hospital" etc
+  name      String?
+  lat       Float
+  lng       Float
+  source    String // dataset/version
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@index([lat, lng])
+}
+
+model User {
+  id        String @id @default(cuid())
+  email     String @unique
+  name      String?
+  role      String // "SiteAdmin" "SiteStaff" "PartyAdmin" "RegionEditor"
+  region    String? // 地域担当の場合
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
