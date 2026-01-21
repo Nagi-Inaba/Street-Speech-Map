@@ -1,4 +1,4 @@
-import { format, formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Tokyo";
 
