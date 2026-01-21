@@ -1,15 +1,19 @@
 export type Role = "SiteAdmin" | "SiteStaff" | "PartyAdmin" | "RegionEditor";
 
 export interface UserRole {
-  role: Role;
+  role: string; // 実行時には文字列として扱う
   region?: string | null;
 }
 
+function isValidRole(role: string): role is Role {
+  return ["SiteAdmin", "SiteStaff", "PartyAdmin", "RegionEditor"].includes(role);
+}
+
 export function hasPermission(
-  userRole: UserRole | null,
+  userRole: UserRole | null | undefined,
   requiredRole: Role | Role[]
 ): boolean {
-  if (!userRole) return false;
+  if (!userRole || !userRole.role) return false;
 
   const requiredRoles = Array.isArray(requiredRole)
     ? requiredRole
@@ -22,6 +26,11 @@ export function hasPermission(
     RegionEditor: 1,
   };
 
+  // ロールが有効かチェック
+  if (!isValidRole(userRole.role)) {
+    return false;
+  }
+
   const userLevel = roleHierarchy[userRole.role] || 0;
 
   return requiredRoles.some(
@@ -30,10 +39,10 @@ export function hasPermission(
 }
 
 export function canManageCandidate(
-  userRole: UserRole | null,
+  userRole: UserRole | null | undefined,
   candidateRegion?: string | null
 ): boolean {
-  if (!userRole) return false;
+  if (!userRole || !userRole.role) return false;
 
   // SiteAdmin, SiteStaff, PartyAdmin は全候補者を管理可能
   if (

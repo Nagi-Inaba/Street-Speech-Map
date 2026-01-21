@@ -74,7 +74,7 @@ export default async function RequestsPage({
               </CardHeader>
               <CardContent>
                 <pre className="text-xs bg-muted p-2 rounded mb-4 overflow-auto">
-                  {JSON.stringify(representative.payload, null, 2)}
+                  {JSON.stringify(JSON.parse(representative.payload), null, 2)}
                 </pre>
                 <div className="flex gap-2">
                   <Button variant="default" size="sm">

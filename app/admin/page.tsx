@@ -1,6 +1,7 @@
-import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 
 export default async function AdminDashboard() {
   const session = await auth();
@@ -15,33 +16,85 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">ダッシュボード</h1>
+      <h1 className="text-3xl font-bold mb-2">ダッシュボード</h1>
+      <p className="text-muted-foreground mb-8">
+        ようこそ、{session?.user?.name || session?.user?.email}さん
+      </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Link href="/admin/candidates">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="text-lg">候補者数</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-primary">{candidatesCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">登録済み候補者</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/events">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="text-lg">イベント数</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-primary">{eventsCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">登録済みイベント</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/requests">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="text-lg">未承認リクエスト</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-orange-500">{pendingRequestsCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">承認待ちリクエスト</p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>候補者数</CardTitle>
+            <CardTitle className="text-lg">クイックアクション</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{candidatesCount}</p>
+          <CardContent className="space-y-2">
+            <Link 
+              href="/admin/candidates/new"
+              className="block p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
+            >
+              <span className="font-medium">+ 新しい候補者を追加</span>
+            </Link>
+            <Link 
+              href="/admin/events/new"
+              className="block p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
+            >
+              <span className="font-medium">+ 新しいイベントを追加</span>
+            </Link>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>イベント数</CardTitle>
+            <CardTitle className="text-lg">公開サイト</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{eventsCount}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>未承認リクエスト</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{pendingRequestsCount}</p>
+            <p className="text-muted-foreground mb-4">
+              一般ユーザー向けの公開ページを確認できます。
+            </p>
+            <Link 
+              href="/"
+              target="_blank"
+              className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            >
+              公開サイトを開く →
+            </Link>
           </CardContent>
         </Card>
       </div>

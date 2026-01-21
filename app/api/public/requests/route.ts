@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         type: data.type,
         candidateId: data.candidateId || null,
         eventId: data.eventId || null,
-        payload: data.payload,
+        payload: JSON.stringify(data.payload),
         dedupeKey,
         status: "PENDING",
       },
