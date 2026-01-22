@@ -21,8 +21,8 @@ interface PublicRequest {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  CREATE_EVENT: "新規イベント",
-  UPDATE_EVENT: "イベント更新",
+  CREATE_EVENT: "新規演説予定",
+  UPDATE_EVENT: "演説予定更新",
   REPORT_START: "開始報告",
   REPORT_END: "終了報告",
   REPORT_MOVE: "場所変更報告",

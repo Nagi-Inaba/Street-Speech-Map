@@ -19,7 +19,7 @@ export default async function EventsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">イベント管理</h1>
+        <h1 className="text-3xl font-bold">演説予定管理</h1>
         <Link href="/admin/events/new">
           <Button>新規作成</Button>
         </Link>
@@ -61,7 +61,7 @@ export default async function EventsPage() {
       </div>
 
       {events.length === 0 && (
-        <p className="text-muted-foreground">イベントが登録されていません。</p>
+        <p className="text-muted-foreground">演説予定が登録されていません。</p>
       )}
     </div>
   );

@@ -44,7 +44,7 @@ export default async function CandidatePage({
       color: event.status === "LIVE" ? "red" : "blue",
     }));
 
-  // 地図の中心（最初のイベントまたは東京駅）
+  // 地図の中心（最初の演説予定または東京駅）
   const mapCenter: [number, number] =
     mapMarkers.length > 0
       ? mapMarkers[0].position
@@ -90,7 +90,7 @@ export default async function CandidatePage({
           </section>
         )}
 
-        {/* 実施中のイベント */}
+        {/* 実施中の演説予定 */}
         {liveEvents.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-red-600">🔴 実施中</h2>
@@ -126,7 +126,7 @@ export default async function CandidatePage({
           </section>
         )}
 
-        {/* 予定のイベント */}
+        {/* 予定の演説予定 */}
         {plannedEvents.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">📅 予定</h2>
@@ -163,7 +163,7 @@ export default async function CandidatePage({
           </section>
         )}
 
-        {/* 終了したイベント */}
+        {/* 終了した演説予定 */}
         {endedEvents.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-muted-foreground">終了</h2>

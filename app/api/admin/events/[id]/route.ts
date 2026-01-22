@@ -15,7 +15,7 @@ const updateEventSchema = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-// イベント取得
+// 演説予定取得
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,7 +46,7 @@ export async function GET(
   }
 }
 
-// イベント更新
+// 演説予定更新
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -62,7 +62,7 @@ export async function PUT(
     const body = await request.json();
     const data = updateEventSchema.parse(body);
 
-    // 既存のイベントを取得（変更履歴用）
+    // 既存の演説予定を取得（変更履歴用）
     const existingEvent = await prisma.speechEvent.findUnique({
       where: { id },
     });
@@ -90,7 +90,7 @@ export async function PUT(
       },
     });
 
-    // イベントを更新
+    // 演説予定を更新
     const event = await prisma.speechEvent.update({
       where: { id },
       data: {
@@ -115,7 +115,7 @@ export async function PUT(
   }
 }
 
-// イベント削除
+// 演説予定削除
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

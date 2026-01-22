@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
       });
 
       for (const req of approvedRequests) {
-        // CREATE_EVENTの場合、新しいイベントを作成
+        // CREATE_EVENTの場合、新しい演説予定を作成
         if (req.type === "CREATE_EVENT" && req.candidateId) {
           const payload = JSON.parse(req.payload);
           await prisma.speechEvent.create({

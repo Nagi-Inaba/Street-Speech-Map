@@ -33,7 +33,7 @@ export default async function AdminLayout({
                   href="/admin/events" 
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  イベント
+                  演説予定
                 </Link>
                 <Link 
                   href="/admin/requests" 

@@ -37,11 +37,11 @@ export default async function AdminDashboard() {
         <Link href="/admin/events">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader>
-              <CardTitle className="text-lg">イベント数</CardTitle>
+              <CardTitle className="text-lg">演説予定数</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-4xl font-bold text-primary">{eventsCount}</p>
-              <p className="text-sm text-muted-foreground mt-1">登録済みイベント</p>
+              <p className="text-sm text-muted-foreground mt-1">登録済み演説予定</p>
             </CardContent>
           </Card>
         </Link>
@@ -75,7 +75,7 @@ export default async function AdminDashboard() {
               href="/admin/events/new"
               className="block p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
             >
-              <span className="font-medium">+ 新しいイベントを追加</span>
+              <span className="font-medium">+ 新しい演説予定を追加</span>
             </Link>
           </CardContent>
         </Card>

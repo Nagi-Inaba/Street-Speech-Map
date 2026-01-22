@@ -65,12 +65,12 @@ export default function NewEventPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">新規イベント作成</h1>
+      <h1 className="text-3xl font-bold mb-8">新規演説予定作成</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>イベント情報</CardTitle>
-          <CardDescription>新しい演説イベントを登録します</CardDescription>
+          <CardTitle>演説予定情報</CardTitle>
+          <CardDescription>新しい演説予定を登録します</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -7,6 +7,8 @@ import { z } from "zod";
 const candidateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9-]+$/),
+  type: z.enum(["SINGLE", "PROPORTIONAL"]),
+  prefecture: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
 });
@@ -38,6 +40,8 @@ export async function POST(request: NextRequest) {
       data: {
         name: data.name,
         slug: data.slug,
+        type: data.type,
+        prefecture: data.prefecture || null,
         region: data.region || null,
         imageUrl: data.imageUrl || null,
       },

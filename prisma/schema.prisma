@@ -14,12 +14,15 @@ datasource db {
 // EventStatus: "PLANNED" | "LIVE" | "ENDED"
 // RequestType: "CREATE_EVENT" | "UPDATE_EVENT" | "REPORT_START" | "REPORT_END" | "REPORT_MOVE" | "CREATE_RIVAL_EVENT" | "UPDATE_RIVAL_EVENT"
 // RequestStatus: "PENDING" | "APPROVED" | "REJECTED" | "DUPLICATE"
+// CandidateType: "SINGLE" | "PROPORTIONAL"
 
 model Candidate {
   id        String   @id @default(cuid())
   slug      String   @unique
   name      String
   imageUrl  String?
+  type      String   // "SINGLE" | "PROPORTIONAL"
+  prefecture String? // 小選挙区の場合の都道府県
   region    String?  // 例: 選挙区や運用上の地域
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

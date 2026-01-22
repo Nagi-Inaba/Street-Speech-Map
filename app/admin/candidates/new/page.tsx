@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CANDIDATE_TYPES, PREFECTURES } from "@/lib/constants";
 
 export default function NewCandidatePage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [type, setType] = useState<"SINGLE" | "PROPORTIONAL">("PROPORTIONAL");
+  const [prefecture, setPrefecture] = useState("");
   const [region, setRegion] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,7 +24,14 @@ export default function NewCandidatePage() {
       const res = await fetch("/api/admin/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, slug, region: region || null, imageUrl: imageUrl || null }),
+        body: JSON.stringify({ 
+          name, 
+          slug, 
+          type,
+          prefecture: type === "SINGLE" ? (prefecture || null) : null,
+          region: region || null, 
+          imageUrl: imageUrl || null 
+        }),
       });
 
       if (res.ok) {
@@ -77,6 +87,47 @@ export default function NewCandidatePage() {
                 英数字とハイフンのみ使用可能
               </p>
             </div>
+            <div>
+              <label htmlFor="type" className="block text-sm font-medium mb-1">
+                候補者タイプ *
+              </label>
+              <select
+                id="type"
+                value={type}
+                onChange={(e) => {
+                  setType(e.target.value as "SINGLE" | "PROPORTIONAL");
+                  if (e.target.value === "PROPORTIONAL") {
+                    setPrefecture("");
+                  }
+                }}
+                required
+                className="w-full px-3 py-2 border rounded-md"
+              >
+                <option value="PROPORTIONAL">比例</option>
+                <option value="SINGLE">小選挙区</option>
+              </select>
+            </div>
+            {type === "SINGLE" && (
+              <div>
+                <label htmlFor="prefecture" className="block text-sm font-medium mb-1">
+                  都道府県 *
+                </label>
+                <select
+                  id="prefecture"
+                  value={prefecture}
+                  onChange={(e) => setPrefecture(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="">選択してください</option>
+                  {PREFECTURES.map((pref) => (
+                    <option key={pref} value={pref}>
+                      {pref}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor="region" className="block text-sm font-medium mb-1">
                 地域
