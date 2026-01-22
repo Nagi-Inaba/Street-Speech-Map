@@ -10,28 +10,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum EventStatus {
-  PLANNED
-  LIVE
-  ENDED
-}
-
-enum RequestType {
-  CREATE_EVENT
-  UPDATE_EVENT
-  REPORT_START
-  REPORT_END
-  REPORT_MOVE
-  CREATE_RIVAL_EVENT
-  UPDATE_RIVAL_EVENT
-}
-
-enum RequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  DUPLICATE
-}
+// SQLiteではenumが使えないため、Stringで管理
+// EventStatus: "PLANNED" | "LIVE" | "ENDED"
+// RequestType: "CREATE_EVENT" | "UPDATE_EVENT" | "REPORT_START" | "REPORT_END" | "REPORT_MOVE" | "CREATE_RIVAL_EVENT" | "UPDATE_RIVAL_EVENT"
+// RequestStatus: "PENDING" | "APPROVED" | "REJECTED" | "DUPLICATE"
 
 model Candidate {
   id        String   @id @default(cuid())
@@ -43,14 +25,15 @@ model Candidate {
   updatedAt DateTime @updatedAt
 
   events    SpeechEvent[]
+  requests  PublicRequest[]
 }
 
 model SpeechEvent {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   candidateId String
-  candidate   Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
-  status      EventStatus @default(PLANNED)
+  status      String   @default("PLANNED") // "PLANNED" | "LIVE" | "ENDED"
 
   // 時間未定（方式C）対応：null可＋フラグ
   startAt     DateTime?
@@ -118,16 +101,17 @@ model EventHistory {
 }
 
 model PublicRequest {
-  id          String        @id @default(cuid())
-  type        RequestType
-  status      RequestStatus @default(PENDING)
+  id          String   @id @default(cuid())
+  type        String   // "CREATE_EVENT" | "UPDATE_EVENT" | "REPORT_START" | "REPORT_END" | "REPORT_MOVE" | "CREATE_RIVAL_EVENT" | "UPDATE_RIVAL_EVENT"
+  status      String   @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED" | "DUPLICATE"
 
   candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
   eventId     String?
   rivalEventId String?
 
-  // 提案内容（create/update向け）
-  payload     Json
+  // 提案内容（create/update向け）- SQLiteではJSONを文字列として保存
+  payload     String
 
   // 重複判定キー（同一候補・同日・同時間帯・位置グリッド）
   dedupeKey   String?
@@ -208,12 +192,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
