@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { trackEvent, AnalyticsEvents } from "@/lib/analytics";
 
 interface Candidate {
   id: string;
@@ -114,6 +115,13 @@ export default function RequestsPage() {
       });
 
       if (res.ok) {
+        // 分析イベント計測
+        if (action === "approve") {
+          trackEvent(AnalyticsEvents.ADMIN_APPROVE_BULK, {
+            count: selectedIds.size.toString(),
+          });
+        }
+        
         await fetchRequests();
         setSelectedIds(new Set());
       } else {

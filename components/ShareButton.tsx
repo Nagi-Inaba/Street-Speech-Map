@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { trackEvent, AnalyticsEvents } from "@/lib/analytics";
 
 interface ShareButtonProps {
   candidateName: string;
@@ -34,6 +35,15 @@ export default function ShareButton({
 
   const handleShare = async () => {
     const shareText = getShareText();
+
+    // 分析イベント計測
+    trackEvent(
+      isLive ? AnalyticsEvents.SHARE_LIVE_CLICK : AnalyticsEvents.SHARE_PLANNED_CLICK,
+      {
+        candidate: candidateName,
+        location: locationText,
+      }
+    );
 
     // Web Share APIが使える場合はそれを使用
     if (typeof navigator !== "undefined" && navigator.share) {

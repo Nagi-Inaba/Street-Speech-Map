@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import ImageUpload from "@/components/ImageUpload";
 
 interface Candidate {
   id: string;
@@ -175,15 +176,19 @@ export default function EditCandidatePage({
             </div>
             <div>
               <label htmlFor="imageUrl" className="block text-sm font-medium mb-1">
-                画像URL
+                画像
               </label>
+              <ImageUpload value={imageUrl} onChange={setImageUrl} />
+              <p className="text-xs text-muted-foreground mt-2">
+                画像をアップロードするか、URLを直接入力してください
+              </p>
               <input
                 id="imageUrl"
                 type="url"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
                 placeholder="https://example.com/image.jpg"
+                className="w-full px-3 py-2 border rounded-md mt-2"
               />
             </div>
 

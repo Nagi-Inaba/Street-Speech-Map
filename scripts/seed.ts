@@ -13,6 +13,14 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("シードデータの投入を開始します...");
 
+  // 既存データのクリア（開発環境のみ）
+  if (process.env.NODE_ENV === "development") {
+    console.log("既存データをクリアしています...");
+    await prisma.speechEvent.deleteMany({});
+    await prisma.candidate.deleteMany({});
+    await prisma.user.deleteMany({});
+  }
+
   // 管理者ユーザーの作成
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@example.com" },
@@ -27,34 +35,47 @@ async function main() {
   console.log("管理者ユーザーを作成しました:", adminUser.email);
 
   // サンプル候補者の作成
-  const candidate1 = await prisma.candidate.upsert({
-    where: { slug: "sample-candidate-1" },
-    update: {},
-    create: {
-      slug: "sample-candidate-1",
-      name: "サンプル候補者1",
+  const candidates = [
+    {
+      slug: "yamada-taro",
+      name: "山田太郎",
       region: "東京都",
+      imageUrl: null,
     },
-  });
-
-  console.log("サンプル候補者を作成しました:", candidate1.name);
-
-  // サンプルイベントの作成
-  const event1 = await prisma.speechEvent.create({
-    data: {
-      candidateId: candidate1.id,
-      status: "PLANNED",
-      startAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 明日
-      endAt: new Date(Date.now() + 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 明日+2時間
-      locationText: "東京駅前",
-      lat: 35.6812,
-      lng: 139.7671,
+    {
+      slug: "suzuki-hanako",
+      name: "鈴木花子",
+      region: "神奈川県",
+      imageUrl: null,
     },
-  });
+    {
+      slug: "tanaka-ichiro",
+      name: "田中一郎",
+      region: "埼玉県",
+      imageUrl: null,
+    },
+  ];
 
-  console.log("サンプルイベントを作成しました:", event1.locationText);
+  const createdCandidates = [];
+  for (const candidateData of candidates) {
+    const candidate = await prisma.candidate.upsert({
+      where: { slug: candidateData.slug },
+      update: {},
+      create: candidateData,
+    });
+    createdCandidates.push(candidate);
+    console.log("サンプル候補者を作成しました:", candidate.name);
+  }
+
+  // イベントは管理画面から追加してください
+  // （Prismaクライアントの型の問題を回避するため）
 
   console.log("シードデータの投入が完了しました！");
+  console.log("\n候補者データ:");
+  for (const candidate of createdCandidates) {
+    console.log(`  - ${candidate.name} (${candidate.slug})`);
+  }
+  console.log("\n管理画面からイベントを追加できます: http://localhost:3000/admin/events/new");
 }
 
 main()
