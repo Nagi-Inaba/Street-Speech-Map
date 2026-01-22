@@ -1,96 +1,329 @@
-import { prisma } from "@/lib/db";
-import { formatJST } from "@/lib/time";
+"use client";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export default async function RequestsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ candidateId?: string; status?: string }>;
-}) {
-  const params = await searchParams;
-  const candidateId = params.candidateId;
-  const status = params.status as "PENDING" | "APPROVED" | "REJECTED" | undefined;
+interface Candidate {
+  id: string;
+  name: string;
+}
 
-  const requests = await prisma.publicRequest.findMany({
-    where: {
-      ...(candidateId && { candidateId }),
-      ...(status && { status }),
-    },
-    include: {
-      candidate: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+interface PublicRequest {
+  id: string;
+  type: string;
+  status: string;
+  candidateId: string | null;
+  candidate: Candidate | null;
+  payload: string;
+  dedupeKey: string | null;
+  createdAt: string;
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  CREATE_EVENT: "新規イベント",
+  UPDATE_EVENT: "イベント更新",
+  REPORT_START: "開始報告",
+  REPORT_END: "終了報告",
+  REPORT_MOVE: "場所変更報告",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "未承認",
+  APPROVED: "承認済み",
+  REJECTED: "却下",
+  DUPLICATE: "重複",
+};
+
+export default function RequestsPage() {
+  const [requests, setRequests] = useState<PublicRequest[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [filterCandidateId, setFilterCandidateId] = useState("");
+  const [filterStatus, setFilterStatus] = useState("PENDING");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const fetchRequests = async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterCandidateId) params.set("candidateId", filterCandidateId);
+      if (filterStatus) params.set("status", filterStatus);
+      
+      const res = await fetch(`/api/admin/requests?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data);
+      }
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // 候補者一覧を取得
+    fetch("/api/admin/candidates")
+      .then((res) => res.json())
+      .then((data) => setCandidates(data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    fetchRequests();
+    setSelectedIds(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterCandidateId, filterStatus]);
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === requests.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(requests.map((r) => r.id)));
+    }
+  };
+
+  const handleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkAction = async (action: "approve" | "reject") => {
+    if (selectedIds.size === 0) return;
+    
+    if (!confirm(`${selectedIds.size}件のリクエストを${action === "approve" ? "承認" : "却下"}しますか？`)) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch("/api/admin/requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          action,
+        }),
+      });
+
+      if (res.ok) {
+        await fetchRequests();
+        setSelectedIds(new Set());
+      } else {
+        alert("処理に失敗しました");
+      }
+    } catch (error) {
+      console.error("Error processing requests:", error);
+      alert("エラーが発生しました");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const parsePayload = (payload: string) => {
+    try {
+      return JSON.parse(payload);
+    } catch {
+      return {};
+    }
+  };
 
   // 重複キーでグループ化
-  const groupedByDedupe = new Map<string, typeof requests>();
+  const groupedByDedupe = new Map<string, PublicRequest[]>();
   requests.forEach((req) => {
-    if (req.dedupeKey) {
-      if (!groupedByDedupe.has(req.dedupeKey)) {
-        groupedByDedupe.set(req.dedupeKey, []);
-      }
-      groupedByDedupe.get(req.dedupeKey)!.push(req);
-    } else {
-      // dedupeKeyがない場合は単独で表示
-      groupedByDedupe.set(req.id, [req]);
+    const key = req.dedupeKey || req.id;
+    if (!groupedByDedupe.has(key)) {
+      groupedByDedupe.set(key, []);
     }
+    groupedByDedupe.get(key)!.push(req);
   });
 
   return (
     <div>
       <h1 className="text-3xl font-bold mb-8">リクエスト審査</h1>
 
-      <div className="space-y-4">
-        {Array.from(groupedByDedupe.entries()).map(([key, group]) => {
-          const representative = group[0];
-          const duplicates = group.slice(1);
-
-          return (
-            <Card key={key}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>
-                    {representative.type} - {representative.candidate?.name || "候補者不明"}
-                  </span>
-                  <span className={`text-sm px-2 py-1 rounded ${
-                    representative.status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
-                    representative.status === "APPROVED" ? "bg-green-100 text-green-800" :
-                    "bg-gray-100 text-gray-800"
-                  }`}>
-                    {representative.status === "PENDING" ? "未承認" :
-                     representative.status === "APPROVED" ? "承認済み" : "却下"}
-                  </span>
-                </CardTitle>
-                <CardDescription>
-                  {formatJST(representative.createdAt)}
-                  {duplicates.length > 0 && (
-                    <span className="ml-2 text-xs">
-                      （重複: {duplicates.length}件）
-                    </span>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <pre className="text-xs bg-muted p-2 rounded mb-4 overflow-auto">
-                  {JSON.stringify(representative.payload, null, 2)}
-                </pre>
-                <div className="flex gap-2">
-                  <Button variant="default" size="sm">
-                    承認
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    却下
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* フィルター */}
+      <div className="flex gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">候補者</label>
+          <select
+            value={filterCandidateId}
+            onChange={(e) => setFilterCandidateId(e.target.value)}
+            className="px-3 py-2 border rounded-md"
+          >
+            <option value="">すべて</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">状態</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 border rounded-md"
+          >
+            <option value="">すべて</option>
+            <option value="PENDING">未承認</option>
+            <option value="APPROVED">承認済み</option>
+            <option value="REJECTED">却下</option>
+            <option value="DUPLICATE">重複</option>
+          </select>
+        </div>
       </div>
 
-      {requests.length === 0 && (
+      {/* 一括操作 */}
+      {filterStatus === "PENDING" && (
+        <div className="flex gap-2 mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSelectAll}
+          >
+            {selectedIds.size === requests.length ? "選択解除" : "すべて選択"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handleBulkAction("approve")}
+            disabled={selectedIds.size === 0 || isProcessing}
+          >
+            {isProcessing ? "処理中..." : `一括承認 (${selectedIds.size})`}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleBulkAction("reject")}
+            disabled={selectedIds.size === 0 || isProcessing}
+          >
+            一括却下 ({selectedIds.size})
+          </Button>
+        </div>
+      )}
+
+      {/* リクエスト一覧 */}
+      {isLoading ? (
+        <p className="text-muted-foreground">読み込み中...</p>
+      ) : (
+        <div className="space-y-4">
+          {Array.from(groupedByDedupe.entries()).map(([key, group]) => {
+            const representative = group[0];
+            const duplicates = group.slice(1);
+            const payload = parsePayload(representative.payload);
+
+            return (
+              <Card key={key}>
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    {filterStatus === "PENDING" && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(representative.id)}
+                        onChange={() => handleSelect(representative.id)}
+                        className="w-4 h-4"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <CardTitle className="flex items-center justify-between">
+                        <span>
+                          {TYPE_LABELS[representative.type] || representative.type}
+                          {representative.candidate && ` - ${representative.candidate.name}`}
+                        </span>
+                        <span
+                          className={`text-sm px-2 py-1 rounded ${
+                            representative.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : representative.status === "APPROVED"
+                              ? "bg-green-100 text-green-800"
+                              : representative.status === "REJECTED"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {STATUS_LABELS[representative.status] || representative.status}
+                        </span>
+                      </CardTitle>
+                      <CardDescription>
+                        {formatDate(representative.createdAt)}
+                        {duplicates.length > 0 && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            類似: {duplicates.length}件
+                          </span>
+                        )}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm space-y-1 bg-muted p-3 rounded-md mb-4">
+                    {payload.locationText && (
+                      <p>場所: {payload.locationText}</p>
+                    )}
+                    {payload.startAt && (
+                      <p>開始: {new Date(payload.startAt).toLocaleString("ja-JP")}</p>
+                    )}
+                    {payload.endAt && (
+                      <p>終了: {new Date(payload.endAt).toLocaleString("ja-JP")}</p>
+                    )}
+                    {payload.lat && payload.lng && (
+                      <p className="text-xs text-muted-foreground">
+                        座標: {payload.lat.toFixed(6)}, {payload.lng.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {representative.status === "PENDING" && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedIds(new Set([representative.id]));
+                          handleBulkAction("approve");
+                        }}
+                        disabled={isProcessing}
+                      >
+                        承認
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedIds(new Set([representative.id]));
+                          handleBulkAction("reject");
+                        }}
+                        disabled={isProcessing}
+                      >
+                        却下
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {!isLoading && requests.length === 0 && (
         <p className="text-muted-foreground">リクエストがありません。</p>
       )}
     </div>

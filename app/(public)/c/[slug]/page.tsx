@@ -4,8 +4,8 @@ import { formatJST, formatJSTTime } from "@/lib/time";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import LeafletMap from "@/components/Map/LeafletMap";
+import CandidateMap from "@/components/Map/CandidateMap";
+import ShareButton from "@/components/ShareButton";
 
 export default async function CandidatePage({
   params,
@@ -30,7 +30,6 @@ export default async function CandidatePage({
     notFound();
   }
 
-  const now = new Date();
   const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");
   const liveEvents = candidate.events.filter((e) => e.status === "LIVE");
   const endedEvents = candidate.events.filter((e) => e.status === "ENDED");
@@ -79,19 +78,34 @@ export default async function CandidatePage({
           )}
         </div>
 
+        {/* 地図エリア（上部に配置） */}
+        {mapMarkers.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">地図</h2>
+            <Card>
+              <CardContent className="p-4">
+                <CandidateMap center={mapCenter} markers={mapMarkers} />
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {/* 実施中のイベント */}
         {liveEvents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-red-600">実施中</h2>
+            <h2 className="text-2xl font-bold mb-4 text-red-600">🔴 実施中</h2>
             <div className="space-y-4">
               {liveEvents.map((event) => (
-                <Card key={event.id}>
+                <Card key={event.id} className="border-red-200 bg-red-50">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>{event.locationText}</span>
-                      <Button variant="outline" size="sm">
-                        共有
-                      </Button>
+                      <ShareButton
+                        candidateName={candidate.name}
+                        locationText={event.locationText}
+                        isLive={true}
+                        eventUrl={`/c/${candidate.slug}#event-${event.id}`}
+                      />
                     </CardTitle>
                     <CardDescription>
                       {event.timeUnknown
@@ -115,20 +129,27 @@ export default async function CandidatePage({
         {/* 予定のイベント */}
         {plannedEvents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">予定</h2>
+            <h2 className="text-2xl font-bold mb-4">📅 予定</h2>
             <div className="space-y-4">
               {plannedEvents.map((event) => (
-                <Card key={event.id}>
+                <Card key={event.id} id={`event-${event.id}`}>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>{event.locationText}</span>
-                      <Button variant="outline" size="sm">
-                        共有
-                      </Button>
+                      <ShareButton
+                        candidateName={candidate.name}
+                        locationText={event.locationText}
+                        isLive={false}
+                        startAt={event.startAt ? formatJSTTime(event.startAt) : undefined}
+                        eventUrl={`/c/${candidate.slug}#event-${event.id}`}
+                      />
                     </CardTitle>
                     <CardDescription>
-                      {formatJST(event.startAt)}
-                      {event.endAt && ` - ${formatJSTTime(event.endAt)}`}
+                      {event.timeUnknown
+                        ? "時間未定"
+                        : event.startAt
+                        ? `${formatJST(event.startAt)}${event.endAt ? ` - ${formatJSTTime(event.endAt)}` : ""}`
+                        : "時間未定"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -152,8 +173,11 @@ export default async function CandidatePage({
                   <CardHeader>
                     <CardTitle>{event.locationText}</CardTitle>
                     <CardDescription>
-                      {formatJST(event.startAt)}
-                      {event.endAt && ` - ${formatJSTTime(event.endAt)}`}
+                      {event.timeUnknown
+                        ? "時間未定"
+                        : event.startAt
+                        ? `${formatJST(event.startAt)}${event.endAt ? ` - ${formatJSTTime(event.endAt)}` : ""}`
+                        : "時間未定"}
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -163,23 +187,9 @@ export default async function CandidatePage({
         )}
 
         {candidate.events.length === 0 && (
-          <p className="text-muted-foreground">演説予定はありません。</p>
-        )}
-
-        {/* 地図エリア */}
-        {mapMarkers.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-2xl font-bold mb-4">地図</h2>
-            <Card>
-              <CardContent className="p-0">
-                <LeafletMap
-                  center={mapCenter}
-                  zoom={13}
-                  markers={mapMarkers}
-                />
-              </CardContent>
-            </Card>
-          </section>
+          <p className="text-muted-foreground text-center py-12">
+            演説予定はまだ登録されていません。
+          </p>
         )}
       </main>
     </div>

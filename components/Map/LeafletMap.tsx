@@ -38,6 +38,7 @@ export default function LeafletMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
+  // 地図の初期化（一度だけ実行）
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -63,6 +64,7 @@ export default function LeafletMap({
       map.remove();
       mapRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // マーカーの更新
@@ -77,19 +79,18 @@ export default function LeafletMap({
 
     // 新しいマーカーを追加
     markers.forEach((markerData) => {
-      const marker = L.marker(markerData.position).addTo(mapRef.current!);
+      const marker = L.marker(markerData.position, {
+        draggable: editable,
+      }).addTo(mapRef.current!);
 
       if (markerData.popup) {
         marker.bindPopup(markerData.popup);
       }
 
-      if (editable) {
-        marker.draggable = true;
+      if (editable && onMapClick) {
         marker.on("dragend", () => {
           const pos = marker.getLatLng();
-          if (onMapClick) {
-            onMapClick(pos.lat, pos.lng);
-          }
+          onMapClick(pos.lat, pos.lng);
         });
       }
 
