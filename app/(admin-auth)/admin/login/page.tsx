@@ -11,10 +11,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const result = await signIn("credentials", {
@@ -26,7 +28,11 @@ export default function LoginPage() {
       console.log("Login result:", result);
 
       if (result?.error) {
-        setError(`ログインに失敗しました: ${result.error}`);
+        if (result.error === "CredentialsSignin") {
+          setError("メールアドレスまたはパスワードが正しくありません");
+        } else {
+          setError(`ログインに失敗しました: ${result.error}`);
+        }
       } else if (result?.ok) {
         // ログイン成功
         router.push("/admin");
@@ -37,11 +43,13 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login error:", err);
       setError("ログイン中にエラーが発生しました");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>管理画面ログイン</CardTitle>
@@ -59,7 +67,9 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 py-2 border rounded-md"
+                disabled={isLoading}
+                className="w-full px-3 py-2 border rounded-md disabled:opacity-50"
+                placeholder="admin@example.com"
               />
             </div>
             <div>
@@ -72,14 +82,27 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 border rounded-md"
+                disabled={isLoading}
+                className="w-full px-3 py-2 border rounded-md disabled:opacity-50"
+                placeholder="password"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full">
-              ログイン
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "ログイン中..." : "ログイン"}
             </Button>
           </form>
+
+          {/* 開発用ヒント */}
+          <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-800 font-medium">開発用ログイン情報:</p>
+            <p className="text-sm text-blue-700">Email: 任意のメールアドレス</p>
+            <p className="text-sm text-blue-700">Password: password</p>
+          </div>
         </CardContent>
       </Card>
     </div>
