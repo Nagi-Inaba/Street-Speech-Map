@@ -1,0 +1,5 @@
+[33mae85641[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/development[m[33m, [m[1;31morigin/feature/development[m[33m)[m feat: 本番環境への準備とUI改善
+[33m1f7c038[m feat: 候補者タイプと都道府県フィールド追加、用語変更（イベント→演説予定）
+[33mfa3858d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge: マージを完了
+[33ma91ca50[m chore: ログインページのパス変更を反映
+[33m3594e05[m Merge pull request #1 from Nagi-Inaba/cursor/-bc-8c7f4a87-69c3-4b09-bf61-b13a260af212-c816
