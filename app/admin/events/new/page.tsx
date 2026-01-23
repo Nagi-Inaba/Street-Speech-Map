@@ -294,6 +294,7 @@ export default function NewEventPage() {
                 type="text"
                 value={locationText}
                 onChange={(e) => setLocationText(e.target.value)}
+                placeholder="例: 〇〇駅西口交差点前"
                 required
                 className="w-full px-3 py-2 border rounded-md bg-white"
               />

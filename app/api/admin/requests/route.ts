@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
+import { generateMoveHints } from "@/lib/move-hint";
 
 // リクエスト一覧取得
 export async function GET(request: NextRequest) {
@@ -134,6 +135,9 @@ export async function PATCH(request: NextRequest) {
                 lng: payload.newLng,
               },
             });
+
+            // MoveHintを生成
+            await generateMoveHints(req.eventId);
           }
         }
 

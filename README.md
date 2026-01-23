@@ -1,16 +1,38 @@
-# 街頭演説マップ
+# チームみらい 街頭演説マップ
 
-候補者の街頭演説予定・実施中・終了を地図で可視化するWebアプリケーション。
+候補者の街頭演説予定・実施中・終了を地図で可視化するWebアプリケーション。  
+**サポーター作・非公式サイト**
 
 ## 技術スタック
 
+### フロントエンド
 - **フレームワーク**: Next.js 15 (App Router)
 - **言語**: TypeScript
 - **スタイリング**: Tailwind CSS + shadcn/ui
-- **データベース**: PostgreSQL + Prisma
-- **認証**: NextAuth.js
-- **地図**: Leaflet
+- **フォント**: Noto Sans JP
+- **地図ライブラリ**: Leaflet + React Leaflet
+
+### バックエンド
+- **フレームワーク**: Next.js 15 (API Routes)
+- **認証**: NextAuth.js v5 (Credentials Provider)
+- **パスワードハッシュ化**: bcryptjs
+
+### データベース
+- **データベースサーバー**: PostgreSQL（クラウドサービス推奨）
+  - 推奨サービス: Neon, Supabase, Railway
+  - 開発環境・本番環境ともにクラウドPostgreSQLを使用
+- **ORM**: Prisma 5.19.0
+- **データベースアダプター**: @auth/prisma-adapter
+
+### デプロイ・インフラ
+- **ホスティング**: Vercel（推奨）
 - **画像ストレージ**: Vercel Blob（予定）
+- **分析**: Umami Analytics（予定）
+
+### 開発ツール
+- **パッケージマネージャー**: npm
+- **テストフレームワーク**: Vitest（単体テスト）、Playwright（E2Eテスト）
+- **リンター**: ESLint
 
 ## 機能
 
@@ -23,7 +45,8 @@
 
 ### 管理側
 - 候補者管理（CRUD）
-- イベント管理（CRUD）
+- 演説予定管理（CRUD）
+  - 開始日時と終了時刻の入力（時間は8:00-20:00のドロップダウン選択）
 - リクエスト審査（絞り込み、ソート、一括承認、重複非表示）
 - 他党イベント管理（予定）
 - 変更履歴・監査ログ（予定）
@@ -38,16 +61,16 @@ npm install
 
 ### 2. データベースのセットアップ
 
-**PostgreSQLの知識がなくても大丈夫！** 無料のクラウドサービスを使えば簡単にセットアップできます。
+PostgreSQLデータベースサーバーが必要です。無料のクラウドサービスを使用することを推奨します。
 
-#### 推奨: Neon（最も簡単）
+#### 推奨: Neon
 
 1. https://neon.tech にアクセスしてアカウント作成（GitHubアカウントでOK、無料）
 2. 「New Project」でプロジェクト作成
 3. 表示された接続文字列をコピー
 4. `.env`ファイルの`DATABASE_URL`に貼り付け
 
-詳細は [docs/DATABASE_SETUP.md](docs/DATABASE_SETUP.md) を参照してください。
+その他の選択肢（Supabase、Railway）については [docs/DATABASE_SETUP.md](docs/DATABASE_SETUP.md) を参照してください。
 
 ### 3. 環境変数の設定
 
@@ -72,7 +95,7 @@ NEXT_PUBLIC_UMAMI_WEBSITE_ID=""
 NEXT_PUBLIC_UMAMI_SCRIPT_URL=""
 ```
 
-### 4. データベースのセットアップ
+### 4. データベースのマイグレーション
 
 `.env`ファイルに`DATABASE_URL`を設定したら、以下を実行：
 
@@ -84,15 +107,7 @@ npm run db:generate
 npm run db:push
 ```
 
-### 5. データベースのマイグレーション
-
-スキーマの変更をデータベースに反映：
-
-```bash
-npm run db:push
-```
-
-### 6. 管理ユーザーの作成
+### 5. 管理ユーザーの作成
 
 管理画面にログインできるユーザーを作成：
 
@@ -111,20 +126,8 @@ npm run create:admin-user -- --userId 123456 --password AdminPass123 --name "管
 - `--role`: 権限（`SiteAdmin`, `SiteStaff`, `PartyAdmin`, `RegionEditor`、デフォルト: `SiteAdmin`）
 - `--email`: メールアドレス（指定しない場合は自動生成）
 
-**重要**: 作成時に表示される数字IDとパスワードは必ずメモを取ってください。
-
-### 7. シードデータの投入（オプション）
-
-開発用の初期データを投入する場合：
-
-```bash
-npm run seed
-```
-
-これにより、以下のデータが作成されます：
-- 管理者ユーザー（email: `admin@example.com`）
-
-**注意**: シードデータにはパスワードが含まれません。ログインには`create:admin-user`で作成したユーザーを使用してください。
+**重要**: 作成時に表示される数字IDとパスワードは必ずメモを取ってください。  
+**注意**: 同一のIDとパスワードで複数端末から同時にログイン可能です。
 
 ### 6. 開発サーバーの起動
 
@@ -134,10 +137,29 @@ npm run dev
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開いてください。
 
-### 9. 管理画面へのアクセス
+### 7. 管理画面へのアクセス
 
 1. [http://localhost:3000/admin/login](http://localhost:3000/admin/login) にアクセス
 2. `create:admin-user`で作成した数字IDとパスワードでログイン
+
+## データ管理
+
+### サンプルデータの削除
+
+本番環境に向けて、サンプルデータを削除する場合：
+
+```bash
+# すべてのサンプルデータを削除（候補者、イベント、リクエスト、施設、他党イベント）
+npm run cleanup:all-sample-data
+
+# 候補者と演説予定のみを削除
+npm run cleanup:all-candidates-and-events
+
+# サンプル施設データのみを削除
+npm run cleanup:sample-facilities
+```
+
+**注意**: これらのコマンドは実行前に確認を求めます。本番データを誤って削除しないよう注意してください。
 
 ## データ取り込み
 
@@ -173,55 +195,74 @@ npm run dev
 - `BLOB_READ_WRITE_TOKEN`: Vercel Blobトークン
 - `REPORTER_HASH_SALT`: ランダムなソルト
 
+## システム仕様
+
+詳細なシステム仕様については [docs/SPECIFICATION.md](docs/SPECIFICATION.md) を参照してください。
+
+### 主要技術スタック
+- **フレームワーク**: Next.js 15 (App Router)
+- **データベースサーバー**: PostgreSQL（クラウドサービス推奨: Neon, Supabase, Railway）
+- **ORM**: Prisma 5.19.0
+- **認証**: NextAuth.js v5（ID/パスワード認証、bcryptjsによるハッシュ化）
+- **スタイリング**: Tailwind CSS + shadcn/ui
+- **地図**: Leaflet + React Leaflet
+
+### 主要仕様
+- **認証方式**: 数字ID + 半角英数パスワード（複数端末同時ログイン可能）
+- **演説予定入力**: 開始日時（日付+時間）、終了時刻（時間のみ、8:00-20:00、15分間隔）
+- **データベース**: PostgreSQL（Prisma経由で接続、SSL必須）
+
 ## 実装状況
 
-### 完了（MVP）
-- ✅ プロジェクト初期化（Next.js + TypeScript + Tailwind + shadcn/ui）
-- ✅ Prismaスキーマ定義
-- ✅ NextAuth認証とRBAC（簡易実装）
-- ✅ 候補者CRUD（管理画面）と候補者一覧（公開画面）
-- ✅ 演説イベントCRUD（管理画面）と候補者ページの予定一覧（公開画面）
-- ✅ Leaflet地図コンポーネント（イベントピン表示、入力UI）
-- ✅ 公開リクエスト投稿API
-- ✅ 報告API（開始/終了/場所変更）
-- ✅ リクエスト審査画面（重複キーによるグループ化表示）
+### 完了機能
+- プロジェクト初期化（Next.js + TypeScript + Tailwind + shadcn/ui）
+- Prismaスキーマ定義
+- NextAuth認証とRBAC（ID/パスワード認証、bcryptjsによるパスワードハッシュ化）
+- 候補者CRUD（管理画面）と候補者一覧（公開画面）
+- 演説予定CRUD（管理画面）と候補者ページの予定一覧（公開画面）
+  - 時間入力はドロップダウン選択（8:00-20:00、15分間隔）
+  - 開始日時と終了時刻の入力形式
+- Leaflet地図コンポーネント（イベントピン表示、入力UI）
+- 公開リクエスト投稿API
+- 報告API（開始/終了/場所変更）
+- リクエスト審査画面（重複キーによるグループ化表示）
+- 施設データ取り込みスクリプト（CSV/GeoJSON対応）
+- UIデザイン（カラースキームとグラデーション）
+- データクリーンアップスクリプト（サンプルデータ削除）
 
-### 実装中・予定
-- ⏳ リクエスト審査画面の一括承認機能（UI実装済み、API未実装）
-- ⏳ 開始/終了報告の自動承認（Cron + ロジック）
-- ⏳ 場所変更報告→MoveHint生成→公開側注意＋推定ピン
-- ⏳ 他党イベント登録＆表示
-- ⏳ 施設データ取り込みスクリプト＋施設レイヤー表示
-- ⏳ 共有ボタン（予定/実施中）＋分析イベント計測
-- ⏳ テスト（Vitest + Playwright）
-- ⏳ 変更履歴の表示
-- ⏳ 画像アップロード機能（Vercel Blob）
+### 実装予定機能
+- リクエスト審査画面の一括承認機能（UI実装済み、API未実装）
+- 開始/終了報告の自動承認（Cron + ロジック）
+- 場所変更報告→MoveHint生成→公開側注意＋推定ピン
+- 他党イベント登録＆表示
+- 施設レイヤー表示（地図上での施設データ可視化）
+- 共有ボタン（予定/実施中）＋分析イベント計測
+- テスト（Vitest + Playwright）
+- 変更履歴の表示
+- 画像アップロード機能（Vercel Blob）
 
 ## 仮定・制約事項
 
-1. **パスワード認証**: 現在は簡易実装です（開発環境ではパスワードが "password" の場合に認証を許可）。本番環境では適切なパスワードハッシュ化（UserテーブルにpasswordHashフィールド追加）が必要です。
+1. **自動承認**: 開始/終了報告の自動承認機能は未実装です。Vercel Cron等でバッチ処理を実装する必要があります。`app/api/cron/auto-approve/route.ts` のようなエンドポイントを作成し、Vercel Cronから定期実行する必要があります。
 
-2. **自動承認**: 開始/終了報告の自動承認機能は未実装です。Vercel Cron等でバッチ処理を実装する必要があります。`app/api/cron/auto-approve/route.ts` のようなエンドポイントを作成し、Vercel Cronから定期実行する必要があります。
+2. **画像アップロード**: Vercel Blobへのアップロード機能は未実装です。管理画面でURLを直接入力する形式です。`app/api/admin/upload/route.ts` を作成し、Vercel Blob SDKを使用して実装する必要があります。
 
-3. **画像アップロード**: Vercel Blobへのアップロード機能は未実装です。管理画面でURLを直接入力する形式です。`app/api/admin/upload/route.ts` を作成し、Vercel Blob SDKを使用して実装する必要があります。
+3. **分析**: Umamiの統合は未実装です。`lib/analytics.ts`に基盤は用意されています。Umamiのスクリプトを`app/layout.tsx`に追加し、`trackEvent`関数を使用してイベントを計測する必要があります。
 
-4. **分析**: Umamiの統合は未実装です。`lib/analytics.ts`に基盤は用意されています。Umamiのスクリプトを`app/layout.tsx`に追加し、`trackEvent`関数を使用してイベントを計測する必要があります。
+4. **施設レイヤー表示**: 施設データの取り込みスクリプトは実装済みですが、地図上での施設レイヤー表示機能は未実装です。大量の施設データを効率的に表示するため、クラスタリング等の最適化が必要です。
 
-5. **施設データ**: 取り込みスクリプトは未実装です。`scripts/ingest-facilities.ts`に実装の骨組みはありますが、実際のデータソース（国土数値情報等）からデータを取得し、GeoJSON形式に変換してからDBに保存する処理を実装する必要があります。
+5. **重複非表示**: リクエスト画面で重複キーによるグループ化は表示のみです。一括承認機能のAPIエンドポイント（`app/api/admin/requests/bulk-approve/route.ts`）を実装する必要があります。
 
-6. **重複非表示**: リクエスト画面で重複キーによるグループ化は表示のみです。一括承認機能のAPIエンドポイント（`app/api/admin/requests/bulk-approve/route.ts`）を実装する必要があります。
+6. **他党イベント**: 他党イベントのCRUD機能は未実装です。`app/admin/rival-events/page.tsx` と `app/api/admin/rival-events/route.ts` を実装する必要があります。
 
-7. **他党イベント**: 他党イベントのCRUD機能は未実装です。`app/admin/rival-events/page.tsx` と `app/api/admin/rival-events/route.ts` を実装する必要があります。
-
-8. **共有ボタン**: 共有ボタンのUIはありますが、実際の共有機能（Web Share APIまたはクリップボードコピー）は未実装です。
+7. **共有ボタン**: 共有ボタンのUIはありますが、実際の共有機能（Web Share APIまたはクリップボードコピー）は未実装です。
 
 ## 今後の改善
 
-- [ ] パスワード認証の適切な実装
 - [ ] 画像アップロード機能（Vercel Blob）
 - [ ] 自動承認バッチ処理（Vercel Cron）
 - [ ] MoveHint生成と推定ピン表示
-- [ ] 施設データ取り込みスクリプト
+- [ ] 施設レイヤー表示機能（地図上での可視化）
 - [ ] 共有ボタン実装
 - [ ] Umami分析統合
 - [ ] E2Eテスト
@@ -233,4 +274,4 @@ npm run dev
 
 ## コントリビューション
 
-コントリビューションを歓迎します。詳細はCONTRIBUTING.md（作成予定）を参照してください。
+コントリビューションを歓迎します。詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。

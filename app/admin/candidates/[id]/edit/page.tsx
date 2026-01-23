@@ -1,15 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
 import ImageUpload from "@/components/ImageUpload";
 
-export default function NewCandidatePage() {
+interface Candidate {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  prefecture: string | null;
+  region: string | null;
+  imageUrl: string | null;
+}
+
+export default function EditCandidatePage() {
   const router = useRouter();
+  const params = useParams();
+  const candidateId = params.id as string;
+
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [type, setType] = useState<"SINGLE" | "PROPORTIONAL">("PROPORTIONAL");
@@ -19,11 +33,37 @@ export default function NewCandidatePage() {
   const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
   const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // 小選挙区データを読み込む
     loadSingleDistrictsFromCSV().then(setSingleDistricts);
-  }, []);
+
+    // 候補者データを取得
+    fetch(`/api/admin/candidates/${candidateId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          alert("候補者の取得に失敗しました");
+          router.push("/admin/candidates");
+          return;
+        }
+        setCandidate(data);
+        setName(data.name);
+        setSlug(data.slug);
+        setType(data.type);
+        setPrefecture(data.prefecture || "");
+        setProportionalBlock(data.type === "PROPORTIONAL" ? (data.region || "") : "");
+        setSingleDistrict(data.type === "SINGLE" ? (data.region || "") : "");
+        setImageUrl(data.imageUrl || "");
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching candidate:", error);
+        alert("エラーが発生しました");
+        router.push("/admin/candidates");
+      });
+  }, [candidateId, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,23 +78,24 @@ export default function NewCandidatePage() {
         regionValue = singleDistrict || null;
       }
 
-      const res = await fetch("/api/admin/candidates", {
-        method: "POST",
+      const res = await fetch(`/api/admin/candidates/${candidateId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          name, 
-          slug, 
+        body: JSON.stringify({
+          name,
+          slug,
           type,
           prefecture: type === "SINGLE" ? (prefecture || null) : null,
-          region: regionValue, 
-          imageUrl: imageUrl || null 
+          region: regionValue,
+          imageUrl: imageUrl || null,
         }),
       });
 
       if (res.ok) {
         router.push("/admin/candidates");
       } else {
-        alert("作成に失敗しました");
+        const error = await res.json();
+        alert(error.error || "更新に失敗しました");
       }
     } catch (error) {
       alert("エラーが発生しました");
@@ -63,16 +104,29 @@ export default function NewCandidatePage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold mb-8">候補者編集</h1>
+        <p>読み込み中...</p>
+      </div>
+    );
+  }
+
+  if (!candidate) {
+    return null;
+  }
+
   const availableDistricts = prefecture ? (singleDistricts[prefecture] || []) : [];
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">候補者追加</h1>
+      <h1 className="text-3xl font-bold mb-8">候補者編集</h1>
 
       <Card>
         <CardHeader>
           <CardTitle>候補者情報</CardTitle>
-          <CardDescription>新しい候補者を追加します</CardDescription>
+          <CardDescription>候補者情報を編集します</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -224,7 +278,7 @@ export default function NewCandidatePage() {
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "作成中..." : "作成"}
+                {isSubmitting ? "更新中..." : "更新"}
               </Button>
               <Button
                 type="button"
@@ -240,3 +294,4 @@ export default function NewCandidatePage() {
     </div>
   );
 }
+

@@ -22,6 +22,13 @@ export default async function CandidatePage({
     where: { slug },
     include: {
       events: {
+        include: {
+          moveHints: {
+            where: {
+              active: true,
+            },
+          },
+        },
         orderBy: [
           { startAt: "asc" },
           { createdAt: "desc" },
@@ -38,7 +45,7 @@ export default async function CandidatePage({
   const liveEvents = candidate.events.filter((e) => e.status === "LIVE");
   const endedEvents = candidate.events.filter((e) => e.status === "ENDED");
 
-  // 地図用のマーカー
+  // 地図用のマーカー（通常のイベントピン）
   const mapMarkers = candidate.events
     .filter((e) => e.status !== "ENDED")
     .map((event) => ({
@@ -48,14 +55,31 @@ export default async function CandidatePage({
       color: event.status === "LIVE" ? "red" : "blue",
     }));
 
+  // MoveHint用のマーカー（推定位置）
+  const moveHintMarkers = candidate.events
+    .filter((e) => e.status !== "ENDED")
+    .flatMap((event) => {
+      const hints = event.moveHints || [];
+      return hints.map((hint) => ({
+        id: `move-hint-${hint.id}`,
+        position: [hint.lat, hint.lng] as [number, number],
+        popup: `推定位置（${hint.count}件の報告より）`,
+        color: "orange" as const,
+        isMoveHint: true,
+      }));
+    });
+
+  // すべてのマーカーを結合
+  const allMarkers = [...mapMarkers, ...moveHintMarkers];
+
   // 地図の中心位置を決定
   // 1. 予定がある場合: 演説中 > 直近の予定の位置を優先
   // 2. 予定がない場合: 候補者の都道府県の座標
   // 3. それもない場合: 東京駅（デフォルト）
   let mapCenter: [number, number] = [35.6812, 139.7671]; // デフォルト: 東京駅
 
-  if (mapMarkers.length > 0) {
-    // 演説中のイベントを優先
+  if (allMarkers.length > 0) {
+    // 演説中のイベントを優先（通常のマーカーのみ）
     const liveMarker = mapMarkers.find((m) => {
       const event = candidate.events.find((e) => e.id === m.id);
       return event?.status === "LIVE";
@@ -78,6 +102,9 @@ export default async function CandidatePage({
       } else if (mapMarkers.length > 0) {
         // startAtがない場合は最初のマーカーを使用
         mapCenter = mapMarkers[0].position;
+      } else if (moveHintMarkers.length > 0) {
+        // 通常のマーカーがない場合はMoveHintを使用
+        mapCenter = moveHintMarkers[0].position;
       }
     }
   } else {
@@ -116,12 +143,12 @@ export default async function CandidatePage({
         </div>
 
         {/* 地図エリア（上部に配置） */}
-        {mapMarkers.length > 0 && (
+        {allMarkers.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">地図</h2>
             <Card>
               <CardContent className="p-4">
-                <CandidateMap center={mapCenter} markers={mapMarkers} />
+                <CandidateMap center={mapCenter} markers={allMarkers} />
               </CardContent>
             </Card>
           </section>

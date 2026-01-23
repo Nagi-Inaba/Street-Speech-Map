@@ -11,12 +11,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("既存の候補者データを更新します...");
 
-  // 既存の候補者を取得
-  const candidates = await prisma.candidate.findMany({
-    where: {
-      type: null,
-    },
-  });
+  // 既存の候補者を取得（typeが空文字列またはnullのもの）
+  const allCandidates = await prisma.candidate.findMany();
+  const candidates = allCandidates.filter((c) => !c.type || c.type === "");
 
   console.log(`更新対象: ${candidates.length}件`);
 

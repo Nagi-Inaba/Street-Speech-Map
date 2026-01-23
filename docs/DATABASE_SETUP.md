@@ -35,10 +35,16 @@ Neonは無料のPostgreSQLサービスで、セットアップが簡単です。
    npm run db:push
    ```
 
-6. **シードデータを投入（オプション）**
+6. **管理ユーザーを作成**
    ```bash
-   npm run seed
+   # 自動生成（数字IDとパスワードを自動生成）
+   npm run create:admin-user
+   
+   # 手動指定
+   npm run create:admin-user -- --userId 123456 --password AdminPass123 --name "管理者" --role SiteAdmin
    ```
+   
+   **重要**: 作成時に表示される数字IDとパスワードは必ずメモを取ってください。
 
 これで完了です！
 

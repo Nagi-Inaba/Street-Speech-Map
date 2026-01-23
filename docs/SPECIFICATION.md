@@ -1,0 +1,198 @@
+# システム仕様書
+
+## 概要
+
+チームみらい 街頭演説マップは、候補者の街頭演説予定・実施中・終了を地図で可視化するWebアプリケーションです。
+
+## 技術スタック
+
+### フロントエンド
+- **フレームワーク**: Next.js 15 (App Router)
+- **言語**: TypeScript
+- **スタイリング**: Tailwind CSS + shadcn/ui
+- **フォント**: Noto Sans JP
+- **地図ライブラリ**: Leaflet + React Leaflet
+
+### バックエンド
+- **フレームワーク**: Next.js 15 (API Routes)
+- **認証**: NextAuth.js v5 (Credentials Provider)
+- **パスワードハッシュ化**: bcryptjs
+
+### データベース
+- **データベースサーバー**: PostgreSQL（クラウドサービス推奨）
+  - 推奨サービス: Neon, Supabase, Railway
+  - 開発環境・本番環境ともにクラウドPostgreSQLを使用
+- **ORM**: Prisma 5.19.0
+- **データベースアダプター**: @auth/prisma-adapter
+
+### デプロイ・インフラ
+- **ホスティング**: Vercel（推奨）
+- **画像ストレージ**: Vercel Blob（予定）
+- **分析**: Umami Analytics（予定）
+
+### 開発ツール
+- **パッケージマネージャー**: npm
+- **テストフレームワーク**: Vitest（単体テスト）、Playwright（E2Eテスト）
+- **リンター**: ESLint
+
+## アーキテクチャ
+
+### アプリケーション構成
+- **アプリケーションタイプ**: フルスタックWebアプリケーション
+- **レンダリング方式**: Next.js App Router（Server Components + Client Components）
+- **認証方式**: セッションベース認証（JWT）
+- **データベース接続**: Prisma経由でPostgreSQLに接続
+
+### ディレクトリ構造
+```
+app/
+  ├── (admin-auth)/      # 管理画面認証関連
+  ├── (public)/          # 公開ページ
+  ├── admin/             # 管理画面
+  ├── api/                # API Routes
+  └── layout.tsx          # ルートレイアウト
+
+components/               # 共通コンポーネント
+lib/                     # ユーティリティ関数
+prisma/                  # Prismaスキーマ
+scripts/                 # スクリプト
+public/                  # 静的ファイル
+```
+
+## データベース仕様
+
+### データベースサーバー
+- **種類**: PostgreSQL
+- **接続方式**: 接続文字列による接続（SSL必須）
+- **ORM**: Prisma
+- **マイグレーション**: Prisma Migrate / Prisma DB Push
+
+### 主要テーブル
+- `User`: ユーザー情報（管理者）
+- `Candidate`: 候補者情報
+- `Event`: 演説予定情報
+- `Request`: 公開リクエスト
+- `Facility`: 施設データ
+- `RivalEvent`: 他党イベント
+
+詳細は `prisma/schema.prisma` を参照してください。
+
+## 認証仕様
+
+### 認証方式
+- **認証タイプ**: ID/パスワード認証
+- **ID形式**: 数字（6桁推奨）
+- **パスワード形式**: 半角英数
+- **パスワード保存**: bcryptjsによるハッシュ化
+- **同時ログイン**: 同一ID/パスワードで複数端末から同時ログイン可能
+- **セッション管理**: NextAuth.jsによるセッション管理
+
+### 権限管理
+- `SiteAdmin`: サイト管理者（全権限）
+- `SiteStaff`: サイトスタッフ
+- `PartyAdmin`: 政党管理者
+- `RegionEditor`: 地域編集者
+
+## UI/UX仕様
+
+### デザインシステム
+- **コンポーネントライブラリ**: shadcn/ui
+- **スタイリング**: Tailwind CSS
+- **カラースキーム**: カスタムカラーパレット（HSL形式）
+- **フォント**: Noto Sans JP（日本語対応）
+- **レスポンシブデザイン**: Tailwind CSSのブレークポイントを使用
+
+### カラーパレット
+- **背景グラデーション**: `linear-gradient(to right, #64D8C6 0%, #64D8C6 60%, #E2F6F3 100%)`
+- **プライマリカラー**: Teal系（HSL: 180 100% 25%）
+- **セカンダリカラー**: ライトグレー系（HSL: 180 20% 95%）
+
+### 演説予定入力仕様
+- **開始日時**: 日付 + 時間（ドロップダウン選択）
+- **終了時刻**: 時間のみ（ドロップダウン選択、開始日時の日付を使用）
+- **時間選択範囲**: 8:00 - 20:00
+- **時間間隔**: 15分間隔（00, 15, 30, 45）
+
+## API仕様
+
+### 公開API
+- `POST /api/requests`: 公開リクエストの投稿
+- `POST /api/reports`: 報告（開始/終了/場所変更）
+
+### 管理API
+- `GET /api/admin/candidates`: 候補者一覧取得
+- `POST /api/admin/candidates`: 候補者作成
+- `GET /api/admin/candidates/[id]`: 候補者詳細取得
+- `PUT /api/admin/candidates/[id]`: 候補者更新
+- `DELETE /api/admin/candidates/[id]`: 候補者削除
+- `GET /api/admin/events`: 演説予定一覧取得
+- `POST /api/admin/events`: 演説予定作成
+- `GET /api/admin/events/[id]`: 演説予定詳細取得
+- `PUT /api/admin/events/[id]`: 演説予定更新
+- `DELETE /api/admin/events/[id]`: 演説予定削除
+- `GET /api/admin/requests`: リクエスト一覧取得
+- `PUT /api/admin/requests/[id]`: リクエスト承認/却下
+
+## データ管理
+
+### 施設データ取り込み
+- **対応形式**: CSV、GeoJSON
+- **スクリプト**: `scripts/ingest-facilities.ts`
+- **コマンド**: `npm run ingest:facilities`
+
+### データクリーンアップ
+- **サンプルデータ削除**: `npm run cleanup:all-sample-data`
+- **候補者・演説予定削除**: `npm run cleanup:all-candidates-and-events`
+- **サンプル施設削除**: `npm run cleanup:sample-facilities`
+
+## 環境変数
+
+### 必須環境変数
+- `DATABASE_URL`: PostgreSQL接続文字列
+- `NEXTAUTH_URL`: アプリケーションURL
+- `NEXTAUTH_SECRET`: NextAuthシークレットキー
+- `REPORTER_HASH_SALT`: レポーターハッシュ用ソルト
+
+### オプション環境変数
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blobトークン
+- `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: Umami Analytics Website ID
+- `NEXT_PUBLIC_UMAMI_SCRIPT_URL`: Umami Analytics Script URL
+
+## デプロイ仕様
+
+### 推奨プラットフォーム
+- **ホスティング**: Vercel
+- **データベース**: Neon、Supabase、Railway
+
+### デプロイ手順
+1. Vercelにプロジェクトをインポート
+2. 環境変数を設定
+3. PostgreSQLデータベースを接続
+4. デプロイ
+
+詳細は [README.md](../README.md) の「デプロイ」セクションを参照してください。
+
+## セキュリティ
+
+### 認証・認可
+- パスワードはbcryptjsでハッシュ化
+- セッションはJWTで管理
+- 管理画面は認証必須
+
+### データ保護
+- データベース接続はSSL必須
+- 環境変数による機密情報管理
+- SQLインジェクション対策（Prisma使用）
+
+## パフォーマンス
+
+### 最適化
+- Next.js App Routerによる自動最適化
+- Server Componentsによるサーバーサイドレンダリング
+- 画像最適化（Next.js Image）
+
+### 今後の改善予定
+- 施設データのクラスタリング
+- 地図表示の最適化
+- キャッシュ戦略の見直し
+

@@ -19,6 +19,7 @@ interface CandidateMapProps {
     position: [number, number];
     popup?: string;
     color?: string;
+    isMoveHint?: boolean;
   }>;
 }
 

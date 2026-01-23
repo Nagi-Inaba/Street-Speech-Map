@@ -10,7 +10,7 @@ const candidateSchema = z.object({
   type: z.enum(["SINGLE", "PROPORTIONAL"]),
   prefecture: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
-  imageUrl: z.string().url().nullable().optional(),
+  imageUrl: z.union([z.string().url(), z.string().length(0), z.null()]).optional(),
 });
 
 export async function GET() {

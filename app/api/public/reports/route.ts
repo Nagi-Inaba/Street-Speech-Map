@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import crypto from "crypto";
+import { generateMoveHints } from "@/lib/move-hint";
 
 const reportSchema = z.object({
   eventId: z.string(),
@@ -112,6 +113,11 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    }
+
+    // 場所変更報告の場合、MoveHintを生成
+    if (data.kind === "move" && data.lat && data.lng) {
+      await generateMoveHints(data.eventId);
     }
 
     return NextResponse.json(report);
