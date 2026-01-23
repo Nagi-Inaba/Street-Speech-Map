@@ -53,19 +53,18 @@ export default function LeafletMap({
 
     mapRef.current = map;
 
-    // クリックイベント
-    if (editable && onMapClick) {
-      map.on("click", (e) => {
-        onMapClick(e.latlng.lat, e.latlng.lng);
-      });
-    }
-
     return () => {
       map.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 地図の中心位置とズームレベルの更新
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setView(center, zoom);
+  }, [center, zoom]);
 
   // マーカーの更新
   useEffect(() => {
@@ -88,6 +87,7 @@ export default function LeafletMap({
       }
 
       if (editable && onMapClick) {
+        // ドラッグ終了時に位置を更新
         marker.on("dragend", () => {
           const pos = marker.getLatLng();
           onMapClick(pos.lat, pos.lng);
@@ -97,6 +97,33 @@ export default function LeafletMap({
       markersRef.current.push(marker);
     });
   }, [markers, editable, onMapClick]);
+
+  // 地図クリック時にマーカーを移動（editableかつマーカーが1つの場合）
+  useEffect(() => {
+    if (!mapRef.current || !editable || !onMapClick) return;
+
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      // マーカーが1つだけの場合、そのマーカーを移動
+      if (markersRef.current.length === 1) {
+        const marker = markersRef.current[0];
+        if (marker) {
+          marker.setLatLng(e.latlng);
+          onMapClick(e.latlng.lat, e.latlng.lng);
+        }
+      } else if (markersRef.current.length === 0 && onMapClick) {
+        // マーカーがない場合でもクリック位置を通知
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    };
+
+    mapRef.current.on("click", handleMapClick);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off("click", handleMapClick);
+      }
+    };
+  }, [editable, onMapClick]);
 
   return <div ref={mapContainerRef} className={className} />;
 }

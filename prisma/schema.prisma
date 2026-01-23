@@ -12,7 +12,7 @@ datasource db {
 
 // SQLiteではenumが使えないため、Stringで管理
 // EventStatus: "PLANNED" | "LIVE" | "ENDED"
-// RequestType: "CREATE_EVENT" | "UPDATE_EVENT" | "REPORT_START" | "REPORT_END" | "REPORT_MOVE" | "CREATE_RIVAL_EVENT" | "UPDATE_RIVAL_EVENT"
+// RequestType: "CREATE_EVENT" | "UPDATE_EVENT" | "REPORT_START" | "REPORT_END" | "REPORT_MOVE" | "REPORT_TIME_CHANGE" | "CREATE_RIVAL_EVENT" | "UPDATE_RIVAL_EVENT"
 // RequestStatus: "PENDING" | "APPROVED" | "REJECTED" | "DUPLICATE"
 // CandidateType: "SINGLE" | "PROPORTIONAL"
 
@@ -47,6 +47,7 @@ model SpeechEvent {
   lat         Float
   lng         Float
   locationText String
+  notes       String?    // 備考（応援演説など）
 
   // 予約入力時刻（公開表示するため、承認時刻ではない）
   submittedAt DateTime    @default(now())
@@ -179,6 +180,8 @@ model Facility {
 model User {
   id        String @id @default(cuid())
   email     String @unique
+  userId    String? @unique // 数字ID（ログイン用）
+  passwordHash String? // パスワードハッシュ
   name      String?
   role      String // "SiteAdmin" "SiteStaff" "PartyAdmin" "RegionEditor"
   region    String? // 地域担当の場合

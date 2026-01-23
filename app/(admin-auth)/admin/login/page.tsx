@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       const result = await signIn("credentials", {
-        email,
+        userId,
         password,
         redirect: false,
       });
@@ -29,7 +29,7 @@ export default function LoginPage() {
 
       if (result?.error) {
         if (result.error === "CredentialsSignin") {
-          setError("メールアドレスまたはパスワードが正しくありません");
+          setError("IDまたはパスワードが正しくありません");
         } else {
           setError(`ログインに失敗しました: ${result.error}`);
         }
@@ -58,33 +58,43 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-1">
-                メールアドレス
+              <label htmlFor="userId" className="block text-sm font-medium mb-1">
+                ID（数字）
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="userId"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={userId}
+                onChange={(e) => {
+                  // 数字のみを許可
+                  const value = e.target.value.replace(/[^0-9]/g, "");
+                  setUserId(value);
+                }}
                 required
                 disabled={isLoading}
-                className="w-full px-3 py-2 border rounded-md disabled:opacity-50"
-                placeholder="admin@example.com"
+                className="w-full px-3 py-2 border rounded-md bg-white disabled:opacity-50"
+                placeholder="123456"
               />
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium mb-1">
-                パスワード
+                パスワード（半角英数）
               </label>
               <input
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  // 半角英数のみを許可
+                  const value = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+                  setPassword(value);
+                }}
                 required
                 disabled={isLoading}
-                className="w-full px-3 py-2 border rounded-md disabled:opacity-50"
-                placeholder="password"
+                className="w-full px-3 py-2 border rounded-md bg-white disabled:opacity-50"
+                placeholder="パスワードを入力"
               />
             </div>
             {error && (
@@ -97,12 +107,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* 開発用ヒント */}
-          <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm text-blue-800 font-medium">開発用ログイン情報:</p>
-            <p className="text-sm text-blue-700">Email: 任意のメールアドレス</p>
-            <p className="text-sm text-blue-700">Password: password</p>
-          </div>
         </CardContent>
       </Card>
     </div>

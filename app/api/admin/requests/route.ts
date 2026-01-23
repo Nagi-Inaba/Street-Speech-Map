@@ -98,6 +98,83 @@ export async function PATCH(request: NextRequest) {
             },
           });
         }
+
+        // REPORT_MOVEの場合、場所を更新
+        if (req.type === "REPORT_MOVE" && req.eventId) {
+          const payload = JSON.parse(req.payload);
+          const event = await prisma.speechEvent.findUnique({
+            where: { id: req.eventId },
+          });
+
+          if (event) {
+            // 変更履歴を記録
+            await prisma.eventHistory.create({
+              data: {
+                eventId: req.eventId,
+                fromLat: event.lat,
+                fromLng: event.lng,
+                fromText: event.locationText,
+                fromStartAt: event.startAt,
+                fromEndAt: event.endAt,
+                toLat: payload.newLat,
+                toLng: payload.newLng,
+                toText: event.locationText, // 場所テキストは変更しない（管理画面で手動更新）
+                toStartAt: event.startAt,
+                toEndAt: event.endAt,
+                reason: "場所変更報告の承認",
+                changedByUserId: session.user.id,
+              },
+            });
+
+            // 場所を更新
+            await prisma.speechEvent.update({
+              where: { id: req.eventId },
+              data: {
+                lat: payload.newLat,
+                lng: payload.newLng,
+              },
+            });
+          }
+        }
+
+        // REPORT_TIME_CHANGEの場合、時間を更新
+        if (req.type === "REPORT_TIME_CHANGE" && req.eventId) {
+          const payload = JSON.parse(req.payload);
+          const event = await prisma.speechEvent.findUnique({
+            where: { id: req.eventId },
+          });
+
+          if (event) {
+            // 変更履歴を記録
+            await prisma.eventHistory.create({
+              data: {
+                eventId: req.eventId,
+                fromLat: event.lat,
+                fromLng: event.lng,
+                fromText: event.locationText,
+                fromStartAt: event.startAt,
+                fromEndAt: event.endAt,
+                toLat: event.lat,
+                toLng: event.lng,
+                toText: event.locationText,
+                toStartAt: payload.newStartAt ? new Date(payload.newStartAt) : null,
+                toEndAt: payload.newEndAt ? new Date(payload.newEndAt) : null,
+                reason: "時間変更報告の承認",
+                changedByUserId: session.user.id,
+              },
+            });
+
+            // 時間を更新
+            await prisma.speechEvent.update({
+              where: { id: req.eventId },
+              data: {
+                startAt: payload.newStartAt ? new Date(payload.newStartAt) : null,
+                endAt: payload.newEndAt ? new Date(payload.newEndAt) : null,
+                timeUnknown: !payload.newStartAt && !payload.newEndAt,
+              },
+            });
+          }
+        }
       }
     }
 

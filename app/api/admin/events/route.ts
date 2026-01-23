@@ -12,6 +12,7 @@ const eventSchema = z.object({
   locationText: z.string().min(1),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  notes: z.string().nullable().optional(),
 });
 
 export async function GET() {
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
         locationText: data.locationText,
         lat: data.lat,
         lng: data.lng,
+        notes: data.notes || null,
         status: "PLANNED",
       },
     });

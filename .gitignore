@@ -38,3 +38,8 @@ next-env.d.ts
 
 # prisma
 /prisma/migrations
+
+# facility data files (keep sample files)
+data/*.csv
+data/*.geojson
+!data/sample/

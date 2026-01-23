@@ -4,18 +4,46 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import LeafletMap from "@/components/Map/LeafletMap";
+import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
+import { getPrefectureCoordinates } from "@/lib/constants";
+
+interface Candidate {
+  id: string;
+  name: string;
+  prefecture: string | null;
+  region: string | null;
+  type: string;
+}
+
+// 時間の選択肢（8-20時：選挙活動ができる時間）
+const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 8).padStart(2, "0"));
+
+// 分の選択肢（0, 15, 30, 45）
+const MINUTE_OPTIONS = ["00", "15", "30", "45"];
 
 export default function NewEventPage() {
   const router = useRouter();
-  const [candidates, setCandidates] = useState<Array<{ id: string; name: string }>>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [candidateId, setCandidateId] = useState("");
-  const [startAt, setStartAt] = useState("");
-  const [endAt, setEndAt] = useState("");
+  // 今日の日付をデフォルト値として設定（MM-DD形式）
+  const getTodayDateString = () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${month}-${day}`;
+  };
+  const [startDate, setStartDate] = useState(getTodayDateString());
+  const [startHour, setStartHour] = useState("");
+  const [startMinute, setStartMinute] = useState("");
+  const [endHour, setEndHour] = useState("");
+  const [endMinute, setEndMinute] = useState("");
   const [timeUnknown, setTimeUnknown] = useState(false);
   const [locationText, setLocationText] = useState("");
+  const [notes, setNotes] = useState("");
   const [lat, setLat] = useState(35.6812);
   const [lng, setLng] = useState(139.7671);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([35.6812, 139.7671]);
+  const [mapZoom, setMapZoom] = useState(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -24,9 +52,57 @@ export default function NewEventPage() {
       .then((data) => setCandidates(data));
   }, []);
 
+  // 候補者選択時に地図の中心を立候補地域に設定
+  useEffect(() => {
+    if (candidateId) {
+      const candidate = candidates.find((c) => c.id === candidateId);
+      if (candidate) {
+        if (candidate.type === "SINGLE" && candidate.prefecture) {
+          // 小選挙区の場合：都道府県の座標を使用
+          const coords = getPrefectureCoordinates(candidate.prefecture);
+          if (coords) {
+            setMapCenter(coords);
+            setMapZoom(10);
+            setLat(coords[0]);
+            setLng(coords[1]);
+          }
+        } else if (candidate.type === "PROPORTIONAL" && candidate.region) {
+          // 比例の場合：比例ブロックに応じた座標を使用
+          const blockCoords: Record<string, [number, number]> = {
+            "北海道ブロック": [43.0642, 141.3469],
+            "東北ブロック": [38.2682, 140.8694],
+            "北関東ブロック": [36.5658, 139.8836],
+            "南関東ブロック": [35.6895, 139.6917],
+            "東京ブロック": [35.6895, 139.6917],
+            "北陸信越ブロック": [37.9022, 139.0236],
+            "東海ブロック": [35.1802, 136.9066],
+            "近畿ブロック": [34.6863, 135.5197],
+            "中国ブロック": [34.6617, 133.9350],
+            "四国ブロック": [33.8416, 132.7657],
+            "九州ブロック": [33.6063, 130.4181],
+          };
+          const coords = blockCoords[candidate.region] || [35.6812, 139.7671];
+          setMapCenter(coords);
+          setMapZoom(8);
+          setLat(coords[0]);
+          setLng(coords[1]);
+        }
+      }
+    }
+  }, [candidateId, candidates]);
+
   const handleMapClick = (newLat: number, newLng: number) => {
     setLat(newLat);
     setLng(newLng);
+  };
+
+  // 月日と時刻をISO形式の日時文字列に変換（年は現在の年を使用）
+  const combineDateTime = (date: string, hour: string, minute: string): string | null => {
+    if (!date || !hour || !minute) return null;
+    const currentYear = new Date().getFullYear();
+    const time = `${hour}:${minute}`;
+    const dateTimeString = `${currentYear}-${date}T${time}`;
+    return new Date(dateTimeString).toISOString();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,8 +110,9 @@ export default function NewEventPage() {
     setIsSubmitting(true);
 
     try {
-      const startAtDate = timeUnknown || !startAt ? null : new Date(startAt).toISOString();
-      const endAtDate = timeUnknown || !endAt ? null : new Date(endAt).toISOString();
+      const startAtDate = timeUnknown || !startDate || !startHour || !startMinute ? null : combineDateTime(startDate, startHour, startMinute);
+      // 終了時刻は開始日時の日付と同じ日付を使用
+      const endAtDate = timeUnknown || !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute);
 
       const res = await fetch("/api/admin/events", {
         method: "POST",
@@ -48,6 +125,7 @@ export default function NewEventPage() {
           locationText,
           lat,
           lng,
+          notes: notes || null,
         }),
       });
 
@@ -83,7 +161,7 @@ export default function NewEventPage() {
                 value={candidateId}
                 onChange={(e) => setCandidateId(e.target.value)}
                 required
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md bg-white"
               >
                 <option value="">選択してください</option>
                 {candidates.map((c) => (
@@ -99,7 +177,20 @@ export default function NewEventPage() {
                 <input
                   type="checkbox"
                   checked={timeUnknown}
-                  onChange={(e) => setTimeUnknown(e.target.checked)}
+                  onChange={(e) => {
+                    setTimeUnknown(e.target.checked);
+                    if (e.target.checked) {
+                      setStartDate("");
+                      setStartHour("");
+                      setStartMinute("");
+                      setEndHour("");
+                      setEndMinute("");
+                    } else {
+                      setStartDate(getTodayDateString());
+                      setStartHour("");
+                      setStartMinute("");
+                    }
+                  }}
                 />
                 <span className="text-sm">時間未定</span>
               </label>
@@ -107,30 +198,89 @@ export default function NewEventPage() {
 
             {!timeUnknown && (
               <>
-                <div>
-                  <label htmlFor="startAt" className="block text-sm font-medium mb-1">
-                    開始時刻 *
-                  </label>
-                  <input
-                    id="startAt"
-                    type="datetime-local"
-                    value={startAt}
-                    onChange={(e) => setStartAt(e.target.value)}
-                    required={!timeUnknown}
-                    className="w-full px-3 py-2 border rounded-md"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="endAt" className="block text-sm font-medium mb-1">
-                    終了時刻
-                  </label>
-                  <input
-                    id="endAt"
-                    type="datetime-local"
-                    value={endAt}
-                    onChange={(e) => setEndAt(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="startDate" className="block text-sm font-medium mb-1">
+                      開始日時 *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="startDate"
+                        type="date"
+                        value={`${new Date().getFullYear()}-${startDate}`}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value) {
+                            const [, month, day] = value.split("-");
+                            setStartDate(`${month}-${day}`);
+                          }
+                        }}
+                        required={!timeUnknown}
+                        className="w-full px-3 py-2 border rounded-md bg-white"
+                      />
+                      <select
+                        id="startHour"
+                        value={startHour}
+                        onChange={(e) => setStartHour(e.target.value)}
+                        required={!timeUnknown}
+                        className="w-full px-3 py-2 border rounded-md bg-white"
+                      >
+                        <option value="">時</option>
+                        {HOUR_OPTIONS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {hour}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        id="startMinute"
+                        value={startMinute}
+                        onChange={(e) => setStartMinute(e.target.value)}
+                        required={!timeUnknown}
+                        className="w-full px-3 py-2 border rounded-md bg-white"
+                      >
+                        <option value="">分</option>
+                        {MINUTE_OPTIONS.map((minute) => (
+                          <option key={minute} value={minute}>
+                            {minute}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="endTime" className="block text-sm font-medium mb-1">
+                      終了時刻
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        id="endHour"
+                        value={endHour}
+                        onChange={(e) => setEndHour(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md bg-white"
+                      >
+                        <option value="">時</option>
+                        {HOUR_OPTIONS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {hour}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        id="endMinute"
+                        value={endMinute}
+                        onChange={(e) => setEndMinute(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md bg-white"
+                      >
+                        <option value="">分</option>
+                        {MINUTE_OPTIONS.map((minute) => (
+                          <option key={minute} value={minute}>
+                            {minute}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
@@ -145,19 +295,40 @@ export default function NewEventPage() {
                 value={locationText}
                 onChange={(e) => setLocationText(e.target.value)}
                 required
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md bg-white"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="notes" className="block text-sm font-medium mb-1">
+                備考
+              </label>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border rounded-md bg-white"
+                placeholder="応援演説などの備考を入力してください"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                場所（地図上でクリックして選択）
+                場所（地図上でクリックして選択、または住所検索）
               </label>
-              <LeafletMap
-                center={[lat, lng]}
-                zoom={15}
+              <LeafletMapWithSearch
+                center={mapCenter}
+                zoom={mapZoom}
                 editable
-                onMapClick={handleMapClick}
+                onMapClick={(newLat, newLng) => {
+                  setLat(newLat);
+                  setLng(newLng);
+                }}
+                onCenterChange={(newLat, newLng) => {
+                  setLat(newLat);
+                  setLng(newLng);
+                }}
                 markers={[
                   {
                     id: "current",

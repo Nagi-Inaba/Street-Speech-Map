@@ -13,6 +13,11 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "ingest:facilities": "tsx scripts/ingest-facilities.ts",
+    "check:facilities": "tsx scripts/check-facilities.ts",
+    "cleanup:sample-facilities": "tsx scripts/cleanup-sample-facilities.ts",
+    "cleanup:all-sample-data": "tsx scripts/cleanup-all-sample-data.ts",
+    "cleanup:all-candidates-and-events": "tsx scripts/cleanup-all-candidates-and-events.ts",
+    "create:admin-user": "tsx scripts/create-admin-user.ts",
     "seed": "tsx scripts/seed.ts",
     "test": "vitest",
     "test:e2e": "playwright test"

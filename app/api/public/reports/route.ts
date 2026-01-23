@@ -61,6 +61,59 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // 5件の報告があったら自動的にステータスを変更
+    if (data.kind === "start" || data.kind === "end") {
+      const reportCount = await prisma.publicReport.count({
+        where: {
+          eventId: data.eventId,
+          kind: data.kind,
+        },
+      });
+
+      if (reportCount >= 5) {
+        // イベントの現在のステータスを取得
+        const event = await prisma.speechEvent.findUnique({
+          where: { id: data.eventId },
+        });
+
+        if (event) {
+          let newStatus: string | null = null;
+          
+          if (data.kind === "start" && event.status === "PLANNED") {
+            newStatus = "LIVE";
+          } else if (data.kind === "end" && (event.status === "PLANNED" || event.status === "LIVE")) {
+            newStatus = "ENDED";
+          }
+
+          if (newStatus) {
+            // ステータス変更履歴を記録
+            await prisma.eventHistory.create({
+              data: {
+                eventId: data.eventId,
+                fromLat: event.lat,
+                fromLng: event.lng,
+                fromText: event.locationText,
+                fromStartAt: event.startAt,
+                fromEndAt: event.endAt,
+                toLat: event.lat,
+                toLng: event.lng,
+                toText: event.locationText,
+                toStartAt: event.startAt,
+                toEndAt: event.endAt,
+                reason: `自動ステータス変更: ${reportCount}件の${data.kind === "start" ? "開始" : "終了"}報告により`,
+              },
+            });
+
+            // ステータスを更新
+            await prisma.speechEvent.update({
+              where: { id: data.eventId },
+              data: { status: newStatus },
+            });
+          }
+        }
+      }
+    }
+
     return NextResponse.json(report);
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 // NextAuth v5の設定
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -8,44 +9,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        userId: { label: "User ID", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         try {
-          if (!credentials?.email || !credentials?.password) {
+          if (!credentials?.userId || !credentials?.password) {
             console.log("[Auth] Missing credentials");
             return null;
           }
 
-          const email = credentials.email as string;
+          const userId = credentials.userId as string;
           const password = credentials.password as string;
 
-          // パスワードは開発用に「password」だけを許可
-          // 本番では適切なパスワードハッシュ化を実装してください
-          if (password !== "password") {
-            console.log("[Auth] Invalid password");
-            return null;
-          }
-
-          // 開発体験を簡単にするため、ユーザーが存在しなければ自動作成する
-          // 本番では必ず事前にUserを作成し、ここでの自動作成は無効にしてください。
-          let user = await prisma.user.findUnique({
-            where: { email },
+          // 数字IDでユーザーを検索
+          const user = await prisma.user.findUnique({
+            where: { userId },
           });
 
           if (!user) {
-            console.log("[Auth] Creating new user:", email);
-            user = await prisma.user.create({
-              data: {
-                email,
-                name: "管理者",
-                role: "SiteAdmin",
-              },
-            });
-          } else {
-            console.log("[Auth] Found existing user:", user.email);
+            console.log("[Auth] User not found:", userId);
+            return null;
           }
+
+          // パスワードハッシュが設定されていない場合は認証失敗
+          if (!user.passwordHash) {
+            console.log("[Auth] Password hash not set for user:", userId);
+            return null;
+          }
+
+          // パスワードを検証
+          const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+          if (!isValidPassword) {
+            console.log("[Auth] Invalid password for user:", userId);
+            return null;
+          }
+
+          console.log("[Auth] Authentication successful for user:", userId);
 
           // NextAuth v5では、idは必須
           return {

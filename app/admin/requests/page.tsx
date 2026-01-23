@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import LeafletMap from "@/components/Map/LeafletMap";
+import { X } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -26,6 +28,7 @@ const TYPE_LABELS: Record<string, string> = {
   REPORT_START: "開始報告",
   REPORT_END: "終了報告",
   REPORT_MOVE: "場所変更報告",
+  REPORT_TIME_CHANGE: "時間変更報告",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -43,6 +46,7 @@ export default function RequestsPage() {
   const [filterStatus, setFilterStatus] = useState("PENDING");
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mapModal, setMapModal] = useState<{ lat: number; lng: number; locationText?: string } | null>(null);
 
   const fetchRequests = async () => {
     setIsLoading(true);
@@ -166,7 +170,7 @@ export default function RequestsPage() {
           <select
             value={filterCandidateId}
             onChange={(e) => setFilterCandidateId(e.target.value)}
-            className="px-3 py-2 border rounded-md"
+            className="px-3 py-2 border rounded-md bg-white"
           >
             <option value="">すべて</option>
             {candidates.map((c) => (
@@ -181,7 +185,7 @@ export default function RequestsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border rounded-md"
+            className="px-3 py-2 border rounded-md bg-white"
           >
             <option value="">すべて</option>
             <option value="PENDING">未承認</option>
@@ -285,9 +289,19 @@ export default function RequestsPage() {
                       <p>終了: {new Date(payload.endAt).toLocaleString("ja-JP")}</p>
                     )}
                     {payload.lat && payload.lng && (
-                      <p className="text-xs text-muted-foreground">
-                        座標: {payload.lat.toFixed(6)}, {payload.lng.toFixed(6)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          座標: {payload.lat.toFixed(6)}, {payload.lng.toFixed(6)}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setMapModal({ lat: payload.lat, lng: payload.lng, locationText: payload.locationText })}
+                          className="text-xs"
+                        >
+                          地図を表示
+                        </Button>
+                      </div>
                     )}
                   </div>
                   
@@ -325,6 +339,43 @@ export default function RequestsPage() {
 
       {!isLoading && requests.length === 0 && (
         <p className="text-muted-foreground">リクエストがありません。</p>
+      )}
+
+      {/* 地図モーダル */}
+      {mapModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-full h-full max-w-6xl max-h-[90vh] m-4 bg-white rounded-lg shadow-lg flex flex-col">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">
+                {mapModal.locationText || "位置確認"}
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMapModal(null)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {/* 地図 */}
+            <div className="flex-1 overflow-hidden">
+              <LeafletMap
+                center={[mapModal.lat, mapModal.lng]}
+                zoom={15}
+                markers={[
+                  {
+                    id: "location",
+                    position: [mapModal.lat, mapModal.lng],
+                    popup: mapModal.locationText || "位置",
+                  },
+                ]}
+                className="h-full w-full"
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

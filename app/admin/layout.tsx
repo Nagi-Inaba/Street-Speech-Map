@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import Link from "next/link";
+import AdminNav from "@/components/AdminNav";
 
 export default async function AdminLayout({
   children,
@@ -22,26 +23,7 @@ export default async function AdminLayout({
               <Link href="/admin" className="text-xl font-bold text-primary">
                 管理画面
               </Link>
-              <div className="flex items-center gap-4">
-                <Link 
-                  href="/admin/candidates" 
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  候補者
-                </Link>
-                <Link 
-                  href="/admin/events" 
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  演説予定
-                </Link>
-                <Link 
-                  href="/admin/requests" 
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  リクエスト
-                </Link>
-              </div>
+              <AdminNav />
             </div>
             <div className="flex items-center gap-4">
               <div className="text-sm">

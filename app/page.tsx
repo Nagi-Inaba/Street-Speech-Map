@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
+import PublicHeader from "@/components/PublicHeader";
 
 export default async function Home() {
   const candidates = await prisma.candidate.findMany({
@@ -9,13 +10,8 @@ export default async function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold">街頭演説マップ</h1>
-          <p className="text-muted-foreground">候補者の演説予定・実施中・終了を地図で可視化</p>
-        </div>
-      </header>
+    <>
+      <PublicHeader />
 
       <main className="container mx-auto px-4 py-8">
         <h2 className="text-3xl font-bold mb-6">候補者一覧</h2>
@@ -49,6 +45,6 @@ export default async function Home() {
           </div>
         )}
       </main>
-    </div>
+    </>
   );
 }

@@ -84,20 +84,47 @@ npm run db:generate
 npm run db:push
 ```
 
-### 5. シードデータの投入（オプション）
+### 5. データベースのマイグレーション
 
-開発用のサンプルデータを投入する場合：
+スキーマの変更をデータベースに反映：
+
+```bash
+npm run db:push
+```
+
+### 6. 管理ユーザーの作成
+
+管理画面にログインできるユーザーを作成：
+
+```bash
+# 自動生成（数字IDとパスワードを自動生成）
+npm run create:admin-user
+
+# 手動指定
+npm run create:admin-user -- --userId 123456 --password AdminPass123 --name "管理者" --role SiteAdmin
+```
+
+**パラメータ**:
+- `--userId`: 数字ID（6桁推奨、指定しない場合は自動生成）
+- `--password`: パスワード（半角英数、指定しない場合は自動生成）
+- `--name`: 名前（デフォルト: "管理者"）
+- `--role`: 権限（`SiteAdmin`, `SiteStaff`, `PartyAdmin`, `RegionEditor`、デフォルト: `SiteAdmin`）
+- `--email`: メールアドレス（指定しない場合は自動生成）
+
+**重要**: 作成時に表示される数字IDとパスワードは必ずメモを取ってください。
+
+### 7. シードデータの投入（オプション）
+
+開発用の初期データを投入する場合：
 
 ```bash
 npm run seed
 ```
 
 これにより、以下のデータが作成されます：
-- 管理者ユーザー（email: `admin@example.com`, password: `password`）
-- サンプル候補者
-- サンプルイベント
+- 管理者ユーザー（email: `admin@example.com`）
 
-**注意**: 本番環境では使用しないでください。
+**注意**: シードデータにはパスワードが含まれません。ログインには`create:admin-user`で作成したユーザーを使用してください。
 
 ### 6. 開発サーバーの起動
 
@@ -107,20 +134,25 @@ npm run dev
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開いてください。
 
-### 7. 管理画面へのアクセス
+### 9. 管理画面へのアクセス
 
 1. [http://localhost:3000/admin/login](http://localhost:3000/admin/login) にアクセス
-2. シードデータを使用する場合：
-   - Email: `admin@example.com`
-   - Password: `password`
+2. `create:admin-user`で作成した数字IDとパスワードでログイン
 
 ## データ取り込み
 
 ### 施設データの取り込み
 
-```bash
-npm run ingest:facilities
-```
+施設データ（学校、医療機関など）をCSVまたはGeoJSONファイルから取り込むことができます。
+
+詳細は [docs/FACILITY_DATA.md](docs/FACILITY_DATA.md) を参照してください。
+
+#### 実際のデータを使用する場合
+
+1. 国土数値情報ダウンロードサービス（https://nlftp.mlit.go.jp/ksj/）からデータをダウンロード
+2. CSVまたはGeoJSON形式に変換（必要に応じて）
+3. `data/` ディレクトリに配置
+4. 上記のコマンドを実行（ファイルパスを実際のファイルに変更）
 
 ## デプロイ
 

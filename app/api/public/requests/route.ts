@@ -11,6 +11,7 @@ const requestSchema = z.object({
     "REPORT_START",
     "REPORT_END",
     "REPORT_MOVE",
+    "REPORT_TIME_CHANGE",
   ]),
   candidateId: z.string().optional(),
   eventId: z.string().optional(),

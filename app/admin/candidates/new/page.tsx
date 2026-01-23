@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CANDIDATE_TYPES, PREFECTURES } from "@/lib/constants";
+import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
+import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
 
 export default function NewCandidatePage() {
   const router = useRouter();
@@ -12,15 +13,30 @@ export default function NewCandidatePage() {
   const [slug, setSlug] = useState("");
   const [type, setType] = useState<"SINGLE" | "PROPORTIONAL">("PROPORTIONAL");
   const [prefecture, setPrefecture] = useState("");
-  const [region, setRegion] = useState("");
+  const [proportionalBlock, setProportionalBlock] = useState("");
+  const [singleDistrict, setSingleDistrict] = useState("");
+  const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
   const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // 小選挙区データを読み込む
+    loadSingleDistrictsFromCSV().then(setSingleDistricts);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // regionフィールドに比例ブロックまたは小選挙区名を設定
+      let regionValue: string | null = null;
+      if (type === "PROPORTIONAL") {
+        regionValue = proportionalBlock || null;
+      } else if (type === "SINGLE") {
+        regionValue = singleDistrict || null;
+      }
+
       const res = await fetch("/api/admin/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,7 +45,7 @@ export default function NewCandidatePage() {
           slug, 
           type,
           prefecture: type === "SINGLE" ? (prefecture || null) : null,
-          region: region || null, 
+          region: regionValue, 
           imageUrl: imageUrl || null 
         }),
       });
@@ -46,14 +62,16 @@ export default function NewCandidatePage() {
     }
   };
 
+  const availableDistricts = prefecture ? (singleDistricts[prefecture] || []) : [];
+
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">新規候補者作成</h1>
+      <h1 className="text-3xl font-bold mb-8">候補者追加</h1>
 
       <Card>
         <CardHeader>
           <CardTitle>候補者情報</CardTitle>
-          <CardDescription>新しい候補者を登録します</CardDescription>
+          <CardDescription>新しい候補者を追加します</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,7 +85,7 @@ export default function NewCandidatePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md bg-white"
               />
             </div>
             <div>
@@ -81,7 +99,7 @@ export default function NewCandidatePage() {
                 onChange={(e) => setSlug(e.target.value)}
                 required
                 pattern="[a-z0-9-]+"
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md bg-white"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 英数字とハイフンのみ使用可能
@@ -89,7 +107,7 @@ export default function NewCandidatePage() {
             </div>
             <div>
               <label htmlFor="type" className="block text-sm font-medium mb-1">
-                候補者タイプ *
+                立候補区分 *
               </label>
               <select
                 id="type"
@@ -98,48 +116,98 @@ export default function NewCandidatePage() {
                   setType(e.target.value as "SINGLE" | "PROPORTIONAL");
                   if (e.target.value === "PROPORTIONAL") {
                     setPrefecture("");
+                    setSingleDistrict("");
+                  } else {
+                    setProportionalBlock("");
                   }
                 }}
                 required
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md bg-white"
               >
                 <option value="PROPORTIONAL">比例</option>
                 <option value="SINGLE">小選挙区</option>
               </select>
             </div>
-            {type === "SINGLE" && (
+
+            {/* 比例を選択した場合：比例ブロック選択 */}
+            {type === "PROPORTIONAL" && (
               <div>
-                <label htmlFor="prefecture" className="block text-sm font-medium mb-1">
-                  都道府県 *
+                <label htmlFor="proportionalBlock" className="block text-sm font-medium mb-1">
+                  比例ブロック *
                 </label>
                 <select
-                  id="prefecture"
-                  value={prefecture}
-                  onChange={(e) => setPrefecture(e.target.value)}
+                  id="proportionalBlock"
+                  value={proportionalBlock}
+                  onChange={(e) => setProportionalBlock(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border rounded-md bg-white"
                 >
                   <option value="">選択してください</option>
-                  {PREFECTURES.map((pref) => (
-                    <option key={pref} value={pref}>
-                      {pref}
+                  {PROPORTIONAL_BLOCKS.map((block) => (
+                    <option key={block} value={block}>
+                      {block}
                     </option>
                   ))}
                 </select>
               </div>
             )}
-            <div>
-              <label htmlFor="region" className="block text-sm font-medium mb-1">
-                地域
-              </label>
-              <input
-                id="region"
-                type="text"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
+
+            {/* 小選挙区を選択した場合：都道府県選択 */}
+            {type === "SINGLE" && (
+              <>
+                <div>
+                  <label htmlFor="prefecture" className="block text-sm font-medium mb-1">
+                    都道府県 *
+                  </label>
+                  <select
+                    id="prefecture"
+                    value={prefecture}
+                    onChange={(e) => {
+                      setPrefecture(e.target.value);
+                      setSingleDistrict(""); // 都道府県変更時に小選挙区をリセット
+                    }}
+                    required
+                    className="w-full px-3 py-2 border rounded-md bg-white"
+                  >
+                    <option value="">選択してください</option>
+                    {PREFECTURES.map((pref) => (
+                      <option key={pref} value={pref}>
+                        {pref}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {prefecture && availableDistricts.length > 0 && (
+                  <div>
+                    <label htmlFor="singleDistrict" className="block text-sm font-medium mb-1">
+                      小選挙区 *
+                    </label>
+                    <select
+                      id="singleDistrict"
+                      value={singleDistrict}
+                      onChange={(e) => setSingleDistrict(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 border rounded-md bg-white"
+                    >
+                      <option value="">選択してください</option>
+                      {availableDistricts.map((district) => (
+                        <option key={district.districtName} value={district.districtName}>
+                          {district.districtName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {prefecture && availableDistricts.length === 0 && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      この都道府県の小選挙区データが見つかりません。CSVファイルを確認してください。
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
             <div>
               <label htmlFor="imageUrl" className="block text-sm font-medium mb-1">
                 画像URL
@@ -149,7 +217,7 @@ export default function NewCandidatePage() {
                 type="url"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md bg-white"
               />
             </div>
             <div className="flex gap-2">

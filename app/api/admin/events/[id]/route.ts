@@ -13,6 +13,7 @@ const updateEventSchema = z.object({
   locationText: z.string().min(1),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  notes: z.string().nullable().optional(),
 });
 
 // 演説予定取得
@@ -102,6 +103,7 @@ export async function PUT(
         locationText: data.locationText,
         lat: data.lat,
         lng: data.lng,
+        notes: data.notes || null,
       },
     });
 
@@ -111,6 +113,68 @@ export async function PUT(
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
     console.error("Error updating event:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+// ステータスのみ更新
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session || !hasPermission(session.user, "SiteStaff")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const body = await request.json();
+    const { status } = z.object({
+      status: z.enum(["PLANNED", "LIVE", "ENDED"]),
+    }).parse(body);
+
+    // 既存の演説予定を取得
+    const existingEvent = await prisma.speechEvent.findUnique({
+      where: { id },
+    });
+
+    if (!existingEvent) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // ステータス変更履歴を記録
+    await prisma.eventHistory.create({
+      data: {
+        eventId: id,
+        fromLat: existingEvent.lat,
+        fromLng: existingEvent.lng,
+        fromText: existingEvent.locationText,
+        fromStartAt: existingEvent.startAt,
+        fromEndAt: existingEvent.endAt,
+        toLat: existingEvent.lat,
+        toLng: existingEvent.lng,
+        toText: existingEvent.locationText,
+        toStartAt: existingEvent.startAt,
+        toEndAt: existingEvent.endAt,
+        reason: `ステータス変更: ${existingEvent.status} → ${status}`,
+        changedByUserId: session.user.id,
+      },
+    });
+
+    // ステータスのみ更新
+    const event = await prisma.speechEvent.update({
+      where: { id },
+      data: { status },
+    });
+
+    return NextResponse.json(event);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors }, { status: 400 });
+    }
+    console.error("Error updating event status:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

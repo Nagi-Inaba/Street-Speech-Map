@@ -3,5 +3,11 @@ export default function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <div className="min-h-screen">
+      <section id="contents" className="bg-white">
+        {children}
+      </section>
+    </div>
+  );
 }
