@@ -33,6 +33,26 @@ export function formatJSTTime(date: Date | null | undefined): string {
 }
 
 /**
+ * 年を省略した日時（MM月dd日 HH:mm）
+ */
+export function formatJSTWithoutYear(date: Date | null | undefined): string {
+  if (!date) return "未定";
+  return formatInTimeZone(date, TIMEZONE, "MM月dd日 HH:mm", {
+    timeZone: TIMEZONE,
+  });
+}
+
+/**
+ * 日のみ（dd日）
+ */
+export function formatJSTDay(date: Date | null | undefined): string {
+  if (!date) return "";
+  return formatInTimeZone(date, TIMEZONE, "d日", {
+    timeZone: TIMEZONE,
+  });
+}
+
+/**
  * 現在時刻をJSTで取得
  */
 export function nowJST(): Date {

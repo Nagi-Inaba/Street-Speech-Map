@@ -1,16 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-// デフォルトアイコンの問題を修正
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
+import { useEffect, useRef, useState } from "react";
 
 interface LeafletMapProps {
   center: [number, number];
@@ -35,19 +25,52 @@ export default function LeafletMap({
   editable = false,
   className = "h-96 w-full",
 }: LeafletMapProps) {
-  const mapRef = useRef<L.Map | null>(null);
+  const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<L.Marker[]>([]);
+  const markersRef = useRef<any[]>([]);
+  const [leaflet, setLeaflet] = useState<any>(null);
+
+  // Leafletの読み込みを待つ
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    Promise.all([
+      import("leaflet"),
+      import("leaflet/dist/leaflet.css")
+    ]).then(([L]) => {
+      // Leafletはデフォルトエクスポートなので、L.defaultまたはLを使用
+      const leafletLib = L.default || L;
+      
+      if (!leafletLib || !leafletLib.marker) {
+        console.error("Leaflet library not loaded correctly");
+        return;
+      }
+      
+      // デフォルトアイコンの問題を修正
+      if (leafletLib.Icon && leafletLib.Icon.Default) {
+        delete (leafletLib.Icon.Default.prototype as any)._getIconUrl;
+        leafletLib.Icon.Default.mergeOptions({
+          iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+        });
+      }
+      
+      setLeaflet(leafletLib);
+    }).catch((error) => {
+      console.error("Failed to load Leaflet:", error);
+    });
+  }, []);
 
   // 地図の初期化（一度だけ実行）
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!leaflet || !mapContainerRef.current || mapRef.current) return;
 
     // 地図の初期化
-    const map = L.map(mapContainerRef.current).setView(center, zoom);
+    const map = leaflet.map(mapContainerRef.current).setView(center, zoom);
 
     // タイルレイヤーの追加（OSM）
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(map);
@@ -61,17 +84,17 @@ export default function LeafletMap({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [leaflet]);
 
   // 地図の中心位置とズームレベルの更新
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!leaflet || !mapRef.current) return;
     mapRef.current.setView(center, zoom);
-  }, [center, zoom]);
+  }, [leaflet, center, zoom]);
 
   // マーカーの更新
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!leaflet || !mapRef.current) return;
 
     // 既存のマーカーを削除
     markersRef.current.forEach((marker) => {
@@ -88,13 +111,13 @@ export default function LeafletMap({
 
     // 新しいマーカーを追加
     markers.forEach((markerData) => {
-      if (!mapRef.current) return;
+      if (!mapRef.current || !leaflet) return;
 
       // MoveHintの場合はオレンジ色のアイコンを使用
-      let icon: L.Icon | undefined;
+      let icon: any | undefined;
       try {
         if (markerData.isMoveHint) {
-          icon = L.icon({
+          icon = leaflet.icon({
             iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png",
             iconRetinaUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png",
             shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
@@ -105,7 +128,7 @@ export default function LeafletMap({
           });
         } else if (markerData.color === "red") {
           // 赤色のマーカー（演説中）
-          icon = L.icon({
+          icon = leaflet.icon({
             iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
             iconRetinaUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
             shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
@@ -116,7 +139,7 @@ export default function LeafletMap({
           });
         } else if (markerData.color === "blue") {
           // 青色のマーカー（予定）
-          icon = L.icon({
+          icon = leaflet.icon({
             iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
             iconRetinaUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
             shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
@@ -129,13 +152,34 @@ export default function LeafletMap({
       } catch (error) {
         console.error("Failed to create icon:", error);
         // アイコン作成に失敗した場合はデフォルトアイコンを使用
+        icon = undefined;
       }
 
       try {
-        const marker = L.marker(markerData.position, {
+        // leaflet.markerが存在するか確認
+        if (!leaflet.marker) {
+          console.error("leaflet.marker is not available");
+          return;
+        }
+
+        // マーカーオプションを構築
+        const markerOptions: any = {
           draggable: editable,
-          icon: icon,
-        }).addTo(mapRef.current);
+        };
+        
+        // iconが定義されている場合のみ追加
+        if (icon) {
+          markerOptions.icon = icon;
+        }
+
+        const marker = leaflet.marker(markerData.position, markerOptions);
+        
+        if (!marker) {
+          console.error("Failed to create marker");
+          return;
+        }
+        
+        marker.addTo(mapRef.current);
 
         if (markerData.popup) {
           marker.bindPopup(markerData.popup);
@@ -154,21 +198,21 @@ export default function LeafletMap({
         console.error("Failed to add marker:", error);
       }
     });
-  }, [markers, editable, onMapClick]);
+  }, [leaflet, markers, editable, onMapClick]);
 
   // 地図クリック時にマーカーを移動（editableかつマーカーが1つの場合）
   useEffect(() => {
-    if (!mapRef.current || !editable || !onMapClick) return;
+    if (!leaflet || !mapRef.current || !editable || !onMapClick) return;
 
-    const handleMapClick = (e: L.LeafletMouseEvent) => {
+    const handleMapClick = (e: any) => {
       // マーカーが1つだけの場合、そのマーカーを移動
-      if (markersRef.current.length === 1) {
+      if (markers.length === 1 && markersRef.current.length === 1) {
         const marker = markersRef.current[0];
         if (marker) {
           marker.setLatLng(e.latlng);
           onMapClick(e.latlng.lat, e.latlng.lng);
         }
-      } else if (markersRef.current.length === 0 && onMapClick) {
+      } else if (markers.length === 0) {
         // マーカーがない場合でもクリック位置を通知
         onMapClick(e.latlng.lat, e.latlng.lng);
       }
@@ -181,7 +225,15 @@ export default function LeafletMap({
         mapRef.current.off("click", handleMapClick);
       }
     };
-  }, [editable, onMapClick]);
+  }, [leaflet, editable, onMapClick, markers]);
+
+  if (!leaflet) {
+    return (
+      <div className={className + " bg-gray-100 animate-pulse rounded-md flex items-center justify-center"}>
+        <span className="text-muted-foreground">地図を読み込み中...</span>
+      </div>
+    );
+  }
 
   return <div ref={mapContainerRef} className={className} />;
 }

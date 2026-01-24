@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
@@ -16,16 +16,36 @@ interface Candidate {
   type: string;
 }
 
+interface SpeechEvent {
+  id: string;
+  candidateId: string;
+  candidate: Candidate;
+  status: string;
+  startAt: string | null;
+  endAt: string | null;
+  timeUnknown: boolean;
+  locationText: string;
+  lat: number;
+  lng: number;
+  notes: string | null;
+}
+
 // 時間の選択肢（8-20時：選挙活動ができる時間）
 const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 8).padStart(2, "0"));
 
 // 分の選択肢（0, 15, 30, 45）
 const MINUTE_OPTIONS = ["00", "15", "30", "45"];
 
-export default function NewEventPage() {
+export default function EditEventPage() {
   const router = useRouter();
+  const params = useParams();
+  const eventId = params.id as string;
+  
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [event, setEvent] = useState<SpeechEvent | null>(null);
   const [candidateId, setCandidateId] = useState("");
+  const [status, setStatus] = useState<"PLANNED" | "LIVE" | "ENDED">("PLANNED");
+  
   // 今日の日付をデフォルト値として設定（MM-DD形式）
   const getTodayDateString = () => {
     const today = new Date();
@@ -33,6 +53,7 @@ export default function NewEventPage() {
     const day = String(today.getDate()).padStart(2, "0");
     return `${month}-${day}`;
   };
+  
   const [startDate, setStartDate] = useState(getTodayDateString());
   const [startHour, setStartHour] = useState("");
   const [startMinute, setStartMinute] = useState("");
@@ -46,12 +67,57 @@ export default function NewEventPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([35.6812, 139.7671]);
   const [mapZoom, setMapZoom] = useState(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // 候補者一覧を取得
   useEffect(() => {
     fetch("/api/admin/candidates")
       .then((res) => res.json())
       .then((data) => setCandidates(data));
   }, []);
+
+  // イベントデータを取得
+  useEffect(() => {
+    if (!eventId) return;
+    
+    fetch(`/api/admin/events/${eventId}`)
+      .then((res) => res.json())
+      .then((data: SpeechEvent) => {
+        setEvent(data);
+        setCandidateId(data.candidateId);
+        setStatus(data.status as "PLANNED" | "LIVE" | "ENDED");
+        setLocationText(data.locationText);
+        setNotes(data.notes || "");
+        setLat(data.lat);
+        setLng(data.lng);
+        setTimeUnknown(data.timeUnknown);
+        setMapCenter([data.lat, data.lng]);
+        setMapZoom(15);
+
+        // 日時をパース
+        if (data.startAt && !data.timeUnknown) {
+          const startDateObj = new Date(data.startAt);
+          const month = String(startDateObj.getMonth() + 1).padStart(2, "0");
+          const day = String(startDateObj.getDate()).padStart(2, "0");
+          setStartDate(`${month}-${day}`);
+          setStartHour(String(startDateObj.getHours()).padStart(2, "0"));
+          setStartMinute(String(startDateObj.getMinutes()).padStart(2, "0"));
+        }
+
+        if (data.endAt && !data.timeUnknown) {
+          const endDateObj = new Date(data.endAt);
+          setEndHour(String(endDateObj.getHours()).padStart(2, "0"));
+          setEndMinute(String(endDateObj.getMinutes()).padStart(2, "0"));
+        }
+        
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching event:", error);
+        alert("イベントの取得に失敗しました");
+        setIsLoading(false);
+      });
+  }, [eventId]);
 
   // 候補者選択時に地図の中心を立候補地域に設定
   useEffect(() => {
@@ -64,8 +130,6 @@ export default function NewEventPage() {
           if (coords) {
             setMapCenter(coords);
             setMapZoom(10);
-            setLat(coords[0]);
-            setLng(coords[1]);
           }
         } else if (candidate.type === "PROPORTIONAL" && candidate.region) {
           // 比例の場合：比例ブロックに応じた座標を使用
@@ -85,17 +149,10 @@ export default function NewEventPage() {
           const coords = blockCoords[candidate.region] || [35.6812, 139.7671];
           setMapCenter(coords);
           setMapZoom(8);
-          setLat(coords[0]);
-          setLng(coords[1]);
         }
       }
     }
   }, [candidateId, candidates]);
-
-  const handleMapClick = (newLat: number, newLng: number) => {
-    setLat(newLat);
-    setLng(newLng);
-  };
 
   // 月日と時刻をISO形式の日時文字列に変換（年は現在の年を使用）
   const combineDateTime = (date: string, hour: string, minute: string): string | null => {
@@ -115,11 +172,12 @@ export default function NewEventPage() {
       // 終了時刻は開始日時の日付と同じ日付を使用
       const endAtDate = timeUnknown || !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute);
 
-      const res = await fetch("/api/admin/events", {
-        method: "POST",
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           candidateId,
+          status,
           startAt: startAtDate,
           endAt: endAtDate,
           timeUnknown,
@@ -133,23 +191,51 @@ export default function NewEventPage() {
       if (res.ok) {
         router.push("/admin/events");
       } else {
-        alert("作成に失敗しました");
+        const error = await res.json();
+        alert(`更新に失敗しました: ${error.error || "不明なエラー"}`);
       }
     } catch (error) {
+      console.error("Error updating event:", error);
       alert("エラーが発生しました");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl">
+        <h1 className="text-3xl font-bold mb-8">演説予定編集</h1>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            読み込み中...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="max-w-4xl">
+        <h1 className="text-3xl font-bold mb-8">演説予定編集</h1>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            イベントが見つかりませんでした
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">新規演説予定作成</h1>
+    <div className="max-w-4xl">
+      <h1 className="text-3xl font-bold mb-8">演説予定編集</h1>
 
       <Card>
         <CardHeader>
           <CardTitle>演説予定情報</CardTitle>
-          <CardDescription>新しい演説予定を登録します</CardDescription>
+          <CardDescription>演説予定の情報を編集します</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -170,6 +256,23 @@ export default function NewEventPage() {
                     {c.name}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="status" className="block text-sm font-medium mb-1">
+                ステータス *
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as "PLANNED" | "LIVE" | "ENDED")}
+                required
+                className="w-full px-3 py-2 border rounded-md bg-white"
+              >
+                <option value="PLANNED">予定</option>
+                <option value="LIVE">実施中</option>
+                <option value="ENDED">終了</option>
               </select>
             </div>
 
@@ -358,7 +461,7 @@ export default function NewEventPage() {
 
             <div className="flex gap-2">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "作成中..." : "作成"}
+                {isSubmitting ? "更新中..." : "更新"}
               </Button>
               <Button
                 type="button"
@@ -374,3 +477,4 @@ export default function NewEventPage() {
     </div>
   );
 }
+

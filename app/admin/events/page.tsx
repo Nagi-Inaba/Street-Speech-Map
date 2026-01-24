@@ -5,6 +5,11 @@ export default async function EventsPage() {
   const events = await prisma.speechEvent.findMany({
     include: {
       candidate: true,
+      reports: {
+        where: {
+          kind: "check",
+        },
+      },
     },
     orderBy: [
       { startAt: "asc" },
@@ -16,5 +21,11 @@ export default async function EventsPage() {
     orderBy: { name: "asc" },
   });
 
-  return <EventsPageClient events={events} candidates={candidates} />;
+  // 確認件数を追加
+  const eventsWithCheckCount = events.map((event) => ({
+    ...event,
+    checkCount: event.reports.length,
+  }));
+
+  return <EventsPageClient events={eventsWithCheckCount} candidates={candidates} />;
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { formatJST, formatJSTTime } from "@/lib/time";
+import { formatJST, formatJSTTime, formatJSTDay } from "@/lib/time";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
@@ -48,12 +48,22 @@ export default async function CandidatePage({
   // 地図用のマーカー（通常のイベントピン）
   const mapMarkers = candidate.events
     .filter((e) => e.status !== "ENDED")
-    .map((event) => ({
-      id: event.id,
-      position: [event.lat, event.lng] as [number, number],
-      popup: `${event.locationText}\n${event.startAt ? formatJSTTime(event.startAt) : "時間未定"}`,
-      color: event.status === "LIVE" ? "red" : "blue",
-    }));
+    .map((event) => {
+      let popupText = event.locationText;
+      if (event.startAt) {
+        const day = formatJSTDay(event.startAt);
+        const time = formatJSTTime(event.startAt);
+        popupText += `\n${day} ${time}`;
+      } else {
+        popupText += "\n時間未定";
+      }
+      return {
+        id: event.id,
+        position: [event.lat, event.lng] as [number, number],
+        popup: popupText,
+        color: event.status === "LIVE" ? "red" : "blue",
+      };
+    });
 
   // MoveHint用のマーカー（推定位置）
   const moveHintMarkers = candidate.events
@@ -124,7 +134,7 @@ export default async function CandidatePage({
         </Link>
       </div>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
           {candidate.imageUrl && (
             <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden">
@@ -162,21 +172,23 @@ export default async function CandidatePage({
               {liveEvents.map((event) => (
                 <Card key={event.id} className="border-red-200 bg-red-50">
                   <CardHeader>
-                    <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span>{event.locationText}</span>
-                        <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800">
-                          実施中
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-xs text-muted-foreground">現在の状況を報告する</span>
-                        <EventReportButtons
-                          eventId={event.id}
-                          eventLat={event.lat}
-                          eventLng={event.lng}
-                          eventStatus={event.status}
-                        />
+                    <CardTitle>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{event.locationText}</span>
+                          <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800">
+                            実施中
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-muted-foreground">現在の状況を報告する</span>
+                          <EventReportButtons
+                            eventId={event.id}
+                            eventLat={event.lat}
+                            eventLng={event.lng}
+                            eventStatus={event.status}
+                          />
+                        </div>
                       </div>
                     </CardTitle>
                     <CardDescription>
@@ -219,21 +231,23 @@ export default async function CandidatePage({
               {plannedEvents.map((event) => (
                 <Card key={event.id} id={`event-${event.id}`}>
                   <CardHeader>
-                    <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span>{event.locationText}</span>
-                        <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-                          予定
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-xs text-muted-foreground">現在の状況を報告する</span>
-                        <EventReportButtons
-                          eventId={event.id}
-                          eventLat={event.lat}
-                          eventLng={event.lng}
-                          eventStatus={event.status}
-                        />
+                    <CardTitle>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{event.locationText}</span>
+                          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                            予定
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-muted-foreground">現在の状況を報告する</span>
+                          <EventReportButtons
+                            eventId={event.id}
+                            eventLat={event.lat}
+                            eventLng={event.lng}
+                            eventStatus={event.status}
+                          />
+                        </div>
                       </div>
                     </CardTitle>
                     <CardDescription>

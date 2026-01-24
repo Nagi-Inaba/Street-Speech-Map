@@ -134,7 +134,7 @@ model PublicReport {
   eventId   String
   event     SpeechEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  kind      String   // "start" | "end" | "move"
+  kind      String   // "start" | "end" | "move" | "check"
   lat       Float?
   lng       Float?
 

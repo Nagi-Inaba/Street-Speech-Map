@@ -6,7 +6,7 @@ import { generateMoveHints } from "@/lib/move-hint";
 
 const reportSchema = z.object({
   eventId: z.string(),
-  kind: z.enum(["start", "end", "move"]),
+  kind: z.enum(["start", "end", "move", "check"]),
   lat: z.number().optional(),
   lng: z.number().optional(),
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Copy, Twitter, Facebook, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -20,9 +20,14 @@ export default function ShareButtons({
   startAt,
 }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
+  const [fullUrl, setFullUrl] = useState("");
 
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const fullUrl = `${baseUrl}${eventUrl}`;
+  useEffect(() => {
+    // クライアント側でのみURLを生成
+    if (typeof window !== "undefined") {
+      setFullUrl(`${window.location.origin}${eventUrl}`);
+    }
+  }, [eventUrl]);
 
   const getShareText = () => {
     if (isLive) {
@@ -34,6 +39,7 @@ export default function ShareButtons({
   };
 
   const handleCopyLink = async () => {
+    if (!fullUrl) return;
     try {
       await navigator.clipboard.writeText(fullUrl);
       setCopied(true);
@@ -45,17 +51,17 @@ export default function ShareButtons({
   };
 
   const shareText = getShareText();
-  const encodedText = encodeURIComponent(`${shareText}\n${fullUrl}`);
-  const encodedUrl = encodeURIComponent(fullUrl);
+  const encodedText = fullUrl ? encodeURIComponent(`${shareText}\n${fullUrl}`) : "";
+  const encodedUrl = fullUrl ? encodeURIComponent(fullUrl) : "";
 
   // Twitter/X
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+  const twitterUrl = fullUrl ? `https://twitter.com/intent/tweet?text=${encodedText}` : "#";
 
   // Facebook
-  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+  const facebookUrl = fullUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` : "#";
 
   // LINE
-  const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodedUrl}`;
+  const lineUrl = fullUrl ? `https://social-plugins.line.me/lineit/share?url=${encodedUrl}` : "#";
 
   return (
     <div className="flex items-center gap-2">
