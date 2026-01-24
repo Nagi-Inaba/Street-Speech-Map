@@ -1,0 +1,20 @@
+warning: in the working copy of 'app/admin/candidates/page.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app/admin/candidates/page.tsx b/app/admin/candidates/page.tsx[m
+[1mindex a2fc442..b17c533 100644[m
+[1m--- a/app/admin/candidates/page.tsx[m
+[1m+++ b/app/admin/candidates/page.tsx[m
+[36m@@ -1,10 +1,10 @@[m
+ import { prisma } from "@/lib/db";[m
+ import CandidatesPageClient from "./page-client";[m
+[32m+[m[32mimport { sortCandidatesByRegion } from "@/lib/sort-candidates";[m
+ [m
+ export default async function CandidatesPage() {[m
+[31m-  const candidates = await prisma.candidate.findMany({[m
+[31m-    orderBy: { name: "asc" },[m
+[31m-  });[m
+[32m+[m[32m  const candidates = await prisma.candidate.findMany();[m
+[32m+[m[32m  const sortedCandidates = sortCandidatesByRegion(candidates);[m
+ [m
+[31m-  return <CandidatesPageClient candidates={candidates} />;[m
+[32m+[m[32m  return <CandidatesPageClient candidates={sortedCandidates} />;[m
+ }[m
