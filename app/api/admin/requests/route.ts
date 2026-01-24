@@ -102,12 +102,15 @@ export async function GET(request: NextRequest) {
             candidateId: event.candidateId,
             candidate: event.candidate,
             eventId: event.id,
+            rivalEventId: null,
             payload: JSON.stringify({
               lat: report.lat,
               lng: report.lng,
             }),
             dedupeKey: null,
-            createdAt: report.createdAt.toISOString(),
+            createdAt: report.createdAt,
+            reviewedAt: null,
+            reviewedByUserId: null,
           } as typeof requests[0]);
         });
       });
