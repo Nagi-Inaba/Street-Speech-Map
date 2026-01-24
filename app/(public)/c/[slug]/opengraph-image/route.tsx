@@ -32,7 +32,7 @@ export async function GET(
     });
 
     if (!candidate) {
-      return new ImageResponse(
+      const errorResponse = new ImageResponse(
         (
           <div
             style={{
@@ -54,6 +54,9 @@ export async function GET(
           height: 630,
         }
       );
+      errorResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      errorResponse.headers.set("Content-Type", "image/png");
+      return errorResponse;
     }
 
     const firstEvent = candidate.events[0];
@@ -64,12 +67,9 @@ export async function GET(
       dateTimeText = formatJSTWithoutYear(firstEvent.startAt);
     }
 
-    const bgColor = isLive ? "#fee2e2" : "#dbeafe";
-    const borderColor = isLive ? "#ef4444" : "#3b82f6";
     const statusText = isLive ? "実施中" : "予定";
-    const statusColor = isLive ? "#dc2626" : "#2563eb";
 
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       (
         <div
           style={{
@@ -79,61 +79,61 @@ export async function GET(
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: bgColor,
-            border: `8px solid ${borderColor}`,
+            background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
+            border: "8px solid #000000",
             padding: "60px",
             fontFamily: "system-ui, -apple-system, sans-serif",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: statusColor,
-              color: "white",
-              padding: "12px 32px",
-              borderRadius: "8px",
-              fontSize: "32px",
-              fontWeight: "bold",
-              marginBottom: "40px",
-            }}
-          >
-            {statusText}
-          </div>
-
-          <div
-            style={{
-              fontSize: "72px",
-              fontWeight: "bold",
-              color: "#1f2937",
-              marginBottom: "40px",
-              textAlign: "center",
-            }}
-          >
-            {candidate.name}
-          </div>
-
-          {firstEvent && (
             <div
               style={{
-                fontSize: "48px",
-                color: "#4b5563",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "white",
+                color: "#000000",
+                padding: "12px 32px",
+                borderRadius: "8px",
+                fontSize: "32px",
+                fontWeight: "bold",
+                marginBottom: "40px",
+              }}
+            >
+              {statusText}
+            </div>
+
+            <div
+              style={{
+                fontSize: "72px",
+                fontWeight: "bold",
+                color: "#000000",
                 marginBottom: "40px",
                 textAlign: "center",
               }}
             >
-              {firstEvent.locationText}
+              {candidate.name}
             </div>
-          )}
 
-          <div
-            style={{
-              fontSize: "40px",
-              color: "#6b7280",
-              textAlign: "center",
-            }}
-          >
+            {firstEvent && (
+              <div
+                style={{
+                  fontSize: "48px",
+                  color: "#000000",
+                  marginBottom: "40px",
+                  textAlign: "center",
+                }}
+              >
+                {firstEvent.locationText}
+              </div>
+            )}
+
+            <div
+              style={{
+                fontSize: "40px",
+                color: "#000000",
+                textAlign: "center",
+              }}
+            >
             {dateTimeText}
           </div>
         </div>
@@ -143,9 +143,15 @@ export async function GET(
         height: 630,
       }
     );
+
+  // キャッシュヘッダーを追加
+  imageResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    imageResponse.headers.set("Content-Type", "image/png");
+
+    return imageResponse;
   } catch (error) {
     console.error("Error generating OG image:", error);
-    return new ImageResponse(
+    const errorResponse = new ImageResponse(
       (
         <div
           style={{
@@ -167,6 +173,9 @@ export async function GET(
         height: 630,
       }
     );
+    errorResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    errorResponse.headers.set("Content-Type", "image/png");
+    return errorResponse;
   }
 }
 
