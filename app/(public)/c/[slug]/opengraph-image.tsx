@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { formatJSTWithoutYear } from "@/lib/time";
 
 export const runtime = "nodejs";
+export const revalidate = 60; // 60秒間キャッシュ
 
 export default async function Image({
   params,
