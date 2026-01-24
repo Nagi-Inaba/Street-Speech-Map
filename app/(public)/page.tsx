@@ -21,7 +21,7 @@ export default async function HomePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedCandidates.map((candidate) => (
-              <Link key={candidate.id} href={/c/}>
+              <Link key={candidate.id} href={`/c/${candidate.slug}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardHeader>
                     {candidate.imageUrl && (
@@ -48,3 +48,4 @@ export default async function HomePage() {
     </>
   );
 }
+
