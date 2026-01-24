@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 
 interface RequestFormProps {
@@ -17,6 +18,8 @@ const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 8).padStart
 const MINUTE_OPTIONS = ["00", "15", "30", "45"];
 
 export default function RequestForm({ candidateId, candidateName }: RequestFormProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
   // 今日の日付をデフォルト値として設定（MM-DD形式）
   const getTodayDateString = () => {
     const today = new Date();
@@ -98,13 +101,26 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
 
   return (
     <Card className="mt-8">
-      <CardHeader>
-        <CardTitle>演説予定の新規登録リクエスト</CardTitle>
-        <CardDescription>
-          {candidateName}さんの新しい演説予定を登録できます
-        </CardDescription>
+      <CardHeader
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <CardTitle>演説予定の新規登録リクエスト</CardTitle>
+            <CardDescription>
+              {candidateName}さんの新しい演説予定を登録できます
+            </CardDescription>
+          </div>
+          {isOpen ? (
+            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
       </CardHeader>
-      <CardContent>
+      {isOpen && (
+        <CardContent>
         {isSuccess && (
           <div className="mb-4 p-3 bg-green-100 text-green-800 rounded-md">
             送信が完了しました。承認後、反映されます。
@@ -267,7 +283,8 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
             {isSubmitting ? "送信中..." : "送信"}
           </Button>
         </form>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }
