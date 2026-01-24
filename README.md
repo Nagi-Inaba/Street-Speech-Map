@@ -178,10 +178,17 @@ npm run cleanup:sample-facilities
 
 ## デプロイ
 
+### 本番環境のセットアップ
+
+NeonとVercelを使用した本番環境のセットアップ手順：
+
+**クイックスタート**: [docs/QUICK_START_PRODUCTION.md](docs/QUICK_START_PRODUCTION.md)（5分でセットアップ）  
+**詳細ガイド**: [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md)（完全な手順とトラブルシューティング）
+
 ### Vercel推奨
 
 1. Vercelにプロジェクトをインポート
-2. 環境変数を設定
+2. 環境変数を設定（下記参照）
 3. PostgreSQLデータベースを接続（Neon、Supabase、Railway等）
 4. デプロイ
 
@@ -189,11 +196,19 @@ npm run cleanup:sample-facilities
 
 本番環境では以下の環境変数を設定してください：
 
-- `DATABASE_URL`: PostgreSQL接続文字列
-- `NEXTAUTH_URL`: 本番URL
-- `NEXTAUTH_SECRET`: ランダムなシークレットキー
-- `BLOB_READ_WRITE_TOKEN`: Vercel Blobトークン
-- `REPORTER_HASH_SALT`: ランダムなソルト
+**必須の環境変数**:
+- `DATABASE_URL`: PostgreSQL接続文字列（Neon等から取得）
+- `NEXTAUTH_URL`: 本番URL（例: `https://your-project.vercel.app`）
+- `NEXTAUTH_SECRET`: ランダムなシークレットキー（32バイトのBase64文字列）
+- `AUTH_SECRET`: `NEXTAUTH_SECRET`と同じ値
+- `REPORTER_HASH_SALT`: ランダムなソルト（16バイトのBase64文字列）
+
+**オプションの環境変数**:
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blobトークン（画像アップロード機能を使用する場合）
+- `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: Umami AnalyticsのウェブサイトID
+- `NEXT_PUBLIC_UMAMI_SCRIPT_URL`: Umami AnalyticsのスクリプトURL
+
+詳細は [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md) を参照してください。
 
 ## システム仕様
 

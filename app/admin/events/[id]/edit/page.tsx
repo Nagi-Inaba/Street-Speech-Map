@@ -327,7 +327,11 @@ export default function EditEventPage() {
                           type="button"
                           onClick={() => {
                             const input = document.getElementById("startDate") as HTMLInputElement;
-                            input?.showPicker?.() || input?.focus();
+                            if (input?.showPicker) {
+                              input.showPicker();
+                            } else {
+                              input?.focus();
+                            }
                           }}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer"
                         >
