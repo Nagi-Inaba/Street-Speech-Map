@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
       });
 
       // PublicReportをPublicRequest形式に変換
+      // statusフィルターが指定されている場合、APPROVEDのPublicReportは除外
       const reportRequests: typeof requests = [];
       eventsWithReports.forEach((event) => {
         event.reports.forEach((report) => {
@@ -93,6 +94,13 @@ export async function GET(request: NextRequest) {
           else if (report.kind === "end") requestType = "REPORT_END";
           else if (report.kind === "move") requestType = "REPORT_MOVE";
           else return; // "check"はスキップ
+
+          // statusフィルターが指定されている場合、フィルターに一致するもののみを含める
+          // PublicReportは常にAPPROVEDなので、status=PENDINGやstatus=REJECTEDの場合は除外
+          // statusが空文字列（すべて）の場合は含める
+          if (status && status !== "" && status !== "APPROVED") {
+            return;
+          }
 
           // PublicRequest形式に変換
           reportRequests.push({

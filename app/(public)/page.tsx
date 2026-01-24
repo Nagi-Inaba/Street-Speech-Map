@@ -8,16 +8,23 @@ import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 export default async function HomePage() {
   const candidates = await prisma.candidate.findMany();
   const sortedCandidates = sortCandidatesByRegion(candidates);
+  
+  // 設定を取得
+  const settings = await prisma.siteSettings.findUnique({
+    where: { id: "site-settings" },
+  });
+  const showCandidateInfo = settings?.showCandidateInfo ?? true;
+  const candidateLabel = settings?.candidateLabel ?? "候補者";
 
   return (
     <>
       <PublicHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-6">候補者一覧</h2>
+        <h2 className="text-3xl font-bold mb-6">{candidateLabel}一覧</h2>
 
         {sortedCandidates.length === 0 ? (
-          <p className="text-muted-foreground">候補者が登録されていません。</p>
+          <p className="text-muted-foreground">{candidateLabel}が登録されていません。</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedCandidates.map((candidate) => (
@@ -35,7 +42,7 @@ export default async function HomePage() {
                       </div>
                     )}
                     <CardTitle>{candidate.name}</CardTitle>
-                    {candidate.region && (
+                    {showCandidateInfo && candidate.region && (
                       <CardDescription>{candidate.region}</CardDescription>
                     )}
                   </CardHeader>

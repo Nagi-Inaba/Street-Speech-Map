@@ -198,7 +198,6 @@ export default function RequestsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mapModal, setMapModal] = useState<{ lat: number; lng: number; locationText?: string } | null>(null);
-  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
   const fetchRequests = async () => {
     setIsLoading(true);
@@ -241,10 +240,23 @@ export default function RequestsPage() {
   }, [filterCandidateId, filterStatus, groupByEvent]);
 
   const handleSelectAll = () => {
-    if (selectedIds.size === requests.length) {
+    // groupByEventがtrueの場合、eventsWithRequestsからすべてのリクエストを収集
+    let allPendingRequests: PublicRequest[] = [];
+    if (groupByEvent && eventsWithRequests.length > 0) {
+      eventsWithRequests.forEach((eventWithRequests) => {
+        const filtered = eventWithRequests.requests.filter(
+          (r) => r.status === "PENDING" && !r.id.startsWith("report_")
+        );
+        allPendingRequests.push(...filtered);
+      });
+    } else {
+      allPendingRequests = requests.filter((r) => r.status === "PENDING");
+    }
+
+    if (selectedIds.size === allPendingRequests.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(requests.map((r) => r.id)));
+      setSelectedIds(new Set(allPendingRequests.map((r) => r.id)));
     }
   };
 
@@ -310,6 +322,7 @@ export default function RequestsPage() {
   };
 
   // 重複キーでグループ化（従来の表示用）
+  // requestsは既にAPI側でfilterStatusに基づいてフィルタリングされている
   const groupedByDedupe = new Map<string, PublicRequest[]>();
   requests.forEach((req) => {
     const key = req.dedupeKey || req.id;
@@ -319,15 +332,6 @@ export default function RequestsPage() {
     groupedByDedupe.get(key)!.push(req);
   });
 
-  const toggleEventExpanded = (eventId: string) => {
-    const newExpanded = new Set(expandedEvents);
-    if (newExpanded.has(eventId)) {
-      newExpanded.delete(eventId);
-    } else {
-      newExpanded.add(eventId);
-    }
-    setExpandedEvents(newExpanded);
-  };
 
   return (
     <div>
@@ -378,15 +382,27 @@ export default function RequestsPage() {
       </div>
 
       {/* 一括操作 */}
-      {filterStatus === "PENDING" && (
-        <div className="flex gap-2 mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSelectAll}
-          >
-            {selectedIds.size === requests.length ? "選択解除" : "すべて選択"}
-          </Button>
+      {filterStatus === "PENDING" && (() => {
+        // 表示されている未承認リクエストの数を計算
+        let pendingCount = 0;
+        if (groupByEvent && eventsWithRequests.length > 0) {
+          eventsWithRequests.forEach((eventWithRequests) => {
+            pendingCount += eventWithRequests.requests.filter(
+              (r) => r.status === "PENDING" && !r.id.startsWith("report_")
+            ).length;
+          });
+        } else {
+          pendingCount = requests.filter((r) => r.status === "PENDING").length;
+        }
+        return (
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+            >
+              {selectedIds.size === pendingCount && pendingCount > 0 ? "選択解除" : "すべて選択"}
+            </Button>
           <Button
             size="sm"
             onClick={() => handleBulkAction("approve")}
@@ -402,192 +418,156 @@ export default function RequestsPage() {
           >
             一括却下 ({selectedIds.size})
           </Button>
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* リクエスト一覧 */}
       {isLoading ? (
         <p className="text-muted-foreground">読み込み中...</p>
       ) : groupByEvent && eventsWithRequests.length > 0 ? (
         <div className="space-y-4">
-          {eventsWithRequests.map((eventWithRequests) => {
-            const { event, requestsByType } = eventWithRequests;
-            const isExpanded = expandedEvents.has(event.id);
-            const totalRequests = eventWithRequests.requests.filter((r) => r.status === filterStatus || !filterStatus).length;
-            const pendingRequests = eventWithRequests.requests.filter((r) => r.status === "PENDING");
+          {(() => {
+            // すべてのイベントからリクエストを収集し、報告タイプごとにグループ化
+            const allRequestsByType = {
+              REPORT_START: [] as PublicRequest[],
+              REPORT_END: [] as PublicRequest[],
+              REPORT_MOVE: [] as PublicRequest[],
+              REPORT_TIME_CHANGE: [] as PublicRequest[],
+            };
 
+            eventsWithRequests.forEach((eventWithRequests) => {
+              // filterStatusでフィルタリング（API側で既にフィルタリングされているが、念のため）
+              // filterStatusが空文字列の場合はすべて表示
+              const filteredRequests = eventWithRequests.requests.filter(
+                (r) => !filterStatus || filterStatus === "" || r.status === filterStatus
+              );
+
+              filteredRequests.forEach((req) => {
+                if (req.type === "REPORT_START") allRequestsByType.REPORT_START.push(req);
+                else if (req.type === "REPORT_END") allRequestsByType.REPORT_END.push(req);
+                else if (req.type === "REPORT_MOVE") allRequestsByType.REPORT_MOVE.push(req);
+                else if (req.type === "REPORT_TIME_CHANGE") allRequestsByType.REPORT_TIME_CHANGE.push(req);
+              });
+            });
+
+            // 報告タイプごとに表示
             return (
-              <Card key={event.id}>
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => toggleEventExpanded(event.id)}
-                      className="text-lg font-semibold hover:text-blue-600"
-                    >
-                      {isExpanded ? "▼" : "▶"} {event.locationText}
-                    </button>
-                    {event.candidate && (
-                      <span className="text-sm text-muted-foreground">
-                        {event.candidate.name}
-                      </span>
-                    )}
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        event.status === "LIVE"
-                          ? "bg-red-100 text-red-800"
-                          : event.status === "ENDED"
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {event.status === "LIVE" ? "実施中" : event.status === "ENDED" ? "終了" : "予定"}
-                    </span>
-                  </div>
-                  <CardDescription>
-                    {event.startAt && (
-                      <span>開始: {new Date(event.startAt).toLocaleString("ja-JP")}</span>
-                    )}
-                    {event.endAt && (
-                      <span className="ml-2">終了: {new Date(event.endAt).toLocaleString("ja-JP")}</span>
-                    )}
-                  </CardDescription>
-                  {!isExpanded && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {requestsByType.REPORT_START.length > 0 && (
-                        <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                          開始報告{requestsByType.REPORT_START.length}件
-                        </span>
-                      )}
-                      {requestsByType.REPORT_END.length > 0 && (
-                        <span className="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                          終了報告{requestsByType.REPORT_END.length}件
-                        </span>
-                      )}
-                      {requestsByType.REPORT_MOVE.length > 0 && (
-                        <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
-                          場所変更{requestsByType.REPORT_MOVE.length}件
-                        </span>
-                      )}
-                      {requestsByType.REPORT_TIME_CHANGE.length > 0 && (
-                        <span className="text-sm bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                          時間変更{requestsByType.REPORT_TIME_CHANGE.length}件
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </CardHeader>
-                {isExpanded && (
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* 開始報告 */}
-                      {requestsByType.REPORT_START.length > 0 && (
-                        <div>
-                          <h3 className="font-semibold mb-2">
-                            開始報告 {requestsByType.REPORT_START.length}件
-                          </h3>
-                          <div className="space-y-2">
-                            {requestsByType.REPORT_START.map((req) => (
-                              <RequestItem
-                                key={req.id}
-                                request={req}
-                                selectedIds={selectedIds}
-                                onSelect={handleSelect}
-                                onBulkAction={handleBulkAction}
-                                setSelectedIds={setSelectedIds}
-                                isProcessing={isProcessing}
-                                filterStatus={filterStatus}
-                                parsePayload={parsePayload}
-                                formatDate={formatDate}
-                                setMapModal={setMapModal}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 終了報告 */}
-                      {requestsByType.REPORT_END.length > 0 && (
-                        <div>
-                          <h3 className="font-semibold mb-2">
-                            終了報告 {requestsByType.REPORT_END.length}件
-                          </h3>
-                          <div className="space-y-2">
-                            {requestsByType.REPORT_END.map((req) => (
-                              <RequestItem
-                                key={req.id}
-                                request={req}
-                                selectedIds={selectedIds}
-                                onSelect={handleSelect}
-                                onBulkAction={handleBulkAction}
-                                setSelectedIds={setSelectedIds}
-                                isProcessing={isProcessing}
-                                filterStatus={filterStatus}
-                                parsePayload={parsePayload}
-                                formatDate={formatDate}
-                                setMapModal={setMapModal}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 場所変更 */}
-                      {requestsByType.REPORT_MOVE.length > 0 && (
-                        <div>
-                          <h3 className="font-semibold mb-2">
-                            場所変更 {requestsByType.REPORT_MOVE.length}件
-                          </h3>
-                          <div className="space-y-2">
-                            {requestsByType.REPORT_MOVE.map((req) => (
-                              <RequestItem
-                                key={req.id}
-                                request={req}
-                                selectedIds={selectedIds}
-                                onSelect={handleSelect}
-                                onBulkAction={handleBulkAction}
-                                setSelectedIds={setSelectedIds}
-                                isProcessing={isProcessing}
-                                filterStatus={filterStatus}
-                                parsePayload={parsePayload}
-                                formatDate={formatDate}
-                                setMapModal={setMapModal}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 時間変更 */}
-                      {requestsByType.REPORT_TIME_CHANGE.length > 0 && (
-                        <div>
-                          <h3 className="font-semibold mb-2">
-                            時間変更 {requestsByType.REPORT_TIME_CHANGE.length}件
-                          </h3>
-                          <div className="space-y-2">
-                            {requestsByType.REPORT_TIME_CHANGE.map((req) => (
-                              <RequestItem
-                                key={req.id}
-                                request={req}
-                                selectedIds={selectedIds}
-                                onSelect={handleSelect}
-                                onBulkAction={handleBulkAction}
-                                setSelectedIds={setSelectedIds}
-                                isProcessing={isProcessing}
-                                filterStatus={filterStatus}
-                                parsePayload={parsePayload}
-                                formatDate={formatDate}
-                                setMapModal={setMapModal}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
+              <>
+                {/* 開始報告 */}
+                {allRequestsByType.REPORT_START.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>開始報告 {allRequestsByType.REPORT_START.length}件</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {allRequestsByType.REPORT_START.map((req) => (
+                          <RequestItem
+                            key={req.id}
+                            request={req}
+                            selectedIds={selectedIds}
+                            onSelect={handleSelect}
+                            onBulkAction={handleBulkAction}
+                            setSelectedIds={setSelectedIds}
+                            isProcessing={isProcessing}
+                            filterStatus={filterStatus}
+                            parsePayload={parsePayload}
+                            formatDate={formatDate}
+                            setMapModal={setMapModal}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </Card>
+
+                {/* 終了報告 */}
+                {allRequestsByType.REPORT_END.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>終了報告 {allRequestsByType.REPORT_END.length}件</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {allRequestsByType.REPORT_END.map((req) => (
+                          <RequestItem
+                            key={req.id}
+                            request={req}
+                            selectedIds={selectedIds}
+                            onSelect={handleSelect}
+                            onBulkAction={handleBulkAction}
+                            setSelectedIds={setSelectedIds}
+                            isProcessing={isProcessing}
+                            filterStatus={filterStatus}
+                            parsePayload={parsePayload}
+                            formatDate={formatDate}
+                            setMapModal={setMapModal}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 場所変更 */}
+                {allRequestsByType.REPORT_MOVE.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>場所変更報告 {allRequestsByType.REPORT_MOVE.length}件</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {allRequestsByType.REPORT_MOVE.map((req) => (
+                          <RequestItem
+                            key={req.id}
+                            request={req}
+                            selectedIds={selectedIds}
+                            onSelect={handleSelect}
+                            onBulkAction={handleBulkAction}
+                            setSelectedIds={setSelectedIds}
+                            isProcessing={isProcessing}
+                            filterStatus={filterStatus}
+                            parsePayload={parsePayload}
+                            formatDate={formatDate}
+                            setMapModal={setMapModal}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 時間変更 */}
+                {allRequestsByType.REPORT_TIME_CHANGE.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>時間変更報告 {allRequestsByType.REPORT_TIME_CHANGE.length}件</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {allRequestsByType.REPORT_TIME_CHANGE.map((req) => (
+                          <RequestItem
+                            key={req.id}
+                            request={req}
+                            selectedIds={selectedIds}
+                            onSelect={handleSelect}
+                            onBulkAction={handleBulkAction}
+                            setSelectedIds={setSelectedIds}
+                            isProcessing={isProcessing}
+                            filterStatus={filterStatus}
+                            parsePayload={parsePayload}
+                            formatDate={formatDate}
+                            setMapModal={setMapModal}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             );
-          })}
+          })()}
         </div>
       ) : (
         <div className="space-y-4">

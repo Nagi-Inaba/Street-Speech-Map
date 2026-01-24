@@ -226,3 +226,14 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+model SiteSettings {
+  id        String   @id @default("site-settings")
+  // 立候補区分・選挙区の表示制御（公選法対応）
+  showCandidateInfo Boolean  @default(true)
+  // 候補者ラベル（デフォルト: "候補者"）
+  candidateLabel    String   @default("候補者")
+  updatedAt DateTime @updatedAt
+
+  @@unique([id])
+}

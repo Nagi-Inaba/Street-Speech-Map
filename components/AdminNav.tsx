@@ -11,6 +11,7 @@ export default function AdminNav() {
     { href: "/admin/candidates", label: "候補者" },
     { href: "/admin/events", label: "演説予定" },
     { href: "/admin/requests", label: "リクエスト" },
+    { href: "/admin/settings", label: "設定" },
   ];
 
   return (

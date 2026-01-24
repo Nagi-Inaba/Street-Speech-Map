@@ -7,9 +7,19 @@ import { useState, useEffect } from "react";
 export default function PublicHeader() {
   const [imageError, setImageError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [candidateLabel, setCandidateLabel] = useState("候補者");
 
   useEffect(() => {
     setIsMounted(true);
+    // 設定を取得
+    fetch("/api/public/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        setCandidateLabel(data.candidateLabel || "候補者");
+      })
+      .catch(() => {
+        // エラー時はデフォルト値を使用
+      });
   }, []);
 
   return (
@@ -38,7 +48,7 @@ export default function PublicHeader() {
             </div>
           </Link>
         </div>
-        <p className="text-gray-600">候補者の演説予定・実施中・終了を地図で可視化</p>
+        <p className="text-gray-600">{candidateLabel}の演説予定・実施中・終了を地図で可視化</p>
       </div>
     </header>
   );

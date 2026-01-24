@@ -112,28 +112,36 @@ export default async function CandidatePage({
 }) {
   const { slug } = await params;
 
-  const candidate = await prisma.candidate.findUnique({
-    where: { slug },
-    include: {
-      events: {
-        include: {
-          moveHints: {
-            where: {
-              active: true,
+  const [candidate, settings] = await Promise.all([
+    prisma.candidate.findUnique({
+      where: { slug },
+      include: {
+        events: {
+          include: {
+            moveHints: {
+              where: {
+                active: true,
+              },
             },
           },
+          orderBy: [
+            { startAt: "asc" },
+            { createdAt: "desc" },
+          ],
         },
-        orderBy: [
-          { startAt: "asc" },
-          { createdAt: "desc" },
-        ],
       },
-    },
-  });
+    }),
+    prisma.siteSettings.findUnique({
+      where: { id: "site-settings" },
+    }),
+  ]);
 
   if (!candidate) {
     notFound();
   }
+
+  const showCandidateInfo = settings?.showCandidateInfo ?? true;
+  const candidateLabel = settings?.candidateLabel ?? "候補者";
 
   const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");
   const liveEvents = candidate.events.filter((e) => e.status === "LIVE");
@@ -224,7 +232,7 @@ export default async function CandidatePage({
       <PublicHeader />
       <div className="container mx-auto px-4 py-2">
         <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
-          ← 候補者一覧に戻る
+          ← {candidateLabel}一覧に戻る
         </Link>
       </div>
 
@@ -241,7 +249,7 @@ export default async function CandidatePage({
             </div>
           )}
           <h1 className="text-4xl font-bold mb-2">{candidate.name}</h1>
-          {candidate.region && (
+          {showCandidateInfo && candidate.region && (
             <p className="text-muted-foreground">{candidate.region}</p>
           )}
         </div>
