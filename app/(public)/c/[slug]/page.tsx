@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import { formatJST, formatJSTTime, formatJSTDay } from "@/lib/time";
+import { formatJST, formatJSTTime, formatJSTDay, formatJSTWithoutYear } from "@/lib/time";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,6 +11,99 @@ import RequestForm from "@/components/RequestForm";
 import EventReportButtons from "@/components/EventReportButtons";
 import { getPrefectureCoordinates } from "@/lib/constants";
 import PublicHeader from "@/components/PublicHeader";
+
+// ベースURLを取得（環境変数から、またはデフォルト値を使用）
+function getBaseUrl() {
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const baseUrl = getBaseUrl();
+
+  const candidate = await prisma.candidate.findUnique({
+    where: { slug },
+    include: {
+      events: {
+        where: {
+          status: {
+            in: ["PLANNED", "LIVE"],
+          },
+        },
+        orderBy: [
+          { status: "asc" }, // LIVEを先に
+          { startAt: "asc" },
+        ],
+        take: 1, // 最初の1件のみ取得
+      },
+    },
+  });
+
+  if (!candidate) {
+    return {
+      title: "候補者が見つかりません",
+    };
+  }
+
+  const liveEvents = candidate.events.filter((e) => e.status === "LIVE");
+  const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");
+  const firstEvent = candidate.events[0];
+
+  // タイトルと説明文を生成
+  let title = `${candidate.name} - チームみらい 街頭演説マップ`;
+  let description = `${candidate.name}さんの街頭演説予定・実施中・終了を地図で可視化`;
+
+  if (liveEvents.length > 0 && firstEvent) {
+    title = `${candidate.name}さん 現在演説中 - チームみらい 街頭演説マップ`;
+    description = `${candidate.name}さんは現在${firstEvent.locationText}付近で演説中です。`;
+  } else if (plannedEvents.length > 0 && firstEvent) {
+    const timeText = firstEvent.startAt
+      ? formatJSTWithoutYear(firstEvent.startAt)
+      : "時間未定";
+    title = `${candidate.name}さん 演説予定 - チームみらい 街頭演説マップ`;
+    description = `${candidate.name}さんは${timeText}から${firstEvent.locationText}付近で演説予定です。`;
+  }
+
+  // OG画像のURL（動的に生成されたカード画像を使用）
+  const ogImageUrl = `${baseUrl}/c/${candidate.slug}/opengraph-image`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${baseUrl}/c/${candidate.slug}`,
+      siteName: "チームみらい 街頭演説マップ",
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: candidate.name,
+        },
+      ],
+      locale: "ja_JP",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+  };
+}
 
 export default async function CandidatePage({
   params,
@@ -268,7 +362,7 @@ export default async function CandidatePage({
                         candidateName={candidate.name}
                         locationText={event.locationText}
                         isLive={false}
-                        startAt={event.startAt ? formatJSTTime(event.startAt) : undefined}
+                        startAt={event.startAt ? formatJSTWithoutYear(event.startAt) : undefined}
                       />
                     </div>
                     {event.notes && (

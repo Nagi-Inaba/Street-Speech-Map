@@ -23,12 +23,15 @@ export default function ShareButton({
   const getShareText = () => {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
     const url = `${baseUrl}${eventUrl}`;
+    
+    // 候補者名から空白を削除してハッシュタグを作成
+    const candidateHashtag = `#${candidateName.replace(/\s+/g, "")}`;
 
     if (isLive) {
-      return `${candidateName}さんは現在${locationText}付近で演説中です。\n${url}`;
+      return `${candidateName}さんが現在${locationText}で街頭演説を行っています #チームみらい ${candidateHashtag}\n${url}`;
     } else {
       const timeText = startAt || "時間未定";
-      return `${candidateName}さんは${timeText}から${locationText}付近で演説予定です。\n${url}`;
+      return `${timeText}から${candidateName}さんの街頭演説が${locationText}で予定されています #チームみらい ${candidateHashtag}\n${url}`;
     }
   };
 

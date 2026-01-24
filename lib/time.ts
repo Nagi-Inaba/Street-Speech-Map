@@ -33,11 +33,11 @@ export function formatJSTTime(date: Date | null | undefined): string {
 }
 
 /**
- * 年を省略した日時（MM月dd日 HH:mm）
+ * 年を省略した日時（M月dd日 HH:mm、先頭0なし）
  */
 export function formatJSTWithoutYear(date: Date | null | undefined): string {
   if (!date) return "未定";
-  return formatInTimeZone(date, TIMEZONE, "MM月dd日 HH:mm", {
+  return formatInTimeZone(date, TIMEZONE, "M月dd日 HH:mm", {
     timeZone: TIMEZONE,
   });
 }
