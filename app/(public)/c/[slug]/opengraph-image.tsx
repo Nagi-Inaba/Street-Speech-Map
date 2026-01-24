@@ -4,7 +4,7 @@ import { formatJSTWithoutYear } from "@/lib/time";
 
 export const runtime = "nodejs";
 
-export async function Image({
+export default async function Image({
   params,
 }: {
   params: Promise<{ slug: string }>;
