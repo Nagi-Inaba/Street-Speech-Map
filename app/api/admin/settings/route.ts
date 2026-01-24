@@ -61,9 +61,9 @@ export async function PATCH(request: NextRequest) {
       showCandidateInfo,
     };
     
-    // candidateLabelが指定されている場合のみ更新
+    // candidateLabelが指定されている場合のみ更新（空文字列も許可）
     if (candidateLabel !== undefined) {
-      updateData.candidateLabel = candidateLabel || "候補者";
+      updateData.candidateLabel = candidateLabel;
     }
 
     // showEventsが指定されている場合のみ更新
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest) {
       create: {
         id: "site-settings",
         showCandidateInfo,
-        candidateLabel: candidateLabel || "候補者",
+        candidateLabel: candidateLabel !== undefined ? candidateLabel : "候補者",
         showEvents: showEvents !== undefined ? showEvents : true,
       },
     });
