@@ -48,7 +48,9 @@ export default function PublicHeader() {
             </div>
           </Link>
         </div>
-        <p className="text-gray-600">{candidateLabel}の演説予定・実施中・終了を地図で可視化</p>
+        <p className="text-gray-600">
+          {candidateLabel ? `${candidateLabel}の` : ""}演説予定・実施中・終了を地図で可視化
+        </p>
       </div>
     </header>
   );
