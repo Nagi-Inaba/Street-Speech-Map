@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 export default function SettingsPage() {
   const [showCandidateInfo, setShowCandidateInfo] = useState(true);
   const [candidateLabel, setCandidateLabel] = useState("候補者");
+  const [showEvents, setShowEvents] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,6 +25,7 @@ export default function SettingsPage() {
         const data = await res.json();
         setShowCandidateInfo(data.showCandidateInfo ?? true);
         setCandidateLabel(data.candidateLabel ?? "候補者");
+        setShowEvents(data.showEvents ?? true);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -41,6 +43,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           showCandidateInfo,
           candidateLabel,
+          showEvents,
         }),
       });
 
@@ -88,6 +91,24 @@ export default function SettingsPage() {
               id="show-candidate-info"
               checked={showCandidateInfo}
               onCheckedChange={setShowCandidateInfo}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="show-events" className="text-base">
+                演説予定の表示
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                公開側のページで演説予定（予定・実施中・終了）を表示するかどうかを制御します。
+                <br />
+                非表示にする場合は、このスイッチをオフにしてください。
+              </p>
+            </div>
+            <Switch
+              id="show-events"
+              checked={showEvents}
+              onCheckedChange={setShowEvents}
             />
           </div>
 

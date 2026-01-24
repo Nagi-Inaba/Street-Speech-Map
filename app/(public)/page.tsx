@@ -21,10 +21,10 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-6">{candidateLabel}一覧</h2>
+        <h2 className="text-3xl font-bold mb-6">一覧</h2>
 
         {sortedCandidates.length === 0 ? (
-          <p className="text-muted-foreground">{candidateLabel}が登録されていません。</p>
+          <p className="text-muted-foreground">登録されていません。</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedCandidates.map((candidate) => (

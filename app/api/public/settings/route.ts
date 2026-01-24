@@ -18,6 +18,7 @@ export async function GET() {
     return NextResponse.json({
       showCandidateInfo: settings.showCandidateInfo,
       candidateLabel: settings.candidateLabel || "候補者",
+      showEvents: settings.showEvents ?? true,
     });
   } catch (error) {
     console.error("Error fetching public settings:", error);
@@ -25,6 +26,7 @@ export async function GET() {
     return NextResponse.json({
       showCandidateInfo: true,
       candidateLabel: "候補者",
+      showEvents: true,
     });
   }
 }

@@ -233,6 +233,8 @@ model SiteSettings {
   showCandidateInfo Boolean  @default(true)
   // 候補者ラベル（デフォルト: "候補者"）
   candidateLabel    String   @default("候補者")
+  // 演説予定の表示制御
+  showEvents        Boolean  @default(true)
   updatedAt DateTime @updatedAt
 
   @@unique([id])

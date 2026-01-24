@@ -142,6 +142,7 @@ export default async function CandidatePage({
 
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
   const candidateLabel = settings?.candidateLabel ?? "候補者";
+  const showEvents = settings?.showEvents ?? true;
 
   const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");
   const liveEvents = candidate.events.filter((e) => e.status === "LIVE");
@@ -232,7 +233,7 @@ export default async function CandidatePage({
       <PublicHeader />
       <div className="container mx-auto px-4 py-2">
         <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
-          ← {candidateLabel}一覧に戻る
+          ← 一覧に戻る
         </Link>
       </div>
 
@@ -255,7 +256,7 @@ export default async function CandidatePage({
         </div>
 
         {/* 地図エリア（上部に配置） */}
-        {allMarkers.length > 0 && (
+        {showEvents && allMarkers.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">地図</h2>
             <Card>
@@ -267,7 +268,7 @@ export default async function CandidatePage({
         )}
 
         {/* 実施中の演説予定 */}
-        {liveEvents.length > 0 && (
+        {showEvents && liveEvents.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-red-600">🔴 実施中</h2>
             <div className="space-y-4">
@@ -328,7 +329,7 @@ export default async function CandidatePage({
         )}
 
         {/* 予定の演説予定 */}
-        {plannedEvents.length > 0 && (
+        {showEvents && plannedEvents.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">📅 予定</h2>
             <div className="space-y-4">
@@ -390,7 +391,7 @@ export default async function CandidatePage({
         )}
 
         {/* 終了した演説予定 */}
-        {endedEvents.length > 0 && (
+        {showEvents && endedEvents.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-muted-foreground">終了</h2>
             <div className="space-y-4">
@@ -417,9 +418,15 @@ export default async function CandidatePage({
           </section>
         )}
 
-        {candidate.events.length === 0 && (
+        {showEvents && candidate.events.length === 0 && (
           <p className="text-muted-foreground text-center py-12">
             演説予定はまだ登録されていません。
+          </p>
+        )}
+        
+        {!showEvents && (
+          <p className="text-muted-foreground text-center py-12">
+            演説予定の表示は現在非表示になっています。
           </p>
         )}
 

@@ -22,6 +22,7 @@ export async function GET() {
           id: "site-settings",
           showCandidateInfo: true,
           candidateLabel: "候補者",
+          showEvents: true,
         },
       });
     }
@@ -42,13 +43,17 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { showCandidateInfo, candidateLabel } = body;
+    const { showCandidateInfo, candidateLabel, showEvents } = body;
 
     if (typeof showCandidateInfo !== "boolean") {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
     if (candidateLabel !== undefined && typeof candidateLabel !== "string") {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    if (showEvents !== undefined && typeof showEvents !== "boolean") {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
@@ -61,6 +66,11 @@ export async function PATCH(request: NextRequest) {
       updateData.candidateLabel = candidateLabel || "候補者";
     }
 
+    // showEventsが指定されている場合のみ更新
+    if (showEvents !== undefined) {
+      updateData.showEvents = showEvents;
+    }
+
     const settings = await prisma.siteSettings.upsert({
       where: { id: "site-settings" },
       update: updateData,
@@ -68,6 +78,7 @@ export async function PATCH(request: NextRequest) {
         id: "site-settings",
         showCandidateInfo,
         candidateLabel: candidateLabel || "候補者",
+        showEvents: showEvents !== undefined ? showEvents : true,
       },
     });
 
