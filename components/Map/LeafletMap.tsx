@@ -34,10 +34,12 @@ export default function LeafletMap({
   useEffect(() => {
     if (typeof window === "undefined") return;
     
-    Promise.all([
-      import("leaflet"),
-      import("leaflet/dist/leaflet.css")
-    ]).then(([L]) => {
+    // CSSファイルを動的に読み込む
+    import("leaflet/dist/leaflet.css").catch(() => {
+      // CSSファイルの読み込みエラーは無視（既に読み込まれている可能性がある）
+    });
+    
+    import("leaflet").then((L) => {
       // Leafletはデフォルトエクスポートなので、L.defaultまたはLを使用
       const leafletLib = L.default || L;
       
