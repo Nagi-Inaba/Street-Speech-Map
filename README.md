@@ -183,6 +183,7 @@ npm run cleanup:sample-facilities
 NeonとVercelを使用した本番環境のセットアップ手順：
 
 **クイックスタート**: [docs/QUICK_START_PRODUCTION.md](docs/QUICK_START_PRODUCTION.md)（5分でセットアップ）  
+**Vercel完全ガイド**: [docs/VERCEL_DEPLOYMENT_GUIDE.md](docs/VERCEL_DEPLOYMENT_GUIDE.md)（Vercelの操作を詳しく解説）  
 **詳細ガイド**: [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md)（完全な手順とトラブルシューティング）
 
 ### Vercel推奨
