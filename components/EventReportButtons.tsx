@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import LeafletMap from "@/components/Map/LeafletMap";
 
 interface EventReportButtonsProps {
@@ -10,16 +12,21 @@ interface EventReportButtonsProps {
   eventLat: number;
   eventLng: number;
   eventStatus: string;
+  eventStartAt?: Date | string | null;
+  eventEndAt?: Date | string | null;
 }
 
-export default function EventReportButtons({ eventId, eventLat, eventLng, eventStatus }: EventReportButtonsProps) {
+export default function EventReportButtons({ eventId, eventLat, eventLng, eventStatus, eventStartAt, eventEndAt }: EventReportButtonsProps) {
   const [reportedStart, setReportedStart] = useState(false);
   const [reportedEnd, setReportedEnd] = useState(false);
   const [showMoveMap, setShowMoveMap] = useState(false);
+  const [showTimeChange, setShowTimeChange] = useState(false);
   const [newLat, setNewLat] = useState(eventLat);
   const [newLng, setNewLng] = useState(eventLng);
   const [canReportMove, setCanReportMove] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
 
   const handleStartReport = async () => {
     setIsSubmitting(true);
@@ -111,38 +118,44 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
     }
   };
 
-  const handleTimeChange = async () => {
-    const newStartAtInput = prompt("新しい開始時刻を入力してください（YYYY-MM-DDTHH:mm形式、例: 2026-01-23T14:00）:");
-    if (!newStartAtInput || newStartAtInput.trim() === "") {
+  const handleTimeChangeSubmit = async () => {
+    if (!newStartTime.trim()) {
+      alert("開始時刻を入力してください");
       return;
     }
 
-    const newEndAtInput = prompt("新しい終了時刻を入力してください（YYYY-MM-DDTHH:mm形式、空欄可）:");
-
     setIsSubmitting(true);
     try {
-      // 日付のバリデーション
-      let newStartAt: string | null = null;
-      let newEndAt: string | null = null;
+      // 現在のイベントの日付を取得
+      const currentStartDate = eventStartAt ? new Date(eventStartAt) : new Date();
+      const currentEndDate = eventEndAt ? new Date(eventEndAt) : currentStartDate;
 
-      if (newStartAtInput && newStartAtInput.trim() !== "") {
-        const startDate = new Date(newStartAtInput.trim());
-        if (isNaN(startDate.getTime())) {
-          alert("開始時刻の形式が正しくありません");
+      // 時間だけを変更して新しい日時を作成
+      let newStartAtISO: string | null = null;
+      let newEndAtISO: string | null = null;
+
+      if (newStartTime && newStartTime.trim() !== "") {
+        const [hours, minutes] = newStartTime.trim().split(":").map(Number);
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          alert("開始時刻の形式が正しくありません（HH:mm形式）");
           setIsSubmitting(false);
           return;
         }
-        newStartAt = startDate.toISOString();
+        const newStartDate = new Date(currentStartDate);
+        newStartDate.setHours(hours, minutes, 0, 0);
+        newStartAtISO = newStartDate.toISOString();
       }
 
-      if (newEndAtInput && newEndAtInput.trim() !== "") {
-        const endDate = new Date(newEndAtInput.trim());
-        if (isNaN(endDate.getTime())) {
-          alert("終了時刻の形式が正しくありません");
+      if (newEndTime && newEndTime.trim() !== "") {
+        const [hours, minutes] = newEndTime.trim().split(":").map(Number);
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          alert("終了時刻の形式が正しくありません（HH:mm形式）");
           setIsSubmitting(false);
           return;
         }
-        newEndAt = endDate.toISOString();
+        const newEndDate = new Date(currentEndDate);
+        newEndDate.setHours(hours, minutes, 0, 0);
+        newEndAtISO = newEndDate.toISOString();
       }
 
       const res = await fetch("/api/public/requests", {
@@ -152,13 +165,16 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
           type: "REPORT_TIME_CHANGE",
           eventId,
           payload: {
-            newStartAt,
-            newEndAt,
+            newStartAt: newStartAtISO,
+            newEndAt: newEndAtISO,
           },
         }),
       });
 
       if (res.ok) {
+        setShowTimeChange(false);
+        setNewStartTime("");
+        setNewEndTime("");
         alert("時間変更の報告が完了しました。承認後、反映されます。");
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -208,7 +224,22 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
               場所変更
             </Button>
             <Button
-              onClick={handleTimeChange}
+              onClick={() => {
+                // 現在のイベントの時刻を初期値として設定
+                if (eventStartAt) {
+                  const startDate = new Date(eventStartAt);
+                  const hours = String(startDate.getHours()).padStart(2, "0");
+                  const minutes = String(startDate.getMinutes()).padStart(2, "0");
+                  setNewStartTime(`${hours}:${minutes}`);
+                }
+                if (eventEndAt) {
+                  const endDate = new Date(eventEndAt);
+                  const hours = String(endDate.getHours()).padStart(2, "0");
+                  const minutes = String(endDate.getMinutes()).padStart(2, "0");
+                  setNewEndTime(`${hours}:${minutes}`);
+                }
+                setShowTimeChange(true);
+              }}
               variant="outline"
               size="sm"
               disabled={isSubmitting}
@@ -262,6 +293,69 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
                 className="bg-green-600 hover:bg-green-700"
               >
                 {isSubmitting ? "報告中..." : "この位置で報告する"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 時間変更のダイアログ */}
+      <Dialog open={showTimeChange} onOpenChange={setShowTimeChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>時間変更の報告</DialogTitle>
+            <DialogDescription>
+              新しい開始時刻と終了時刻を入力してください（日付は変更されません）
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {eventStartAt && (
+              <div className="text-sm text-muted-foreground">
+                現在の日付: {new Date(eventStartAt).toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="newStartTime">新しい開始時刻 *</Label>
+              <Input
+                id="newStartTime"
+                type="time"
+                value={newStartTime}
+                onChange={(e) => setNewStartTime(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                形式: HH:mm（例: 14:00）
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newEndTime">新しい終了時刻（任意）</Label>
+              <Input
+                id="newEndTime"
+                type="time"
+                value={newEndTime}
+                onChange={(e) => setNewEndTime(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                形式: HH:mm（例: 16:00）
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowTimeChange(false);
+                  setNewStartTime("");
+                  setNewEndTime("");
+                }}
+              >
+                キャンセル
+              </Button>
+              <Button
+                onClick={handleTimeChangeSubmit}
+                disabled={isSubmitting || !newStartTime.trim()}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isSubmitting ? "報告中..." : "報告する"}
               </Button>
             </div>
           </div>

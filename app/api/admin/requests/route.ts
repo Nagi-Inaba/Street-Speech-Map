@@ -16,12 +16,20 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const sort = searchParams.get("sort") || "createdAt";
   const order = searchParams.get("order") || "desc";
+  const groupByEvent = searchParams.get("groupByEvent") === "true";
 
   try {
     const requests = await prisma.publicRequest.findMany({
       where: {
         ...(candidateId && { candidateId }),
         ...(status && { status }),
+        // eventIdがあるリクエストのみ（REPORT_START, REPORT_END, REPORT_MOVE, REPORT_TIME_CHANGE）
+        ...(groupByEvent && {
+          eventId: { not: null },
+          type: {
+            in: ["REPORT_START", "REPORT_END", "REPORT_MOVE", "REPORT_TIME_CHANGE"],
+          },
+        }),
       },
       include: {
         candidate: true,
@@ -29,8 +37,144 @@ export async function GET(request: NextRequest) {
       orderBy: {
         [sort]: order,
       },
-      take: 100,
+      take: 1000,
     });
+
+    // eventIdでグループ化する場合
+    if (groupByEvent) {
+      // eventIdでグループ化
+      const groupedByEvent = new Map<string, typeof requests>();
+      for (const req of requests) {
+        if (req.eventId) {
+          if (!groupedByEvent.has(req.eventId)) {
+            groupedByEvent.set(req.eventId, []);
+          }
+          groupedByEvent.get(req.eventId)!.push(req);
+        }
+      }
+
+      // PublicReportも取得（演説中・演説終了の報告）
+      // 候補者フィルターがある場合、その候補者のイベントのみを取得
+      let eventFilter: any = {};
+      if (candidateId) {
+        eventFilter.candidateId = candidateId;
+      }
+
+      // すべてのイベント（候補者フィルター適用）を取得してPublicReportを含める
+      const eventsWithReports = await prisma.speechEvent.findMany({
+        where: {
+          ...eventFilter,
+        },
+        include: {
+          candidate: true,
+          reports: {
+            where: {
+              kind: {
+                in: ["start", "end", "move"], // "check"は除外
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 100, // 最新100件まで
+          },
+        },
+      });
+
+      // PublicReportをPublicRequest形式に変換
+      const reportRequests: typeof requests = [];
+      eventsWithReports.forEach((event) => {
+        event.reports.forEach((report) => {
+          // kind: "start" -> type: "REPORT_START"
+          // kind: "end" -> type: "REPORT_END"
+          // kind: "move" -> type: "REPORT_MOVE"
+          let requestType = "";
+          if (report.kind === "start") requestType = "REPORT_START";
+          else if (report.kind === "end") requestType = "REPORT_END";
+          else if (report.kind === "move") requestType = "REPORT_MOVE";
+          else return; // "check"はスキップ
+
+          // PublicRequest形式に変換
+          reportRequests.push({
+            id: `report_${report.id}`,
+            type: requestType,
+            status: "APPROVED", // PublicReportは既に処理済み
+            candidateId: event.candidateId,
+            candidate: event.candidate,
+            eventId: event.id,
+            payload: JSON.stringify({
+              lat: report.lat,
+              lng: report.lng,
+            }),
+            dedupeKey: null,
+            createdAt: report.createdAt.toISOString(),
+          } as typeof requests[0]);
+        });
+      });
+
+      // すべてのリクエストを統合
+      const allRequests = [...requests, ...reportRequests];
+
+      // eventIdで再グループ化
+      const allGroupedByEvent = new Map<string, typeof allRequests>();
+      for (const req of allRequests) {
+        if (req.eventId) {
+          if (!allGroupedByEvent.has(req.eventId)) {
+            allGroupedByEvent.set(req.eventId, []);
+          }
+          allGroupedByEvent.get(req.eventId)!.push(req);
+        }
+      }
+
+      // すべてのイベントIDを取得
+      const allEventIdsSet = new Set<string>();
+      allRequests.forEach((req) => {
+        if (req.eventId) allEventIdsSet.add(req.eventId);
+      });
+      eventsWithReports.forEach((event) => {
+        if (event.reports.length > 0) {
+          allEventIdsSet.add(event.id);
+        }
+      });
+
+      // イベント情報を取得
+      const events = await prisma.speechEvent.findMany({
+        where: {
+          ...eventFilter,
+          ...(allEventIdsSet.size > 0 && { id: { in: Array.from(allEventIdsSet) } }),
+        },
+        include: {
+          candidate: true,
+        },
+      });
+
+      // イベントごとにリクエストをまとめる
+      const result = events.map((event) => {
+        const eventRequests = allGroupedByEvent.get(event.id) || [];
+        // リクエストタイプごとにグループ化
+        const requestsByType = {
+          REPORT_START: eventRequests.filter((r) => r.type === "REPORT_START"),
+          REPORT_END: eventRequests.filter((r) => r.type === "REPORT_END"),
+          REPORT_MOVE: eventRequests.filter((r) => r.type === "REPORT_MOVE"),
+          REPORT_TIME_CHANGE: eventRequests.filter((r) => r.type === "REPORT_TIME_CHANGE"),
+        };
+
+        return {
+          event: {
+            id: event.id,
+            locationText: event.locationText,
+            startAt: event.startAt,
+            endAt: event.endAt,
+            status: event.status,
+            candidate: event.candidate,
+          },
+          requests: eventRequests,
+          requestsByType,
+        };
+      });
+
+      return NextResponse.json(result);
+    }
 
     return NextResponse.json(requests);
   } catch (error) {
@@ -97,6 +241,22 @@ export async function PATCH(request: NextRequest) {
               lat: payload.lat,
               lng: payload.lng,
             },
+          });
+        }
+
+        // REPORT_STARTの場合、ステータスをLIVEに更新
+        if (req.type === "REPORT_START" && req.eventId) {
+          await prisma.speechEvent.update({
+            where: { id: req.eventId },
+            data: { status: "LIVE" },
+          });
+        }
+
+        // REPORT_ENDの場合、ステータスをENDEDに更新
+        if (req.type === "REPORT_END" && req.eventId) {
+          await prisma.speechEvent.update({
+            where: { id: req.eventId },
+            data: { status: "ENDED" },
           });
         }
 

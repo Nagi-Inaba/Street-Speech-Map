@@ -17,9 +17,28 @@ interface PublicRequest {
   status: string;
   candidateId: string | null;
   candidate: Candidate | null;
+  eventId: string | null;
   payload: string;
   dedupeKey: string | null;
   createdAt: string;
+}
+
+interface EventWithRequests {
+  event: {
+    id: string;
+    locationText: string;
+    startAt: string | null;
+    endAt: string | null;
+    status: string;
+    candidate: Candidate | null;
+  };
+  requests: PublicRequest[];
+  requestsByType: {
+    REPORT_START: PublicRequest[];
+    REPORT_END: PublicRequest[];
+    REPORT_MOVE: PublicRequest[];
+    REPORT_TIME_CHANGE: PublicRequest[];
+  };
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -38,15 +57,148 @@ const STATUS_LABELS: Record<string, string> = {
   DUPLICATE: "重複",
 };
 
+interface RequestItemProps {
+  request: PublicRequest;
+  selectedIds: Set<string>;
+  onSelect: (id: string) => void;
+  onBulkAction: (action: "approve" | "reject", selectedIds: Set<string>) => void;
+  setSelectedIds: (ids: Set<string>) => void;
+  isProcessing: boolean;
+  filterStatus: string;
+  parsePayload: (payload: string) => any;
+  formatDate: (dateString: string) => string;
+  setMapModal: (modal: { lat: number; lng: number; locationText?: string } | null) => void;
+}
+
+function RequestItem({
+  request,
+  selectedIds,
+  onSelect,
+  onBulkAction,
+  setSelectedIds,
+  isProcessing,
+  filterStatus,
+  parsePayload,
+  formatDate,
+  setMapModal,
+}: RequestItemProps) {
+  const payload = parsePayload(request.payload);
+  const isPublicReport = request.id.startsWith("report_"); // PublicReport由来のリクエスト
+
+  return (
+    <div className="border rounded-md p-3 bg-muted/50">
+      <div className="flex items-center gap-2 mb-2">
+        {filterStatus === "PENDING" && !isPublicReport && (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(request.id)}
+            onChange={() => onSelect(request.id)}
+            className="w-4 h-4"
+          />
+        )}
+        <span
+          className={`text-xs px-2 py-1 rounded ${
+            request.status === "PENDING"
+              ? "bg-yellow-100 text-yellow-800"
+              : request.status === "APPROVED"
+              ? "bg-green-100 text-green-800"
+              : request.status === "REJECTED"
+              ? "bg-red-100 text-red-800"
+              : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {STATUS_LABELS[request.status] || request.status}
+          {isPublicReport && <span className="ml-1">（自動処理済み）</span>}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {formatDate(request.createdAt)}
+        </span>
+      </div>
+      <div className="text-sm space-y-1 mb-2">
+        {(payload.lat && payload.lng) && (
+          <div className="flex items-center gap-2">
+            <p className="text-xs">
+              座標: {payload.lat.toFixed(6)}, {payload.lng.toFixed(6)}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMapModal({ lat: payload.lat, lng: payload.lng })}
+              className="text-xs h-6"
+            >
+              地図を表示
+            </Button>
+          </div>
+        )}
+        {payload.newLat && payload.newLng && (
+          <div className="flex items-center gap-2">
+            <p className="text-xs">
+              新しい座標: {payload.newLat.toFixed(6)}, {payload.newLng.toFixed(6)}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMapModal({ lat: payload.newLat, lng: payload.newLng, locationText: payload.locationText })}
+              className="text-xs h-6"
+            >
+              地図を表示
+            </Button>
+          </div>
+        )}
+        {payload.newStartAt && (
+          <p className="text-xs">
+            新しい開始時刻: {new Date(payload.newStartAt).toLocaleString("ja-JP")}
+          </p>
+        )}
+        {payload.newEndAt && (
+          <p className="text-xs">
+            新しい終了時刻: {new Date(payload.newEndAt).toLocaleString("ja-JP")}
+          </p>
+        )}
+      </div>
+      {request.status === "PENDING" && !isPublicReport && (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={() => {
+              setSelectedIds(new Set([request.id]));
+              onBulkAction("approve", new Set([request.id]));
+            }}
+            disabled={isProcessing}
+            className="h-7 text-xs"
+          >
+            承認
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedIds(new Set([request.id]));
+              onBulkAction("reject", new Set([request.id]));
+            }}
+            disabled={isProcessing}
+            className="h-7 text-xs"
+          >
+            却下
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RequestsPage() {
   const [requests, setRequests] = useState<PublicRequest[]>([]);
+  const [eventsWithRequests, setEventsWithRequests] = useState<EventWithRequests[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterCandidateId, setFilterCandidateId] = useState("");
   const [filterStatus, setFilterStatus] = useState("PENDING");
+  const [groupByEvent, setGroupByEvent] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mapModal, setMapModal] = useState<{ lat: number; lng: number; locationText?: string } | null>(null);
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
   const fetchRequests = async () => {
     setIsLoading(true);
@@ -54,11 +206,18 @@ export default function RequestsPage() {
       const params = new URLSearchParams();
       if (filterCandidateId) params.set("candidateId", filterCandidateId);
       if (filterStatus) params.set("status", filterStatus);
+      if (groupByEvent) params.set("groupByEvent", "true");
       
       const res = await fetch(`/api/admin/requests?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setRequests(data);
+        if (groupByEvent && Array.isArray(data) && data.length > 0 && data[0].event) {
+          setEventsWithRequests(data);
+          setRequests([]);
+        } else {
+          setRequests(data);
+          setEventsWithRequests([]);
+        }
       }
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -79,7 +238,7 @@ export default function RequestsPage() {
     fetchRequests();
     setSelectedIds(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterCandidateId, filterStatus]);
+  }, [filterCandidateId, filterStatus, groupByEvent]);
 
   const handleSelectAll = () => {
     if (selectedIds.size === requests.length) {
@@ -99,10 +258,11 @@ export default function RequestsPage() {
     setSelectedIds(newSelected);
   };
 
-  const handleBulkAction = async (action: "approve" | "reject") => {
-    if (selectedIds.size === 0) return;
+  const handleBulkAction = async (action: "approve" | "reject", idsToProcess?: Set<string>) => {
+    const ids = idsToProcess || selectedIds;
+    if (ids.size === 0) return;
     
-    if (!confirm(`${selectedIds.size}件のリクエストを${action === "approve" ? "承認" : "却下"}しますか？`)) {
+    if (!confirm(`${ids.size}件のリクエストを${action === "approve" ? "承認" : "却下"}しますか？`)) {
       return;
     }
 
@@ -112,7 +272,7 @@ export default function RequestsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ids: Array.from(selectedIds),
+          ids: Array.from(ids),
           action,
         }),
       });
@@ -149,7 +309,7 @@ export default function RequestsPage() {
     }
   };
 
-  // 重複キーでグループ化
+  // 重複キーでグループ化（従来の表示用）
   const groupedByDedupe = new Map<string, PublicRequest[]>();
   requests.forEach((req) => {
     const key = req.dedupeKey || req.id;
@@ -158,6 +318,16 @@ export default function RequestsPage() {
     }
     groupedByDedupe.get(key)!.push(req);
   });
+
+  const toggleEventExpanded = (eventId: string) => {
+    const newExpanded = new Set(expandedEvents);
+    if (newExpanded.has(eventId)) {
+      newExpanded.delete(eventId);
+    } else {
+      newExpanded.add(eventId);
+    }
+    setExpandedEvents(newExpanded);
+  };
 
   return (
     <div>
@@ -194,6 +364,17 @@ export default function RequestsPage() {
             <option value="DUPLICATE">重複</option>
           </select>
         </div>
+        <div className="flex items-end">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={groupByEvent}
+              onChange={(e) => setGroupByEvent(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">予定ごとにまとめる</span>
+          </label>
+        </div>
       </div>
 
       {/* 一括操作 */}
@@ -227,6 +408,187 @@ export default function RequestsPage() {
       {/* リクエスト一覧 */}
       {isLoading ? (
         <p className="text-muted-foreground">読み込み中...</p>
+      ) : groupByEvent && eventsWithRequests.length > 0 ? (
+        <div className="space-y-4">
+          {eventsWithRequests.map((eventWithRequests) => {
+            const { event, requestsByType } = eventWithRequests;
+            const isExpanded = expandedEvents.has(event.id);
+            const totalRequests = eventWithRequests.requests.filter((r) => r.status === filterStatus || !filterStatus).length;
+            const pendingRequests = eventWithRequests.requests.filter((r) => r.status === "PENDING");
+
+            return (
+              <Card key={event.id}>
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => toggleEventExpanded(event.id)}
+                      className="text-lg font-semibold hover:text-blue-600"
+                    >
+                      {isExpanded ? "▼" : "▶"} {event.locationText}
+                    </button>
+                    {event.candidate && (
+                      <span className="text-sm text-muted-foreground">
+                        {event.candidate.name}
+                      </span>
+                    )}
+                    <span
+                      className={`text-xs px-2 py-1 rounded ${
+                        event.status === "LIVE"
+                          ? "bg-red-100 text-red-800"
+                          : event.status === "ENDED"
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {event.status === "LIVE" ? "実施中" : event.status === "ENDED" ? "終了" : "予定"}
+                    </span>
+                  </div>
+                  <CardDescription>
+                    {event.startAt && (
+                      <span>開始: {new Date(event.startAt).toLocaleString("ja-JP")}</span>
+                    )}
+                    {event.endAt && (
+                      <span className="ml-2">終了: {new Date(event.endAt).toLocaleString("ja-JP")}</span>
+                    )}
+                  </CardDescription>
+                  {!isExpanded && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {requestsByType.REPORT_START.length > 0 && (
+                        <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          開始報告{requestsByType.REPORT_START.length}件
+                        </span>
+                      )}
+                      {requestsByType.REPORT_END.length > 0 && (
+                        <span className="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                          終了報告{requestsByType.REPORT_END.length}件
+                        </span>
+                      )}
+                      {requestsByType.REPORT_MOVE.length > 0 && (
+                        <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+                          場所変更{requestsByType.REPORT_MOVE.length}件
+                        </span>
+                      )}
+                      {requestsByType.REPORT_TIME_CHANGE.length > 0 && (
+                        <span className="text-sm bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                          時間変更{requestsByType.REPORT_TIME_CHANGE.length}件
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </CardHeader>
+                {isExpanded && (
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* 開始報告 */}
+                      {requestsByType.REPORT_START.length > 0 && (
+                        <div>
+                          <h3 className="font-semibold mb-2">
+                            開始報告 {requestsByType.REPORT_START.length}件
+                          </h3>
+                          <div className="space-y-2">
+                            {requestsByType.REPORT_START.map((req) => (
+                              <RequestItem
+                                key={req.id}
+                                request={req}
+                                selectedIds={selectedIds}
+                                onSelect={handleSelect}
+                                onBulkAction={handleBulkAction}
+                                setSelectedIds={setSelectedIds}
+                                isProcessing={isProcessing}
+                                filterStatus={filterStatus}
+                                parsePayload={parsePayload}
+                                formatDate={formatDate}
+                                setMapModal={setMapModal}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 終了報告 */}
+                      {requestsByType.REPORT_END.length > 0 && (
+                        <div>
+                          <h3 className="font-semibold mb-2">
+                            終了報告 {requestsByType.REPORT_END.length}件
+                          </h3>
+                          <div className="space-y-2">
+                            {requestsByType.REPORT_END.map((req) => (
+                              <RequestItem
+                                key={req.id}
+                                request={req}
+                                selectedIds={selectedIds}
+                                onSelect={handleSelect}
+                                onBulkAction={handleBulkAction}
+                                setSelectedIds={setSelectedIds}
+                                isProcessing={isProcessing}
+                                filterStatus={filterStatus}
+                                parsePayload={parsePayload}
+                                formatDate={formatDate}
+                                setMapModal={setMapModal}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 場所変更 */}
+                      {requestsByType.REPORT_MOVE.length > 0 && (
+                        <div>
+                          <h3 className="font-semibold mb-2">
+                            場所変更 {requestsByType.REPORT_MOVE.length}件
+                          </h3>
+                          <div className="space-y-2">
+                            {requestsByType.REPORT_MOVE.map((req) => (
+                              <RequestItem
+                                key={req.id}
+                                request={req}
+                                selectedIds={selectedIds}
+                                onSelect={handleSelect}
+                                onBulkAction={handleBulkAction}
+                                setSelectedIds={setSelectedIds}
+                                isProcessing={isProcessing}
+                                filterStatus={filterStatus}
+                                parsePayload={parsePayload}
+                                formatDate={formatDate}
+                                setMapModal={setMapModal}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 時間変更 */}
+                      {requestsByType.REPORT_TIME_CHANGE.length > 0 && (
+                        <div>
+                          <h3 className="font-semibold mb-2">
+                            時間変更 {requestsByType.REPORT_TIME_CHANGE.length}件
+                          </h3>
+                          <div className="space-y-2">
+                            {requestsByType.REPORT_TIME_CHANGE.map((req) => (
+                              <RequestItem
+                                key={req.id}
+                                request={req}
+                                selectedIds={selectedIds}
+                                onSelect={handleSelect}
+                                onBulkAction={handleBulkAction}
+                                setSelectedIds={setSelectedIds}
+                                isProcessing={isProcessing}
+                                filterStatus={filterStatus}
+                                parsePayload={parsePayload}
+                                formatDate={formatDate}
+                                setMapModal={setMapModal}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       ) : (
         <div className="space-y-4">
           {Array.from(groupedByDedupe.entries()).map(([key, group]) => {
@@ -337,7 +699,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {!isLoading && requests.length === 0 && (
+      {!isLoading && requests.length === 0 && eventsWithRequests.length === 0 && (
         <p className="text-muted-foreground">リクエストがありません。</p>
       )}
 

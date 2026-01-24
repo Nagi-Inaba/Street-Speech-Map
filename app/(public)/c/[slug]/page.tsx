@@ -281,6 +281,8 @@ export default async function CandidatePage({
                             eventLat={event.lat}
                             eventLng={event.lng}
                             eventStatus={event.status}
+                            eventStartAt={event.startAt}
+                            eventEndAt={event.endAt}
                           />
                         </div>
                       </div>
@@ -340,6 +342,8 @@ export default async function CandidatePage({
                             eventLat={event.lat}
                             eventLng={event.lng}
                             eventStatus={event.status}
+                            eventStartAt={event.startAt}
+                            eventEndAt={event.endAt}
                           />
                         </div>
                       </div>
