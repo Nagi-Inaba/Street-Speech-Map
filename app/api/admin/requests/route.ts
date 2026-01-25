@@ -216,7 +216,7 @@ export async function PATCH(request: NextRequest) {
     const newStatus = action === "approve" ? "APPROVED" : "REJECTED";
 
     // リクエストを更新
-    await prisma.publicRequest.updateMany({
+    const updateResult = await prisma.publicRequest.updateMany({
       where: {
         id: { in: ids },
         status: "PENDING",
@@ -227,6 +227,42 @@ export async function PATCH(request: NextRequest) {
         reviewedByUserId: session.user.id,
       },
     });
+
+    // 更新された件数を確認
+    if (updateResult.count === 0) {
+      // 更新された件数が0の場合、既に処理済みまたは存在しないリクエストの可能性
+      // リクエストの現在の状態を確認
+      const existingRequests = await prisma.publicRequest.findMany({
+        where: {
+          id: { in: ids },
+        },
+        select: {
+          id: true,
+          status: true,
+        },
+      });
+
+      const notFoundIds = ids.filter(
+        (id) => !existingRequests.some((r) => r.id === id)
+      );
+      const alreadyProcessedIds = existingRequests
+        .filter((r) => r.status !== "PENDING")
+        .map((r) => r.id);
+
+      if (notFoundIds.length > 0 || alreadyProcessedIds.length > 0) {
+        return NextResponse.json(
+          {
+            error: "一部のリクエストは処理できませんでした",
+            details: {
+              notFound: notFoundIds,
+              alreadyProcessed: alreadyProcessedIds,
+              updatedCount: updateResult.count,
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 承認されたリクエストを処理
     if (action === "approve") {
@@ -384,9 +420,17 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      updatedCount: updateResult.count,
+    });
   } catch (error) {
     console.error("Error processing requests:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json(
+      { error: "リクエストの処理中にエラーが発生しました", details: errorMessage },
+      { status: 500 }
+    );
   }
 }

@@ -289,15 +289,38 @@ export default function RequestsPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         await fetchRequests();
         setSelectedIds(new Set());
+        if (data.updatedCount !== undefined && data.updatedCount < ids.size) {
+          alert(
+            `${data.updatedCount}件のリクエストを処理しました。${ids.size - data.updatedCount}件は既に処理済みまたは存在しませんでした。`
+          );
+        }
       } else {
-        alert("処理に失敗しました");
+        const errorMessage =
+          data.details || data.error || "処理に失敗しました";
+        if (data.details && typeof data.details === "object") {
+          const details = data.details;
+          let message = errorMessage + "\n\n";
+          if (details.notFound && details.notFound.length > 0) {
+            message += `存在しないリクエスト: ${details.notFound.length}件\n`;
+          }
+          if (details.alreadyProcessed && details.alreadyProcessed.length > 0) {
+            message += `既に処理済み: ${details.alreadyProcessed.length}件\n`;
+          }
+          alert(message);
+        } else {
+          alert(errorMessage);
+        }
       }
     } catch (error) {
       console.error("Error processing requests:", error);
-      alert("エラーが発生しました");
+      const errorMessage =
+        error instanceof Error ? error.message : "エラーが発生しました";
+      alert(`エラーが発生しました: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
     }
