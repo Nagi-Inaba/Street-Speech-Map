@@ -232,7 +232,10 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
                           <span className="font-medium whitespace-nowrap">{event.candidate.name}</span>
                           {event.additionalCandidates && event.additionalCandidates.length > 0 && (
                             <span className="text-xs text-muted-foreground">
-                              合同: {event.additionalCandidates.map((ec) => ec.candidate.name).join("、")}
+                              合同: {event.additionalCandidates
+                                .filter((ec) => ec.candidate && ec.candidate.name)
+                                .map((ec) => ec.candidate.name)
+                                .join("、")}
                             </span>
                           )}
                         </div>
