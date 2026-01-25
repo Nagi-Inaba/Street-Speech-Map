@@ -165,7 +165,25 @@ export async function GET(request: NextRequest) {
       });
 
       // イベントごとにリクエストをまとめる
-      const result = events.map((event) => {
+      type EventWithRequestsResult = {
+        event: {
+          id: string | null;
+          locationText: string;
+          startAt: Date | null;
+          endAt: Date | null;
+          status: string | null;
+          candidate: (typeof events)[0]["candidate"] | null;
+        };
+        requests: typeof allRequests;
+        requestsByType: {
+          REPORT_START: typeof allRequests;
+          REPORT_END: typeof allRequests;
+          REPORT_MOVE: typeof allRequests;
+          REPORT_TIME_CHANGE: typeof allRequests;
+        };
+      };
+
+      const result: EventWithRequestsResult[] = events.map((event) => {
         const eventRequests = allGroupedByEvent.get(event.id) || [];
         // リクエストタイプごとにグループ化
         const requestsByType = {
