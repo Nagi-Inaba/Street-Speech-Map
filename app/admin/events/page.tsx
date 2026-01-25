@@ -3,25 +3,49 @@ import EventsPageClient from "./page-client";
 
 export default async function EventsPage() {
   try {
-    const events = await prisma.speechEvent.findMany({
-      include: {
-        candidate: true,
-        additionalCandidates: {
+    // EventCandidateテーブルが存在するか確認
+    let events;
+    try {
+      events = await prisma.speechEvent.findMany({
+        include: {
+          candidate: true,
+          additionalCandidates: {
+            include: {
+              candidate: true,
+            },
+          },
+          reports: {
+            where: {
+              kind: "check",
+            },
+          },
+        },
+        orderBy: [
+          { startAt: "asc" },
+          { createdAt: "desc" },
+        ],
+      });
+    } catch (error: any) {
+      // EventCandidateテーブルが存在しない場合、additionalCandidatesなしで取得
+      if (error?.message?.includes("EventCandidate") || error?.message?.includes("does not exist")) {
+        events = await prisma.speechEvent.findMany({
           include: {
             candidate: true,
+            reports: {
+              where: {
+                kind: "check",
+              },
+            },
           },
-        },
-        reports: {
-          where: {
-            kind: "check",
-          },
-        },
-      },
-      orderBy: [
-        { startAt: "asc" },
-        { createdAt: "desc" },
-      ],
-    });
+          orderBy: [
+            { startAt: "asc" },
+            { createdAt: "desc" },
+          ],
+        });
+      } else {
+        throw error;
+      }
+    }
 
     const candidates = await prisma.candidate.findMany({
       orderBy: { name: "asc" },
@@ -29,18 +53,20 @@ export default async function EventsPage() {
 
     // 確認件数を追加し、安全にデータを変換
     const eventsWithCheckCount = events.map((event) => {
-      // additionalCandidatesを安全に処理
-      const safeAdditionalCandidates = (event.additionalCandidates || [])
-        .filter((ec) => ec && ec.candidate && ec.candidate.id && ec.candidate.name)
-        .map((ec) => ({
-          id: ec.id,
-          candidateId: ec.candidateId,
-          candidate: {
-            id: ec.candidate.id,
-            name: ec.candidate.name,
-            slug: ec.candidate.slug,
-          },
-        }));
+      // additionalCandidatesを安全に処理（テーブルが存在しない場合は空配列）
+      const safeAdditionalCandidates = ('additionalCandidates' in event && event.additionalCandidates)
+        ? (event.additionalCandidates as any[])
+            .filter((ec) => ec && ec.candidate && ec.candidate.id && ec.candidate.name)
+            .map((ec) => ({
+              id: ec.id,
+              candidateId: ec.candidateId,
+              candidate: {
+                id: ec.candidate.id,
+                name: ec.candidate.name,
+                slug: ec.candidate.slug,
+              },
+            }))
+        : [];
 
       return {
         id: event.id,
