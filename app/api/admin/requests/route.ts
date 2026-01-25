@@ -326,9 +326,16 @@ export async function PATCH(request: NextRequest) {
             try {
               const payload = JSON.parse(req.payload);
               
-              // 必須フィールドの検証
-              if (!payload.locationText || payload.lat === undefined || payload.lng === undefined) {
-                throw new Error("必須フィールド（場所、座標）が不足しています");
+              // 必須フィールドの検証（詳細なエラーメッセージ）
+              const missingFields: string[] = [];
+              if (!payload.locationText) missingFields.push("場所 (locationText)");
+              if (payload.lat === undefined || payload.lat === null) missingFields.push("緯度 (lat)");
+              if (payload.lng === undefined || payload.lng === null) missingFields.push("経度 (lng)");
+              
+              if (missingFields.length > 0) {
+                throw new Error(
+                  `必須フィールドが不足しています: ${missingFields.join(", ")}`
+                );
               }
 
               await prisma.speechEvent.create({
