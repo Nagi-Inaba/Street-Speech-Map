@@ -30,7 +30,7 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-6">一覧</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6">一覧</h2>
 
         {visibleCandidates.length === 0 ? (
           <p className="text-muted-foreground">登録されていません。</p>

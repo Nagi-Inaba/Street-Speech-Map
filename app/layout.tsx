@@ -28,6 +28,11 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.png",
   },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+  },
   openGraph: {
     title: "チームみらい 街頭演説マップ",
     description: "候補者の街頭演説予定・実施中・終了を地図で可視化",

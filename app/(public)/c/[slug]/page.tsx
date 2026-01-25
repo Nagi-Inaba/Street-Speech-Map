@@ -249,7 +249,7 @@ export default async function CandidatePage({
               />
             </div>
           )}
-          <h1 className="text-4xl font-bold mb-2">{candidate.name}</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">{candidate.name}</h1>
           {(() => {
             // 党首の場合は常に「党首」と表示
             if (candidate.type === "PARTY_LEADER") {
@@ -274,9 +274,9 @@ export default async function CandidatePage({
         {/* 地図エリア（上部に配置） */}
         {showEvents && allMarkers.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">地図</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">地図</h2>
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-2 sm:p-4">
                 <CandidateMap center={mapCenter} markers={allMarkers} />
               </CardContent>
             </Card>
@@ -286,7 +286,7 @@ export default async function CandidatePage({
         {/* 実施中の演説予定 */}
         {showEvents && liveEvents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-red-600">🔴 実施中</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-red-600">🔴 実施中</h2>
             <div className="space-y-4">
               {liveEvents.map((event) => (
                 <Card key={event.id} className="border-red-200 bg-red-50">
@@ -294,8 +294,8 @@ export default async function CandidatePage({
                     <CardTitle>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span>{event.locationText}</span>
-                          <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800">
+                          <span className="break-words">{event.locationText}</span>
+                          <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800 whitespace-nowrap">
                             実施中
                           </span>
                         </div>
@@ -321,7 +321,7 @@ export default async function CandidatePage({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <p className="text-sm text-muted-foreground">
                         登録時刻: {formatJST(event.submittedAt)}
                       </p>
@@ -347,7 +347,7 @@ export default async function CandidatePage({
         {/* 予定の演説予定 */}
         {showEvents && plannedEvents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">📅 予定</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">📅 予定</h2>
             <div className="space-y-4">
               {plannedEvents.map((event) => (
                 <Card key={event.id} id={`event-${event.id}`}>
@@ -355,8 +355,8 @@ export default async function CandidatePage({
                     <CardTitle>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span>{event.locationText}</span>
-                          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                          <span className="break-words">{event.locationText}</span>
+                          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800 whitespace-nowrap">
                             予定
                           </span>
                         </div>
@@ -382,7 +382,7 @@ export default async function CandidatePage({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <p className="text-sm text-muted-foreground">
                         登録時刻: {formatJST(event.submittedAt)}
                       </p>
@@ -409,7 +409,7 @@ export default async function CandidatePage({
         {/* 終了した演説予定 */}
         {showEvents && endedEvents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-muted-foreground">終了</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-muted-foreground">終了</h2>
             <div className="space-y-4">
               {endedEvents.map((event) => (
                 <Card key={event.id} className="opacity-60">

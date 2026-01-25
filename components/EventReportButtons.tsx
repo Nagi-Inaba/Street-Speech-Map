@@ -252,7 +252,7 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
 
       {/* 場所変更の地図モーダル */}
       <Dialog open={showMoveMap} onOpenChange={setShowMoveMap}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>場所変更の報告</DialogTitle>
             <DialogDescription>
