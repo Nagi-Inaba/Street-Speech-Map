@@ -6,6 +6,7 @@ import { z } from "zod";
 
 const eventSchema = z.object({
   candidateId: z.string(),
+  additionalCandidateIds: z.array(z.string()).optional().default([]),
   startAt: z.string().nullable().optional(),
   endAt: z.string().nullable().optional(),
   timeUnknown: z.boolean().default(false),
@@ -24,6 +25,11 @@ export async function GET() {
   const events = await prisma.speechEvent.findMany({
     include: {
       candidate: true,
+      additionalCandidates: {
+        include: {
+          candidate: true,
+        },
+      },
     },
     orderBy: [
       { startAt: "asc" },
@@ -44,6 +50,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = eventSchema.parse(body);
 
+    // メイン候補者と合同演説者が重複していないかチェック
+    const allCandidateIds = [data.candidateId, ...(data.additionalCandidateIds || [])];
+    const uniqueCandidateIds = [...new Set(allCandidateIds)];
+    if (uniqueCandidateIds.length !== allCandidateIds.length) {
+      return NextResponse.json(
+        { error: "メイン候補者と合同演説者が重複しています" },
+        { status: 400 }
+      );
+    }
+
     const event = await prisma.speechEvent.create({
       data: {
         candidateId: data.candidateId,
@@ -55,6 +71,21 @@ export async function POST(request: NextRequest) {
         lng: data.lng,
         notes: data.notes || null,
         status: "PLANNED",
+        additionalCandidates: {
+          create: (data.additionalCandidateIds || [])
+            .filter((id) => id && id !== data.candidateId)
+            .map((candidateId) => ({
+              candidateId,
+            })),
+        },
+      },
+      include: {
+        candidate: true,
+        additionalCandidates: {
+          include: {
+            candidate: true,
+          },
+        },
       },
     });
 

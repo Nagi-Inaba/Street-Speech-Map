@@ -5,6 +5,11 @@ export default async function EventsPage() {
   const events = await prisma.speechEvent.findMany({
     include: {
       candidate: true,
+      additionalCandidates: {
+        include: {
+          candidate: true,
+        },
+      },
       reports: {
         where: {
           kind: "check",

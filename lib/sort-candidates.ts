@@ -1,6 +1,11 @@
 import { PREFECTURES, PROPORTIONAL_BLOCKS, type Prefecture, type ProportionalBlock } from "./constants";
 
 /**
+ * 都道府県の順序（PREFECTURESの順序に基づく）
+ */
+const PREFECTURE_ORDER = PREFECTURES;
+
+/**
  * 地域ブロックの順序（北から南）
  */
 const REGION_ORDER = [
@@ -90,9 +95,11 @@ function convertProportionalBlockToRegion(block: string | null): string | null {
   return blockMap[block] || null;
 }
 
+
 /**
  * 地域ブロックの順序に基づいて候補者をソートする関数
  * 北海道、東北、関東、東海、北陸、近畿、中国地方、四国、九州・沖縄の順に並べます
+ * 同じ地域ブロック内では都道府県の順序で並べます
  */
 export function sortCandidatesByRegion<T extends { prefecture: string | null; region: string | null }>(
   candidates: T[]
@@ -115,6 +122,33 @@ export function sortCandidatesByRegion<T extends { prefecture: string | null; re
       const indexA = REGION_ORDER.indexOf(finalRegionA as typeof REGION_ORDER[number]);
       const indexB = REGION_ORDER.indexOf(finalRegionB as typeof REGION_ORDER[number]);
       if (indexA !== -1 && indexB !== -1) {
+        // 同じ地域ブロック内の場合、都道府県の順序でソート
+        if (indexA === indexB) {
+          // prefectureがある場合、都道府県の順序でソート
+          if (a.prefecture && b.prefecture) {
+            const prefIndexA = PREFECTURE_ORDER.indexOf(a.prefecture);
+            const prefIndexB = PREFECTURE_ORDER.indexOf(b.prefecture);
+            if (prefIndexA !== -1 && prefIndexB !== -1) {
+              // 同じ都道府県内の場合、region（選挙区）でソート
+              if (prefIndexA === prefIndexB && a.region && b.region) {
+                // 選挙区番号を抽出（例: "東京都第1区" -> 1）
+                const extractDistrictNumber = (region: string): number => {
+                  const match = region.match(/第(\d+)区/);
+                  return match ? parseInt(match[1], 10) : 0;
+                };
+                const districtNumA = extractDistrictNumber(a.region);
+                const districtNumB = extractDistrictNumber(b.region);
+                if (districtNumA > 0 && districtNumB > 0) {
+                  return districtNumA - districtNumB;
+                }
+              }
+              return prefIndexA - prefIndexB;
+            }
+          }
+          // prefectureがある方を前に
+          if (a.prefecture && !b.prefecture) return -1;
+          if (!a.prefecture && b.prefecture) return 1;
+        }
         return indexA - indexB;
       }
       if (indexA !== -1) return -1;

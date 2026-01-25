@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LeafletMap from "@/components/Map/LeafletMap";
-import { X } from "lucide-react";
+import { X, MapPin, Info } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -34,6 +35,8 @@ interface EventWithRequests {
   };
   requests: PublicRequest[];
   requestsByType: {
+    CREATE_EVENT: PublicRequest[];
+    UPDATE_EVENT: PublicRequest[];
     REPORT_START: PublicRequest[];
     REPORT_END: PublicRequest[];
     REPORT_MOVE: PublicRequest[];
@@ -68,6 +71,7 @@ interface RequestItemProps {
   parsePayload: (payload: string) => any;
   formatDate: (dateString: string) => string;
   setMapModal: (modal: { lat: number; lng: number; locationText?: string } | null) => void;
+  setDetailModal: (request: PublicRequest | null) => void;
 }
 
 function RequestItem({
@@ -81,6 +85,7 @@ function RequestItem({
   parsePayload,
   formatDate,
   setMapModal,
+  setDetailModal,
 }: RequestItemProps) {
   const payload = parsePayload(request.payload);
   const isPublicReport = request.id.startsWith("report_"); // PublicReport由来のリクエスト
@@ -115,6 +120,9 @@ function RequestItem({
         </span>
       </div>
       <div className="text-sm space-y-1 mb-2">
+        {payload.locationText && (
+          <p className="text-xs font-medium">場所: {payload.locationText}</p>
+        )}
         {(payload.lat && payload.lng) && (
           <div className="flex items-center gap-2">
             <p className="text-xs">
@@ -123,10 +131,11 @@ function RequestItem({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setMapModal({ lat: payload.lat, lng: payload.lng })}
+              onClick={() => setMapModal({ lat: payload.lat, lng: payload.lng, locationText: payload.locationText })}
               className="text-xs h-6"
             >
-              地図を表示
+              <MapPin className="h-3 w-3 mr-1" />
+              地図
             </Button>
           </div>
         )}
@@ -141,9 +150,20 @@ function RequestItem({
               onClick={() => setMapModal({ lat: payload.newLat, lng: payload.newLng, locationText: payload.locationText })}
               className="text-xs h-6"
             >
-              地図を表示
+              <MapPin className="h-3 w-3 mr-1" />
+              地図
             </Button>
           </div>
+        )}
+        {payload.startAt && (
+          <p className="text-xs">
+            開始: {new Date(payload.startAt).toLocaleString("ja-JP")}
+          </p>
+        )}
+        {payload.endAt && (
+          <p className="text-xs">
+            終了: {new Date(payload.endAt).toLocaleString("ja-JP")}
+          </p>
         )}
         {payload.newStartAt && (
           <p className="text-xs">
@@ -156,33 +176,44 @@ function RequestItem({
           </p>
         )}
       </div>
-      {request.status === "PENDING" && !isPublicReport && (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedIds(new Set([request.id]));
-              onBulkAction("approve", new Set([request.id]));
-            }}
-            disabled={isProcessing}
-            className="h-7 text-xs"
-          >
-            承認
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSelectedIds(new Set([request.id]));
-              onBulkAction("reject", new Set([request.id]));
-            }}
-            disabled={isProcessing}
-            className="h-7 text-xs"
-          >
-            却下
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-2 mt-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setDetailModal(request)}
+          className="h-7 text-xs"
+        >
+          <Info className="h-3 w-3 mr-1" />
+          詳細
+        </Button>
+        {request.status === "PENDING" && !isPublicReport && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedIds(new Set([request.id]));
+                onBulkAction("approve", new Set([request.id]));
+              }}
+              disabled={isProcessing}
+              className="h-7 text-xs"
+            >
+              承認
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedIds(new Set([request.id]));
+                onBulkAction("reject", new Set([request.id]));
+              }}
+              disabled={isProcessing}
+              className="h-7 text-xs"
+            >
+              却下
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -194,10 +225,11 @@ export default function RequestsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterCandidateId, setFilterCandidateId] = useState("");
   const [filterStatus, setFilterStatus] = useState("PENDING");
-  const [groupByEvent, setGroupByEvent] = useState(true);
+  const [groupByEvent, setGroupByEvent] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mapModal, setMapModal] = useState<{ lat: number; lng: number; locationText?: string } | null>(null);
+  const [detailModal, setDetailModal] = useState<PublicRequest | null>(null);
 
   const fetchRequests = async () => {
     setIsLoading(true);
@@ -462,207 +494,82 @@ export default function RequestsPage() {
         <p className="text-muted-foreground">読み込み中...</p>
       ) : groupByEvent && eventsWithRequests.length > 0 ? (
         <div className="space-y-4">
-          {(() => {
-            // すべてのイベントからリクエストを収集し、報告タイプごとにグループ化
-            const allRequestsByType = {
-              CREATE_EVENT: [] as PublicRequest[],
-              UPDATE_EVENT: [] as PublicRequest[],
-              REPORT_START: [] as PublicRequest[],
-              REPORT_END: [] as PublicRequest[],
-              REPORT_MOVE: [] as PublicRequest[],
-              REPORT_TIME_CHANGE: [] as PublicRequest[],
-            };
-
-            eventsWithRequests.forEach((eventWithRequests) => {
-              // filterStatusでフィルタリング（API側で既にフィルタリングされているが、念のため）
-              // filterStatusが空文字列の場合はすべて表示
-              const filteredRequests = eventWithRequests.requests.filter(
-                (r) => !filterStatus || filterStatus === "" || r.status === filterStatus
-              );
-
-              filteredRequests.forEach((req) => {
-                if (req.type === "CREATE_EVENT") allRequestsByType.CREATE_EVENT.push(req);
-                else if (req.type === "UPDATE_EVENT") allRequestsByType.UPDATE_EVENT.push(req);
-                else if (req.type === "REPORT_START") allRequestsByType.REPORT_START.push(req);
-                else if (req.type === "REPORT_END") allRequestsByType.REPORT_END.push(req);
-                else if (req.type === "REPORT_MOVE") allRequestsByType.REPORT_MOVE.push(req);
-                else if (req.type === "REPORT_TIME_CHANGE") allRequestsByType.REPORT_TIME_CHANGE.push(req);
-              });
-            });
-
-            // 報告タイプごとに表示
-            return (
-              <>
-                {/* 新規演説予定 */}
-                {allRequestsByType.CREATE_EVENT.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>新規演説予定 {allRequestsByType.CREATE_EVENT.length}件</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {allRequestsByType.CREATE_EVENT.map((req) => (
-                          <RequestItem
-                            key={req.id}
-                            request={req}
-                            selectedIds={selectedIds}
-                            onSelect={handleSelect}
-                            onBulkAction={handleBulkAction}
-                            setSelectedIds={setSelectedIds}
-                            isProcessing={isProcessing}
-                            filterStatus={filterStatus}
-                            parsePayload={parsePayload}
-                            formatDate={formatDate}
-                            setMapModal={setMapModal}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 演説予定更新 */}
-                {allRequestsByType.UPDATE_EVENT.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>演説予定更新 {allRequestsByType.UPDATE_EVENT.length}件</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {allRequestsByType.UPDATE_EVENT.map((req) => (
-                          <RequestItem
-                            key={req.id}
-                            request={req}
-                            selectedIds={selectedIds}
-                            onSelect={handleSelect}
-                            onBulkAction={handleBulkAction}
-                            setSelectedIds={setSelectedIds}
-                            isProcessing={isProcessing}
-                            filterStatus={filterStatus}
-                            parsePayload={parsePayload}
-                            formatDate={formatDate}
-                            setMapModal={setMapModal}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 開始報告 */}
-                {allRequestsByType.REPORT_START.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>開始報告 {allRequestsByType.REPORT_START.length}件</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {allRequestsByType.REPORT_START.map((req) => (
-                          <RequestItem
-                            key={req.id}
-                            request={req}
-                            selectedIds={selectedIds}
-                            onSelect={handleSelect}
-                            onBulkAction={handleBulkAction}
-                            setSelectedIds={setSelectedIds}
-                            isProcessing={isProcessing}
-                            filterStatus={filterStatus}
-                            parsePayload={parsePayload}
-                            formatDate={formatDate}
-                            setMapModal={setMapModal}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 終了報告 */}
-                {allRequestsByType.REPORT_END.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>終了報告 {allRequestsByType.REPORT_END.length}件</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {allRequestsByType.REPORT_END.map((req) => (
-                          <RequestItem
-                            key={req.id}
-                            request={req}
-                            selectedIds={selectedIds}
-                            onSelect={handleSelect}
-                            onBulkAction={handleBulkAction}
-                            setSelectedIds={setSelectedIds}
-                            isProcessing={isProcessing}
-                            filterStatus={filterStatus}
-                            parsePayload={parsePayload}
-                            formatDate={formatDate}
-                            setMapModal={setMapModal}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 場所変更 */}
-                {allRequestsByType.REPORT_MOVE.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>場所変更報告 {allRequestsByType.REPORT_MOVE.length}件</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {allRequestsByType.REPORT_MOVE.map((req) => (
-                          <RequestItem
-                            key={req.id}
-                            request={req}
-                            selectedIds={selectedIds}
-                            onSelect={handleSelect}
-                            onBulkAction={handleBulkAction}
-                            setSelectedIds={setSelectedIds}
-                            isProcessing={isProcessing}
-                            filterStatus={filterStatus}
-                            parsePayload={parsePayload}
-                            formatDate={formatDate}
-                            setMapModal={setMapModal}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 時間変更 */}
-                {allRequestsByType.REPORT_TIME_CHANGE.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>時間変更報告 {allRequestsByType.REPORT_TIME_CHANGE.length}件</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {allRequestsByType.REPORT_TIME_CHANGE.map((req) => (
-                          <RequestItem
-                            key={req.id}
-                            request={req}
-                            selectedIds={selectedIds}
-                            onSelect={handleSelect}
-                            onBulkAction={handleBulkAction}
-                            setSelectedIds={setSelectedIds}
-                            isProcessing={isProcessing}
-                            filterStatus={filterStatus}
-                            parsePayload={parsePayload}
-                            formatDate={formatDate}
-                            setMapModal={setMapModal}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
+          {eventsWithRequests.map((eventWithRequests, index) => {
+            // filterStatusでフィルタリング
+            const filteredRequests = eventWithRequests.requests.filter(
+              (r) => !filterStatus || filterStatus === "" || r.status === filterStatus
             );
-          })()}
+
+            if (filteredRequests.length === 0) return null;
+
+            const isEventCreated = eventWithRequests.event.id !== null;
+            const event = eventWithRequests.event;
+
+            return (
+              <Card key={event.id || `no-event-${index}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>
+                      {isEventCreated ? (
+                        <>
+                          {event.candidate?.name || "候補者不明"} - {event.locationText}
+                        </>
+                      ) : (
+                        "イベント未作成のリクエスト"
+                      )}
+                    </span>
+                    {isEventCreated && (
+                      <span className={`text-sm px-2 py-1 rounded ${
+                        event.status === "LIVE" ? "bg-red-100 text-red-800" :
+                        event.status === "ENDED" ? "bg-gray-100 text-gray-800" :
+                        "bg-blue-100 text-blue-800"
+                      }`}>
+                        {event.status === "PLANNED" ? "予定" :
+                         event.status === "LIVE" ? "実施中" : "終了"}
+                      </span>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {isEventCreated ? (
+                      <>
+                        {event.startAt && (
+                          <span>開始: {new Date(event.startAt).toLocaleString("ja-JP")}</span>
+                        )}
+                        {event.endAt && (
+                          <span className="ml-4">終了: {new Date(event.endAt).toLocaleString("ja-JP")}</span>
+                        )}
+                        {!event.startAt && !event.endAt && (
+                          <span>時間未定</span>
+                        )}
+                      </>
+                    ) : (
+                      <span>新規登録や更新のリクエスト</span>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {filteredRequests.map((req) => (
+                      <RequestItem
+                        key={req.id}
+                        request={req}
+                        selectedIds={selectedIds}
+                        onSelect={handleSelect}
+                        onBulkAction={handleBulkAction}
+                        setSelectedIds={setSelectedIds}
+                        isProcessing={isProcessing}
+                        filterStatus={filterStatus}
+                        parsePayload={parsePayload}
+                        formatDate={formatDate}
+                        setMapModal={setMapModal}
+                        setDetailModal={setDetailModal}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-4">
@@ -736,37 +643,53 @@ export default function RequestsPage() {
                           onClick={() => setMapModal({ lat: payload.lat, lng: payload.lng, locationText: payload.locationText })}
                           className="text-xs"
                         >
-                          地図を表示
+                          <MapPin className="h-3 w-3 mr-1" />
+                          地図
                         </Button>
                       </div>
                     )}
+                    {(!payload.lat || !payload.lng) && (
+                      <p className="text-xs text-yellow-600">
+                        ⚠️ 位置情報が不足しています
+                      </p>
+                    )}
                   </div>
                   
-                  {representative.status === "PENDING" && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedIds(new Set([representative.id]));
-                          handleBulkAction("approve");
-                        }}
-                        disabled={isProcessing}
-                      >
-                        承認
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedIds(new Set([representative.id]));
-                          handleBulkAction("reject");
-                        }}
-                        disabled={isProcessing}
-                      >
-                        却下
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setDetailModal(representative)}
+                    >
+                      <Info className="h-4 w-4 mr-1" />
+                      詳細
+                    </Button>
+                    {representative.status === "PENDING" && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedIds(new Set([representative.id]));
+                            handleBulkAction("approve");
+                          }}
+                          disabled={isProcessing}
+                        >
+                          承認
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedIds(new Set([representative.id]));
+                            handleBulkAction("reject");
+                          }}
+                          disabled={isProcessing}
+                        >
+                          却下
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -814,6 +737,164 @@ export default function RequestsPage() {
           </div>
         </div>
       )}
+
+      {/* 詳細表示モーダル */}
+      <Dialog open={!!detailModal} onOpenChange={(open) => !open && setDetailModal(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {detailModal && (() => {
+            const payload = parsePayload(detailModal.payload);
+            const isPublicReport = detailModal.id.startsWith("report_");
+            
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>
+                    {TYPE_LABELS[detailModal.type] || detailModal.type} - 詳細情報
+                  </DialogTitle>
+                  <DialogDescription>
+                    {detailModal.candidate?.name || "候補者不明"} | {formatDate(detailModal.createdAt)}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  {/* 基本情報 */}
+                  <div>
+                    <h3 className="font-semibold mb-2">基本情報</h3>
+                    <div className="bg-muted p-3 rounded-md space-y-1 text-sm">
+                      <p><span className="font-medium">ステータス:</span> {STATUS_LABELS[detailModal.status] || detailModal.status}</p>
+                      <p><span className="font-medium">リクエストID:</span> {detailModal.id}</p>
+                      {detailModal.candidate && (
+                        <p><span className="font-medium">候補者:</span> {detailModal.candidate.name}</p>
+                      )}
+                      {detailModal.eventId && (
+                        <p><span className="font-medium">イベントID:</span> {detailModal.eventId}</p>
+                      )}
+                      {isPublicReport && (
+                        <p className="text-xs text-muted-foreground">（自動処理済みの報告）</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 場所情報 */}
+                  {(payload.locationText || payload.lat || payload.lng) && (
+                    <div>
+                      <h3 className="font-semibold mb-2">場所情報</h3>
+                      <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                        {payload.locationText && (
+                          <p><span className="font-medium">場所:</span> {payload.locationText}</p>
+                        )}
+                        {(payload.lat && payload.lng) && (
+                          <div className="flex items-center gap-2">
+                            <p><span className="font-medium">座標:</span> {payload.lat.toFixed(6)}, {payload.lng.toFixed(6)}</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setMapModal({ lat: payload.lat, lng: payload.lng, locationText: payload.locationText });
+                                setDetailModal(null);
+                              }}
+                            >
+                              <MapPin className="h-4 w-4 mr-1" />
+                              地図で確認
+                            </Button>
+                          </div>
+                        )}
+                        {!payload.lat || !payload.lng ? (
+                          <p className="text-xs text-yellow-600">
+                            ⚠️ 位置情報が不足しています。地図で位置を確認できません。
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 時間情報 */}
+                  {(payload.startAt || payload.endAt || payload.timeUnknown || payload.newStartAt || payload.newEndAt) && (
+                    <div>
+                      <h3 className="font-semibold mb-2">時間情報</h3>
+                      <div className="bg-muted p-3 rounded-md space-y-1 text-sm">
+                        {payload.timeUnknown && (
+                          <p><span className="font-medium">時間未定:</span> はい</p>
+                        )}
+                        {payload.startAt && (
+                          <p><span className="font-medium">開始時刻:</span> {new Date(payload.startAt).toLocaleString("ja-JP")}</p>
+                        )}
+                        {payload.endAt && (
+                          <p><span className="font-medium">終了時刻:</span> {new Date(payload.endAt).toLocaleString("ja-JP")}</p>
+                        )}
+                        {payload.newStartAt && (
+                          <p><span className="font-medium">新しい開始時刻:</span> {new Date(payload.newStartAt).toLocaleString("ja-JP")}</p>
+                        )}
+                        {payload.newEndAt && (
+                          <p><span className="font-medium">新しい終了時刻:</span> {new Date(payload.newEndAt).toLocaleString("ja-JP")}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 変更情報（REPORT_MOVE, REPORT_TIME_CHANGE） */}
+                  {(payload.newLat || payload.newLng) && (
+                    <div>
+                      <h3 className="font-semibold mb-2">変更後の位置</h3>
+                      <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <p><span className="font-medium">新しい座標:</span> {payload.newLat.toFixed(6)}, {payload.newLng.toFixed(6)}</p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setMapModal({ lat: payload.newLat, lng: payload.newLng, locationText: payload.locationText });
+                              setDetailModal(null);
+                            }}
+                          >
+                            <MapPin className="h-4 w-4 mr-1" />
+                            地図で確認
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 全データ（JSON形式） */}
+                  <div>
+                    <h3 className="font-semibold mb-2">全データ（JSON）</h3>
+                    <pre className="bg-muted p-3 rounded-md text-xs overflow-auto max-h-60">
+                      {JSON.stringify(payload, null, 2)}
+                    </pre>
+                  </div>
+
+                  {/* 操作ボタン */}
+                  {detailModal.status === "PENDING" && !isPublicReport && (
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        onClick={() => {
+                          setSelectedIds(new Set([detailModal.id]));
+                          handleBulkAction("approve", new Set([detailModal.id]));
+                          setDetailModal(null);
+                        }}
+                        disabled={isProcessing}
+                      >
+                        承認
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedIds(new Set([detailModal.id]));
+                          handleBulkAction("reject", new Set([detailModal.id]));
+                          setDetailModal(null);
+                        }}
+                        disabled={isProcessing}
+                      >
+                        却下
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

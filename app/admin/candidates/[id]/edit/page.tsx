@@ -26,7 +26,7 @@ export default function EditCandidatePage() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [type, setType] = useState<"SINGLE" | "PROPORTIONAL">("PROPORTIONAL");
+  const [type, setType] = useState<"SINGLE" | "PROPORTIONAL" | "SUPPORT" | "PARTY_LEADER" | "">("");
   const [prefecture, setPrefecture] = useState("");
   const [proportionalBlock, setProportionalBlock] = useState("");
   const [singleDistrict, setSingleDistrict] = useState("");
@@ -51,7 +51,7 @@ export default function EditCandidatePage() {
         setCandidate(data);
         setName(data.name);
         setSlug(data.slug);
-        setType(data.type);
+        setType(data.type || "");
         setPrefecture(data.prefecture || "");
         setProportionalBlock(data.type === "PROPORTIONAL" ? (data.region || "") : "");
         setSingleDistrict(data.type === "SINGLE" ? (data.region || "") : "");
@@ -72,11 +72,22 @@ export default function EditCandidatePage() {
     try {
       // regionフィールドに比例ブロックまたは小選挙区名を設定
       let regionValue: string | null = null;
+      let typeValue: string | null = null;
+      let prefectureValue: string | null = null;
+      
       if (type === "PROPORTIONAL") {
+        typeValue = "PROPORTIONAL";
         regionValue = proportionalBlock || null;
       } else if (type === "SINGLE") {
+        typeValue = "SINGLE";
+        prefectureValue = prefecture || null;
         regionValue = singleDistrict || null;
+      } else if (type === "SUPPORT") {
+        typeValue = "SUPPORT";
+      } else if (type === "PARTY_LEADER") {
+        typeValue = "PARTY_LEADER";
       }
+      // typeが空文字列の場合はnull（立候補区分を表示しない）
 
       const res = await fetch(`/api/admin/candidates/${candidateId}`, {
         method: "PUT",
@@ -84,8 +95,8 @@ export default function EditCandidatePage() {
         body: JSON.stringify({
           name,
           slug,
-          type,
-          prefecture: type === "SINGLE" ? (prefecture || null) : null,
+          type: typeValue,
+          prefecture: prefectureValue,
           region: regionValue,
           imageUrl: imageUrl || null,
         }),
@@ -162,25 +173,32 @@ export default function EditCandidatePage() {
             </div>
             <div>
               <label htmlFor="type" className="block text-sm font-medium mb-1">
-                立候補区分 *
+                立候補区分
               </label>
               <select
                 id="type"
                 value={type}
                 onChange={(e) => {
-                  setType(e.target.value as "SINGLE" | "PROPORTIONAL");
-                  if (e.target.value === "PROPORTIONAL") {
+                  const newType = e.target.value as "SINGLE" | "PROPORTIONAL" | "SUPPORT" | "PARTY_LEADER" | "";
+                  setType(newType);
+                  if (newType === "PROPORTIONAL") {
                     setPrefecture("");
                     setSingleDistrict("");
+                  } else if (newType === "SINGLE") {
+                    setProportionalBlock("");
                   } else {
+                    setPrefecture("");
+                    setSingleDistrict("");
                     setProportionalBlock("");
                   }
                 }}
-                required
                 className="w-full px-3 py-2 border rounded-md bg-white"
               >
-                <option value="PROPORTIONAL">比例</option>
+                <option value="">表示しない</option>
                 <option value="SINGLE">小選挙区</option>
+                <option value="PROPORTIONAL">比例</option>
+                <option value="SUPPORT">応援弁士</option>
+                <option value="PARTY_LEADER">党首</option>
               </select>
             </div>
 

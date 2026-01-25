@@ -65,6 +65,8 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
         endAt: timeUnknown || !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute),
         timeUnknown,
         locationText,
+        lat,
+        lng,
       };
 
       const res = await fetch("/api/public/requests", {

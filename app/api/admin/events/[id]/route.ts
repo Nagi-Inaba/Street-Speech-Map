@@ -6,6 +6,7 @@ import { z } from "zod";
 
 const updateEventSchema = z.object({
   candidateId: z.string(),
+  additionalCandidateIds: z.array(z.string()).optional().default([]),
   status: z.enum(["PLANNED", "LIVE", "ENDED"]),
   startAt: z.string().nullable().optional(),
   endAt: z.string().nullable().optional(),
@@ -33,6 +34,11 @@ export async function GET(
       where: { id },
       include: {
         candidate: true,
+        additionalCandidates: {
+          include: {
+            candidate: true,
+          },
+        },
       },
     });
 
@@ -91,6 +97,21 @@ export async function PUT(
       },
     });
 
+    // メイン候補者と合同演説者が重複していないかチェック
+    const allCandidateIds = [data.candidateId, ...(data.additionalCandidateIds || [])];
+    const uniqueCandidateIds = [...new Set(allCandidateIds)];
+    if (uniqueCandidateIds.length !== allCandidateIds.length) {
+      return NextResponse.json(
+        { error: "メイン候補者と合同演説者が重複しています" },
+        { status: 400 }
+      );
+    }
+
+    // 既存の合同演説者を削除
+    await prisma.eventCandidate.deleteMany({
+      where: { eventId: id },
+    });
+
     // 演説予定を更新
     const event = await prisma.speechEvent.update({
       where: { id },
@@ -104,6 +125,21 @@ export async function PUT(
         lat: data.lat,
         lng: data.lng,
         notes: data.notes || null,
+        additionalCandidates: {
+          create: (data.additionalCandidateIds || [])
+            .filter((id) => id && id !== data.candidateId)
+            .map((candidateId) => ({
+              candidateId,
+            })),
+        },
+      },
+      include: {
+        candidate: true,
+        additionalCandidates: {
+          include: {
+            candidate: true,
+          },
+        },
       },
     });
 

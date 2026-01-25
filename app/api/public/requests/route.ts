@@ -61,14 +61,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // CREATE_EVENTの場合、latとlngをpayloadにも含める（過去のリクエストとの互換性のため）
+    let finalPayload = { ...data.payload };
+    if (data.type === "CREATE_EVENT" && data.lat !== undefined && data.lng !== undefined) {
+      // payloadにlatとlngがない場合、またはnull/undefinedの場合、トップレベルの値を追加
+      if (finalPayload.lat === undefined || finalPayload.lat === null) {
+        finalPayload.lat = data.lat;
+      }
+      if (finalPayload.lng === undefined || finalPayload.lng === null) {
+        finalPayload.lng = data.lng;
+      }
+    }
+
     // 重複判定キーの生成
     let dedupeKey: string | null = null;
     if (data.type === "CREATE_EVENT" && data.candidateId && data.lat && data.lng) {
-      const date = data.payload.startAt
-        ? new Date(data.payload.startAt).toISOString().split("T")[0]
+      const date = finalPayload.startAt
+        ? new Date(finalPayload.startAt).toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0];
-      const hour = data.payload.startAt
-        ? new Date(data.payload.startAt).getHours()
+      const hour = finalPayload.startAt
+        ? new Date(finalPayload.startAt).getHours()
         : null;
       const timeSlot = getTimeSlot(hour);
 
@@ -87,7 +99,7 @@ export async function POST(request: NextRequest) {
         candidateId: data.candidateId || null,
         eventId: data.eventId || null,
         rivalEventId: data.rivalEventId || null,
-        payload: JSON.stringify(data.payload),
+        payload: JSON.stringify(finalPayload),
         dedupeKey,
         status: "PENDING",
       },

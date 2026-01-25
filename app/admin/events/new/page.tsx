@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 import { getPrefectureCoordinates } from "@/lib/constants";
-import { Calendar } from "lucide-react";
+import { Calendar, Plus, X } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -26,6 +26,7 @@ export default function NewEventPage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [candidateId, setCandidateId] = useState("");
+  const [additionalCandidateIds, setAdditionalCandidateIds] = useState<string[]>([]);
   // 今日の日付をデフォルト値として設定（MM-DD形式）
   const getTodayDateString = () => {
     const today = new Date();
@@ -120,6 +121,7 @@ export default function NewEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           candidateId,
+          additionalCandidateIds: additionalCandidateIds.filter((id) => id && id !== candidateId),
           startAt: startAtDate,
           endAt: endAtDate,
           timeUnknown,
@@ -155,7 +157,7 @@ export default function NewEventPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="candidateId" className="block text-sm font-medium mb-1">
-                候補者 *
+                メイン候補者 *
               </label>
               <select
                 id="candidateId"
@@ -165,12 +167,67 @@ export default function NewEventPage() {
                 className="w-full px-3 py-2 border rounded-md bg-white"
               >
                 <option value="">選択してください</option>
-                {candidates.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {candidates
+                  .filter((c) => !additionalCandidateIds.includes(c.id))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                合同演説者
+              </label>
+              {additionalCandidateIds.map((additionalId, index) => {
+                const candidate = candidates.find((c) => c.id === additionalId);
+                return (
+                  <div key={additionalId} className="flex gap-2 mb-2">
+                    <select
+                      value={additionalId}
+                      onChange={(e) => {
+                        const newIds = [...additionalCandidateIds];
+                        newIds[index] = e.target.value;
+                        setAdditionalCandidateIds(newIds);
+                      }}
+                      className="flex-1 px-3 py-2 border rounded-md bg-white"
+                    >
+                      <option value="">選択してください</option>
+                      {candidates
+                        .filter((c) => c.id !== candidateId && !additionalCandidateIds.includes(c.id) || c.id === additionalId)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setAdditionalCandidateIds(additionalCandidateIds.filter((_, i) => i !== index));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAdditionalCandidateIds([...additionalCandidateIds, ""]);
+                }}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                合同演説者を追加
+              </Button>
             </div>
 
             <div>
