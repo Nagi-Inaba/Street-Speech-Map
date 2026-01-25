@@ -299,119 +299,198 @@ export async function PATCH(request: NextRequest) {
         },
       });
 
+      const processingErrors: Array<{ requestId: string; type: string; error: string }> = [];
+
       for (const req of approvedRequests) {
-        // CREATE_EVENTの場合、新しい演説予定を作成
-        if (req.type === "CREATE_EVENT" && req.candidateId) {
-          const payload = JSON.parse(req.payload);
-          await prisma.speechEvent.create({
-            data: {
-              candidateId: req.candidateId,
-              status: "PLANNED",
-              startAt: payload.startAt ? new Date(payload.startAt) : null,
-              endAt: payload.endAt ? new Date(payload.endAt) : null,
-              timeUnknown: payload.timeUnknown || false,
-              locationText: payload.locationText,
-              lat: payload.lat,
-              lng: payload.lng,
-            },
-          });
-        }
+        try {
+          // CREATE_EVENTの場合、新しい演説予定を作成
+          if (req.type === "CREATE_EVENT" && req.candidateId) {
+            try {
+              const payload = JSON.parse(req.payload);
+              
+              // 必須フィールドの検証
+              if (!payload.locationText || payload.lat === undefined || payload.lng === undefined) {
+                throw new Error("必須フィールド（場所、座標）が不足しています");
+              }
 
-        // REPORT_STARTの場合、ステータスをLIVEに更新
-        if (req.type === "REPORT_START" && req.eventId) {
-          await prisma.speechEvent.update({
-            where: { id: req.eventId },
-            data: { status: "LIVE" },
-          });
-        }
-
-        // REPORT_ENDの場合、ステータスをENDEDに更新
-        if (req.type === "REPORT_END" && req.eventId) {
-          await prisma.speechEvent.update({
-            where: { id: req.eventId },
-            data: { status: "ENDED" },
-          });
-        }
-
-        // REPORT_MOVEの場合、場所を更新
-        if (req.type === "REPORT_MOVE" && req.eventId) {
-          const payload = JSON.parse(req.payload);
-          const event = await prisma.speechEvent.findUnique({
-            where: { id: req.eventId },
-          });
-
-          if (event) {
-            // 変更履歴を記録
-            await prisma.eventHistory.create({
-              data: {
-                eventId: req.eventId,
-                fromLat: event.lat,
-                fromLng: event.lng,
-                fromText: event.locationText,
-                fromStartAt: event.startAt,
-                fromEndAt: event.endAt,
-                toLat: payload.newLat,
-                toLng: payload.newLng,
-                toText: event.locationText, // 場所テキストは変更しない（管理画面で手動更新）
-                toStartAt: event.startAt,
-                toEndAt: event.endAt,
-                reason: "場所変更報告の承認",
-                changedByUserId: session.user.id,
-              },
-            });
-
-            // 場所を更新
-            await prisma.speechEvent.update({
-              where: { id: req.eventId },
-              data: {
-                lat: payload.newLat,
-                lng: payload.newLng,
-              },
-            });
-
-            // MoveHintを生成
-            await generateMoveHints(req.eventId);
+              await prisma.speechEvent.create({
+                data: {
+                  candidateId: req.candidateId,
+                  status: "PLANNED",
+                  startAt: payload.startAt ? new Date(payload.startAt) : null,
+                  endAt: payload.endAt ? new Date(payload.endAt) : null,
+                  timeUnknown: payload.timeUnknown || false,
+                  locationText: payload.locationText,
+                  lat: payload.lat,
+                  lng: payload.lng,
+                },
+              });
+            } catch (error: any) {
+              console.error(`Error creating event for request ${req.id}:`, error);
+              processingErrors.push({
+                requestId: req.id,
+                type: req.type,
+                error: error.message || "演説予定の作成に失敗しました",
+              });
+            }
           }
-        }
 
-        // REPORT_TIME_CHANGEの場合、時間を更新
-        if (req.type === "REPORT_TIME_CHANGE" && req.eventId) {
-          const payload = JSON.parse(req.payload);
-          const event = await prisma.speechEvent.findUnique({
-            where: { id: req.eventId },
-          });
-
-          if (event) {
-            // 変更履歴を記録
-            await prisma.eventHistory.create({
-              data: {
-                eventId: req.eventId,
-                fromLat: event.lat,
-                fromLng: event.lng,
-                fromText: event.locationText,
-                fromStartAt: event.startAt,
-                fromEndAt: event.endAt,
-                toLat: event.lat,
-                toLng: event.lng,
-                toText: event.locationText,
-                toStartAt: payload.newStartAt ? new Date(payload.newStartAt) : null,
-                toEndAt: payload.newEndAt ? new Date(payload.newEndAt) : null,
-                reason: "時間変更報告の承認",
-                changedByUserId: session.user.id,
-              },
-            });
-
-            // 時間を更新
-            await prisma.speechEvent.update({
-              where: { id: req.eventId },
-              data: {
-                startAt: payload.newStartAt ? new Date(payload.newStartAt) : null,
-                endAt: payload.newEndAt ? new Date(payload.newEndAt) : null,
-                timeUnknown: !payload.newStartAt && !payload.newEndAt,
-              },
-            });
+          // REPORT_STARTの場合、ステータスをLIVEに更新
+          if (req.type === "REPORT_START" && req.eventId) {
+            try {
+              await prisma.speechEvent.update({
+                where: { id: req.eventId },
+                data: { status: "LIVE" },
+              });
+            } catch (error: any) {
+              console.error(`Error updating event status to LIVE for request ${req.id}:`, error);
+              processingErrors.push({
+                requestId: req.id,
+                type: req.type,
+                error: error.message || "イベントステータスの更新に失敗しました",
+              });
+            }
           }
+
+          // REPORT_ENDの場合、ステータスをENDEDに更新
+          if (req.type === "REPORT_END" && req.eventId) {
+            try {
+              await prisma.speechEvent.update({
+                where: { id: req.eventId },
+                data: { status: "ENDED" },
+              });
+            } catch (error: any) {
+              console.error(`Error updating event status to ENDED for request ${req.id}:`, error);
+              processingErrors.push({
+                requestId: req.id,
+                type: req.type,
+                error: error.message || "イベントステータスの更新に失敗しました",
+              });
+            }
+          }
+
+          // REPORT_MOVEの場合、場所を更新
+          if (req.type === "REPORT_MOVE" && req.eventId) {
+            try {
+              const payload = JSON.parse(req.payload);
+              const event = await prisma.speechEvent.findUnique({
+                where: { id: req.eventId },
+              });
+
+              if (!event) {
+                throw new Error("イベントが見つかりません");
+              }
+
+              // 変更履歴を記録
+              await prisma.eventHistory.create({
+                data: {
+                  eventId: req.eventId,
+                  fromLat: event.lat,
+                  fromLng: event.lng,
+                  fromText: event.locationText,
+                  fromStartAt: event.startAt,
+                  fromEndAt: event.endAt,
+                  toLat: payload.newLat,
+                  toLng: payload.newLng,
+                  toText: event.locationText, // 場所テキストは変更しない（管理画面で手動更新）
+                  toStartAt: event.startAt,
+                  toEndAt: event.endAt,
+                  reason: "場所変更報告の承認",
+                  changedByUserId: session.user.id,
+                },
+              });
+
+              // 場所を更新
+              await prisma.speechEvent.update({
+                where: { id: req.eventId },
+                data: {
+                  lat: payload.newLat,
+                  lng: payload.newLng,
+                },
+              });
+
+              // MoveHintを生成
+              await generateMoveHints(req.eventId);
+            } catch (error: any) {
+              console.error(`Error processing REPORT_MOVE for request ${req.id}:`, error);
+              processingErrors.push({
+                requestId: req.id,
+                type: req.type,
+                error: error.message || "場所変更の処理に失敗しました",
+              });
+            }
+          }
+
+          // REPORT_TIME_CHANGEの場合、時間を更新
+          if (req.type === "REPORT_TIME_CHANGE" && req.eventId) {
+            try {
+              const payload = JSON.parse(req.payload);
+              const event = await prisma.speechEvent.findUnique({
+                where: { id: req.eventId },
+              });
+
+              if (!event) {
+                throw new Error("イベントが見つかりません");
+              }
+
+              // 変更履歴を記録
+              await prisma.eventHistory.create({
+                data: {
+                  eventId: req.eventId,
+                  fromLat: event.lat,
+                  fromLng: event.lng,
+                  fromText: event.locationText,
+                  fromStartAt: event.startAt,
+                  fromEndAt: event.endAt,
+                  toLat: event.lat,
+                  toLng: event.lng,
+                  toText: event.locationText,
+                  toStartAt: payload.newStartAt ? new Date(payload.newStartAt) : null,
+                  toEndAt: payload.newEndAt ? new Date(payload.newEndAt) : null,
+                  reason: "時間変更報告の承認",
+                  changedByUserId: session.user.id,
+                },
+              });
+
+              // 時間を更新
+              await prisma.speechEvent.update({
+                where: { id: req.eventId },
+                data: {
+                  startAt: payload.newStartAt ? new Date(payload.newStartAt) : null,
+                  endAt: payload.newEndAt ? new Date(payload.newEndAt) : null,
+                  timeUnknown: !payload.newStartAt && !payload.newEndAt,
+                },
+              });
+            } catch (error: any) {
+              console.error(`Error processing REPORT_TIME_CHANGE for request ${req.id}:`, error);
+              processingErrors.push({
+                requestId: req.id,
+                type: req.type,
+                error: error.message || "時間変更の処理に失敗しました",
+              });
+            }
+          }
+        } catch (error: any) {
+          console.error(`Unexpected error processing request ${req.id}:`, error);
+          processingErrors.push({
+            requestId: req.id,
+            type: req.type,
+            error: error.message || "予期しないエラーが発生しました",
+          });
         }
+      }
+
+      // 処理エラーがある場合、エラー情報を返す
+      if (processingErrors.length > 0) {
+        return NextResponse.json(
+          {
+            success: true,
+            updatedCount: updateResult.count,
+            warnings: processingErrors,
+            message: `${updateResult.count}件のリクエストを承認しましたが、${processingErrors.length}件の処理でエラーが発生しました`,
+          },
+          { status: 200 }
+        );
       }
     }
 

@@ -294,10 +294,22 @@ export default function RequestsPage() {
       if (res.ok) {
         await fetchRequests();
         setSelectedIds(new Set());
-        if (data.updatedCount !== undefined && data.updatedCount < ids.size) {
-          alert(
-            `${data.updatedCount}件のリクエストを処理しました。${ids.size - data.updatedCount}件は既に処理済みまたは存在しませんでした。`
-          );
+        
+        // 警告メッセージの構築
+        let message = "";
+        if (data.warnings && data.warnings.length > 0) {
+          message = data.message || `${data.updatedCount || ids.size}件のリクエストを承認しましたが、${data.warnings.length}件の処理でエラーが発生しました。\n\n`;
+          data.warnings.forEach((warning: any) => {
+            message += `・${TYPE_LABELS[warning.type] || warning.type} (ID: ${warning.requestId}): ${warning.error}\n`;
+          });
+        } else if (data.updatedCount !== undefined && data.updatedCount < ids.size) {
+          message = `${data.updatedCount}件のリクエストを処理しました。${ids.size - data.updatedCount}件は既に処理済みまたは存在しませんでした。`;
+        } else if (data.message) {
+          message = data.message;
+        }
+        
+        if (message) {
+          alert(message);
         }
       } else {
         const errorMessage =
