@@ -347,22 +347,12 @@ export async function PATCH(request: NextRequest) {
           processed = true;
         }
 
-        // REPORT_STARTの場合、ステータスをLIVEに更新
-        if (req.type === "REPORT_START" && req.eventId) {
-          await prisma.speechEvent.update({
-            where: { id: req.eventId },
-            data: { status: "LIVE" },
-          });
-          processed = true;
-        }
-
-        // REPORT_ENDの場合、ステータスをENDEDに更新
-        if (req.type === "REPORT_END" && req.eventId) {
-          await prisma.speechEvent.update({
-            where: { id: req.eventId },
-            data: { status: "ENDED" },
-          });
-          processed = true;
+        // REPORT_START/REPORT_ENDは自動処理されるため、手動承認は不要
+        // （PublicReportとして5件以上で自動的にステータスが更新される）
+        if (req.type === "REPORT_START" || req.type === "REPORT_END") {
+          throw new Error(
+            "開始/終了報告は自動処理されます。公開側の「演説中」「演説終了」ボタンから報告してください。"
+          );
         }
 
         // REPORT_MOVEの場合、場所を更新

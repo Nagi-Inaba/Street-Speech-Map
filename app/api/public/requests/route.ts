@@ -8,8 +8,7 @@ const requestSchema = z.object({
   type: z.enum([
     "CREATE_EVENT",
     "UPDATE_EVENT",
-    "REPORT_START",
-    "REPORT_END",
+    // REPORT_START/REPORT_ENDは/api/public/reportsを使用（自動処理のため）
     "REPORT_MOVE",
     "REPORT_TIME_CHANGE",
     "CREATE_RIVAL_EVENT",
