@@ -126,14 +126,19 @@ export async function GET(request: NextRequest) {
       // すべてのリクエストを統合
       const allRequests = [...requests, ...reportRequests];
 
-      // eventIdで再グループ化
+      // eventIdで再グループ化（eventIdがないリクエストも含める）
       const allGroupedByEvent = new Map<string, typeof allRequests>();
+      const requestsWithoutEventId: typeof allRequests = [];
+      
       for (const req of allRequests) {
         if (req.eventId) {
           if (!allGroupedByEvent.has(req.eventId)) {
             allGroupedByEvent.set(req.eventId, []);
           }
           allGroupedByEvent.get(req.eventId)!.push(req);
+        } else {
+          // eventIdがないリクエスト（例：CREATE_EVENT）も含める
+          requestsWithoutEventId.push(req);
         }
       }
 
@@ -183,6 +188,27 @@ export async function GET(request: NextRequest) {
           requestsByType,
         };
       });
+
+      // eventIdがないリクエストも結果に含める（特別なイベントとして扱う）
+      if (requestsWithoutEventId.length > 0) {
+        result.push({
+          event: {
+            id: null, // eventIdがないことを示す
+            locationText: "イベント未作成",
+            startAt: null,
+            endAt: null,
+            status: null,
+            candidate: requestsWithoutEventId[0]?.candidate || null,
+          },
+          requests: requestsWithoutEventId,
+          requestsByType: {
+            REPORT_START: [],
+            REPORT_END: [],
+            REPORT_MOVE: [],
+            REPORT_TIME_CHANGE: [],
+          },
+        });
+      }
 
       return NextResponse.json(result);
     }

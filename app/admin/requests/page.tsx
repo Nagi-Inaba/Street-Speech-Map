@@ -25,11 +25,11 @@ interface PublicRequest {
 
 interface EventWithRequests {
   event: {
-    id: string;
+    id: string | null; // eventIdがないリクエストの場合null
     locationText: string;
     startAt: string | null;
     endAt: string | null;
-    status: string;
+    status: string | null;
     candidate: Candidate | null;
   };
   requests: PublicRequest[];
@@ -453,6 +453,8 @@ export default function RequestsPage() {
           {(() => {
             // すべてのイベントからリクエストを収集し、報告タイプごとにグループ化
             const allRequestsByType = {
+              CREATE_EVENT: [] as PublicRequest[],
+              UPDATE_EVENT: [] as PublicRequest[],
               REPORT_START: [] as PublicRequest[],
               REPORT_END: [] as PublicRequest[],
               REPORT_MOVE: [] as PublicRequest[],
@@ -467,7 +469,9 @@ export default function RequestsPage() {
               );
 
               filteredRequests.forEach((req) => {
-                if (req.type === "REPORT_START") allRequestsByType.REPORT_START.push(req);
+                if (req.type === "CREATE_EVENT") allRequestsByType.CREATE_EVENT.push(req);
+                else if (req.type === "UPDATE_EVENT") allRequestsByType.UPDATE_EVENT.push(req);
+                else if (req.type === "REPORT_START") allRequestsByType.REPORT_START.push(req);
                 else if (req.type === "REPORT_END") allRequestsByType.REPORT_END.push(req);
                 else if (req.type === "REPORT_MOVE") allRequestsByType.REPORT_MOVE.push(req);
                 else if (req.type === "REPORT_TIME_CHANGE") allRequestsByType.REPORT_TIME_CHANGE.push(req);
@@ -477,6 +481,62 @@ export default function RequestsPage() {
             // 報告タイプごとに表示
             return (
               <>
+                {/* 新規演説予定 */}
+                {allRequestsByType.CREATE_EVENT.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>新規演説予定 {allRequestsByType.CREATE_EVENT.length}件</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {allRequestsByType.CREATE_EVENT.map((req) => (
+                          <RequestItem
+                            key={req.id}
+                            request={req}
+                            selectedIds={selectedIds}
+                            onSelect={handleSelect}
+                            onBulkAction={handleBulkAction}
+                            setSelectedIds={setSelectedIds}
+                            isProcessing={isProcessing}
+                            filterStatus={filterStatus}
+                            parsePayload={parsePayload}
+                            formatDate={formatDate}
+                            setMapModal={setMapModal}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 演説予定更新 */}
+                {allRequestsByType.UPDATE_EVENT.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>演説予定更新 {allRequestsByType.UPDATE_EVENT.length}件</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {allRequestsByType.UPDATE_EVENT.map((req) => (
+                          <RequestItem
+                            key={req.id}
+                            request={req}
+                            selectedIds={selectedIds}
+                            onSelect={handleSelect}
+                            onBulkAction={handleBulkAction}
+                            setSelectedIds={setSelectedIds}
+                            isProcessing={isProcessing}
+                            filterStatus={filterStatus}
+                            parsePayload={parsePayload}
+                            formatDate={formatDate}
+                            setMapModal={setMapModal}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* 開始報告 */}
                 {allRequestsByType.REPORT_START.length > 0 && (
                   <Card>
