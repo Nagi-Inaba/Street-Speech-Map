@@ -7,12 +7,20 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+interface Candidate {
+  id: string;
+  name: string;
+  showEvents: boolean;
+}
+
 export default function SettingsPage() {
   const [showCandidateInfo, setShowCandidateInfo] = useState(true);
   const [candidateLabel, setCandidateLabel] = useState("");
   const [showEvents, setShowEvents] = useState(true);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [updatingCandidateId, setUpdatingCandidateId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -20,12 +28,27 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("/api/admin/settings");
-      if (res.ok) {
-        const data = await res.json();
+      const [settingsRes, candidatesRes] = await Promise.all([
+        fetch("/api/admin/settings"),
+        fetch("/api/admin/candidates"),
+      ]);
+
+      if (settingsRes.ok) {
+        const data = await settingsRes.json();
         setShowCandidateInfo(data.showCandidateInfo ?? true);
         setCandidateLabel(data.candidateLabel !== undefined ? data.candidateLabel : "");
         setShowEvents(data.showEvents ?? true);
+      }
+
+      if (candidatesRes.ok) {
+        const candidatesData = await candidatesRes.json();
+        setCandidates(
+          candidatesData.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            showEvents: c.showEvents ?? false,
+          }))
+        );
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -57,6 +80,50 @@ export default function SettingsPage() {
       alert("エラーが発生しました");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleToggleCandidateShowEvents = async (candidateId: string, currentValue: boolean) => {
+    setUpdatingCandidateId(candidateId);
+    try {
+      const candidate = candidates.find((c) => c.id === candidateId);
+      if (!candidate) return;
+
+      // 候補者データを取得
+      const candidateRes = await fetch(`/api/admin/candidates/${candidateId}`);
+      if (!candidateRes.ok) {
+        alert("候補者データの取得に失敗しました");
+        return;
+      }
+      const candidateData = await candidateRes.json();
+
+      // 候補者のshowEventsを更新
+      const updateRes = await fetch(`/api/admin/candidates/${candidateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: candidateData.name,
+          slug: candidateData.slug,
+          type: candidateData.type || null,
+          prefecture: candidateData.prefecture,
+          region: candidateData.region,
+          imageUrl: candidateData.imageUrl,
+          showEvents: !currentValue,
+        }),
+      });
+
+      if (updateRes.ok) {
+        setCandidates((prev) =>
+          prev.map((c) => (c.id === candidateId ? { ...c, showEvents: !currentValue } : c))
+        );
+      } else {
+        alert("更新に失敗しました");
+      }
+    } catch (error) {
+      console.error("Error updating candidate:", error);
+      alert("エラーが発生しました");
+    } finally {
+      setUpdatingCandidateId(null);
     }
   };
 
@@ -140,6 +207,44 @@ export default function SettingsPage() {
               {isSaving ? "保存中..." : "設定を保存"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl w-full mt-6">
+        <CardHeader>
+          <CardTitle>候補者ごとの演説予定表示設定</CardTitle>
+          <CardDescription>
+            各候補者の演説予定を公開側のページで表示するかどうかを個別に設定できます。
+            <br />
+            サイト全体の設定がOFFの場合は、この設定に関係なく非表示になります。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {candidates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">候補者が登録されていません</p>
+          ) : (
+            <div className="space-y-3">
+              {candidates.map((candidate) => (
+                <div
+                  key={candidate.id}
+                  className="flex items-center justify-between gap-4 py-2 border-b last:border-b-0"
+                >
+                  <Label htmlFor={`candidate-show-events-${candidate.id}`} className="flex-1">
+                    {candidate.name}
+                  </Label>
+                  <Switch
+                    id={`candidate-show-events-${candidate.id}`}
+                    checked={candidate.showEvents}
+                    onCheckedChange={() =>
+                      handleToggleCandidateShowEvents(candidate.id, candidate.showEvents)
+                    }
+                    disabled={updatingCandidateId === candidate.id}
+                    className="flex-shrink-0"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
