@@ -135,10 +135,17 @@ export default function NewEventPage() {
       if (res.ok) {
         router.push("/admin/events");
       } else {
-        alert("作成に失敗しました");
+        const errorData = await res.json().catch(() => ({}));
+        const errorMessage = errorData.error 
+          ? (typeof errorData.error === "string" 
+              ? errorData.error 
+              : JSON.stringify(errorData.error))
+          : "作成に失敗しました";
+        alert(`作成に失敗しました: ${errorMessage}`);
       }
     } catch (error) {
-      alert("エラーが発生しました");
+      const errorMessage = error instanceof Error ? error.message : "エラーが発生しました";
+      alert(`エラーが発生しました: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
