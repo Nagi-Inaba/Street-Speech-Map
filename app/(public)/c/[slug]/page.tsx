@@ -142,7 +142,8 @@ export default async function CandidatePage({
 
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
   const candidateLabel = settings?.candidateLabel !== undefined ? settings.candidateLabel : "候補者";
-  const showEvents = settings?.showEvents ?? true;
+  // サイト全体の設定と候補者個別の設定の両方がONの時だけ表示
+  const showEvents = (settings?.showEvents ?? true) && (candidate.showEvents ?? false);
 
   const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");
   const liveEvents = candidate.events.filter((e) => e.status === "LIVE");

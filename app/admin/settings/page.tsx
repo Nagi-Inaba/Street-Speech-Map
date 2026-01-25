@@ -66,9 +66,9 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">サイト設定</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">サイト設定</h1>
 
-      <Card className="max-w-2xl">
+      <Card className="max-w-2xl w-full">
         <CardHeader>
           <CardTitle>公開表示設定</CardTitle>
           <CardDescription>
@@ -76,8 +76,8 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-0.5 flex-1">
               <Label htmlFor="show-candidate-info" className="text-base">
                 立候補区分・選挙区の表示
               </Label>
@@ -91,11 +91,12 @@ export default function SettingsPage() {
               id="show-candidate-info"
               checked={showCandidateInfo}
               onCheckedChange={setShowCandidateInfo}
+              className="flex-shrink-0"
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-0.5 flex-1">
               <Label htmlFor="show-events" className="text-base">
                 演説予定の表示
               </Label>
@@ -109,6 +110,7 @@ export default function SettingsPage() {
               id="show-events"
               checked={showEvents}
               onCheckedChange={setShowEvents}
+              className="flex-shrink-0"
             />
           </div>
 

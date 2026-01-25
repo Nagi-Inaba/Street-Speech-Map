@@ -402,16 +402,16 @@ export default function RequestsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">リクエスト審査</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">リクエスト審査</h1>
 
       {/* フィルター */}
-      <div className="flex gap-4 mb-6">
-        <div>
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex-1">
           <label className="block text-sm font-medium mb-1">候補者</label>
           <select
             value={filterCandidateId}
             onChange={(e) => setFilterCandidateId(e.target.value)}
-            className="px-3 py-2 border rounded-md bg-white"
+            className="w-full px-3 py-2 border rounded-md bg-white"
           >
             <option value="">すべて</option>
             {candidates.map((c) => (
@@ -421,12 +421,12 @@ export default function RequestsPage() {
             ))}
           </select>
         </div>
-        <div>
+        <div className="flex-1">
           <label className="block text-sm font-medium mb-1">状態</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border rounded-md bg-white"
+            className="w-full px-3 py-2 border rounded-md bg-white"
           >
             <option value="">すべて</option>
             <option value="PENDING">未承認</option>
@@ -462,11 +462,12 @@ export default function RequestsPage() {
           pendingCount = requests.filter((r) => r.status === "PENDING").length;
         }
         return (
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <Button
               variant="outline"
               size="sm"
               onClick={handleSelectAll}
+              className="text-xs sm:text-sm"
             >
               {selectedIds.size === pendingCount && pendingCount > 0 ? "選択解除" : "すべて選択"}
             </Button>
@@ -474,6 +475,7 @@ export default function RequestsPage() {
             size="sm"
             onClick={() => handleBulkAction("approve")}
             disabled={selectedIds.size === 0 || isProcessing}
+            className="text-xs sm:text-sm"
           >
             {isProcessing ? "処理中..." : `一括承認 (${selectedIds.size})`}
           </Button>
@@ -482,6 +484,7 @@ export default function RequestsPage() {
             size="sm"
             onClick={() => handleBulkAction("reject")}
             disabled={selectedIds.size === 0 || isProcessing}
+            className="text-xs sm:text-sm"
           >
             一括却下 ({selectedIds.size})
           </Button>
@@ -703,8 +706,8 @@ export default function RequestsPage() {
 
       {/* 地図モーダル */}
       {mapModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-full h-full max-w-6xl max-h-[90vh] m-4 bg-white rounded-lg shadow-lg flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+          <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-lg flex flex-col">
             {/* ヘッダー */}
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold">
@@ -740,7 +743,7 @@ export default function RequestsPage() {
 
       {/* 詳細表示モーダル */}
       <Dialog open={!!detailModal} onOpenChange={(open) => !open && setDetailModal(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
           {detailModal && (() => {
             const payload = parsePayload(detailModal.payload);
             const isPublicReport = detailModal.id.startsWith("report_");

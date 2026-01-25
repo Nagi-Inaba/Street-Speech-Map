@@ -154,10 +154,10 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">演説予定一覧</h1>
-        <Link href="/admin/events/new">
-          <Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold">演説予定一覧</h1>
+        <Link href="/admin/events/new" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             新規追加
           </Button>
@@ -165,8 +165,8 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
       </div>
 
       {/* フィルター */}
-      <div className="mb-6 flex gap-4">
-        <div>
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
           <label htmlFor="filter-candidate" className="block text-sm font-medium mb-1">
             候補者で絞り込み
           </label>
@@ -174,7 +174,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
             id="filter-candidate"
             value={filterCandidateId}
             onChange={(e) => setFilterCandidateId(e.target.value)}
-            className="px-3 py-2 border rounded-md bg-white"
+            className="w-full px-3 py-2 border rounded-md bg-white"
           >
             <option value="">すべて</option>
             {candidates.map((candidate) => (
@@ -184,7 +184,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
             ))}
           </select>
         </div>
-        <div>
+        <div className="flex-1">
           <label htmlFor="filter-status" className="block text-sm font-medium mb-1">
             ステータスで絞り込み
           </label>
@@ -192,7 +192,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
             id="filter-status"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border rounded-md bg-white"
+            className="w-full px-3 py-2 border rounded-md bg-white"
           >
             <option value="">すべて</option>
             <option value="PLANNED">予定</option>
@@ -212,15 +212,15 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">候補者</TableHead>
-                  <TableHead>時間</TableHead>
-                  <TableHead className="w-16 whitespace-nowrap">状態</TableHead>
-                  <TableHead>備考</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead className="whitespace-nowrap min-w-[120px]">候補者</TableHead>
+                  <TableHead className="whitespace-nowrap min-w-[150px]">時間</TableHead>
+                  <TableHead className="w-16 whitespace-nowrap min-w-[80px]">状態</TableHead>
+                  <TableHead className="min-w-[100px]">備考</TableHead>
+                  <TableHead className="text-right whitespace-nowrap min-w-[200px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -269,7 +269,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
                       {event.notes || "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
                         <Link 
                           href={`/c/${event.candidate.slug}#event-${event.id}`}
                           target="_blank"
@@ -278,19 +278,20 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8"
+                            className="h-8 text-xs sm:text-sm"
                           >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            公開ページ
+                            <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                            <span className="hidden sm:inline">公開ページ</span>
+                            <span className="sm:hidden">公開</span>
                           </Button>
                         </Link>
                         <Link href={`/admin/events/${event.id}/edit`}>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8"
+                            className="h-8 text-xs sm:text-sm"
                           >
-                            <Edit className="h-4 w-4 mr-1" />
+                            <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                             編集
                           </Button>
                         </Link>
@@ -301,7 +302,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
                           disabled={deletingId === event.id}
                           className="h-8 text-red-600 hover:text-red-700"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </TableCell>

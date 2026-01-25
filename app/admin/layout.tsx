@@ -18,19 +18,21 @@ export default async function AdminLayout({
     <div className="min-h-screen">
       <nav className="border-b bg-white">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/admin" className="text-xl font-bold text-primary">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <Link href="/admin" className="text-lg sm:text-xl font-bold text-primary">
                 管理画面
               </Link>
               <AdminNav />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div className="text-sm">
-                <span className="text-muted-foreground">{session.user?.email}</span>
-                <span className="ml-2 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
-                  {session.user?.role}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground break-all">{session.user?.email}</span>
+                  <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full whitespace-nowrap">
+                    {session.user?.role}
+                  </span>
+                </div>
               </div>
               <form
                 action={async () => {
@@ -40,7 +42,7 @@ export default async function AdminLayout({
               >
                 <button 
                   type="submit" 
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                 >
                   ログアウト
                 </button>
@@ -49,7 +51,7 @@ export default async function AdminLayout({
           </div>
         </div>
       </nav>
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <main className="container mx-auto px-4 py-4 sm:py-8">{children}</main>
     </div>
   );
 }

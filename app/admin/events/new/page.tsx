@@ -153,7 +153,7 @@ export default function NewEventPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">新規演説予定作成</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">新規演説予定作成</h1>
 
       <Card>
         <CardHeader>
@@ -268,7 +268,7 @@ export default function NewEventPage() {
                     <label htmlFor="startDate" className="block text-sm font-medium mb-1">
                       開始日時 *
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative w-full">
                         <input
                           id="startDate"
@@ -299,34 +299,36 @@ export default function NewEventPage() {
                           <Calendar className="h-4 w-4" />
                         </button>
                       </div>
-                      <select
-                        id="startHour"
-                        value={startHour}
-                        onChange={(e) => setStartHour(e.target.value)}
-                        required={!timeUnknown}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
-                      >
-                        <option value="">時</option>
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option key={hour} value={hour}>
-                            {hour}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        id="startMinute"
-                        value={startMinute}
-                        onChange={(e) => setStartMinute(e.target.value)}
-                        required={!timeUnknown}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
-                      >
-                        <option value="">分</option>
-                        {MINUTE_OPTIONS.map((minute) => (
-                          <option key={minute} value={minute}>
-                            {minute}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex gap-2 flex-1">
+                        <select
+                          id="startHour"
+                          value={startHour}
+                          onChange={(e) => setStartHour(e.target.value)}
+                          required={!timeUnknown}
+                          className="flex-1 px-3 py-2 border rounded-md bg-white"
+                        >
+                          <option value="">時</option>
+                          {HOUR_OPTIONS.map((hour) => (
+                            <option key={hour} value={hour}>
+                              {hour}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          id="startMinute"
+                          value={startMinute}
+                          onChange={(e) => setStartMinute(e.target.value)}
+                          required={!timeUnknown}
+                          className="flex-1 px-3 py-2 border rounded-md bg-white"
+                        >
+                          <option value="">分</option>
+                          {MINUTE_OPTIONS.map((minute) => (
+                            <option key={minute} value={minute}>
+                              {minute}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -338,7 +340,7 @@ export default function NewEventPage() {
                         id="endHour"
                         value={endHour}
                         onChange={(e) => setEndHour(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
+                        className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">時</option>
                         {HOUR_OPTIONS.map((hour) => (
@@ -351,7 +353,7 @@ export default function NewEventPage() {
                         id="endMinute"
                         value={endMinute}
                         onChange={(e) => setEndMinute(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
+                        className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">分</option>
                         {MINUTE_OPTIONS.map((minute) => (
@@ -424,14 +426,15 @@ export default function NewEventPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                 {isSubmitting ? "作成中..." : "作成"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
+                className="w-full sm:w-auto"
               >
                 キャンセル
               </Button>

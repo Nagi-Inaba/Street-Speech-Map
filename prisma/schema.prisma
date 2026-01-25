@@ -24,6 +24,7 @@ model Candidate {
   type      String   // "SINGLE" | "PROPORTIONAL"
   prefecture String? // 小選挙区の場合の都道府県
   region    String?  // 例: 選挙区や運用上の地域
+  showEvents Boolean  @default(false) // 演説予定の表示（候補者個別設定、デフォルトは非表示）
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

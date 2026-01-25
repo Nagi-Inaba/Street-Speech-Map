@@ -51,10 +51,10 @@ export default function CandidatesPageClient({ candidates }: CandidatesPageClien
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">候補者一覧</h1>
-        <Link href="/admin/candidates/new">
-          <Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold">候補者一覧</h1>
+        <Link href="/admin/candidates/new" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             新規追加
           </Button>
@@ -68,7 +68,7 @@ export default function CandidatesPageClient({ candidates }: CandidatesPageClien
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {candidates.map((candidate) => (
             <Card key={candidate.id}>
               <CardHeader>

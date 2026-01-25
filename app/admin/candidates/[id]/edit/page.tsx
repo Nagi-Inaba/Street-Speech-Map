@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
 
@@ -15,6 +17,7 @@ interface Candidate {
   prefecture: string | null;
   region: string | null;
   imageUrl: string | null;
+  showEvents: boolean;
 }
 
 export default function EditCandidatePage() {
@@ -31,6 +34,7 @@ export default function EditCandidatePage() {
   const [singleDistrict, setSingleDistrict] = useState("");
   const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
   const [imageUrl, setImageUrl] = useState("");
+  const [showEvents, setShowEvents] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,6 +58,7 @@ export default function EditCandidatePage() {
         setPrefecture(data.prefecture || "");
         setProportionalBlock(data.type === "PROPORTIONAL" ? (data.region || "") : "");
         setSingleDistrict(data.type === "SINGLE" ? (data.region || "") : "");
+        setShowEvents(data.showEvents ?? false);
         setIsLoading(false);
       })
       .catch((error) => {
@@ -97,6 +102,7 @@ export default function EditCandidatePage() {
           prefecture: prefectureValue,
           region: regionValue,
           imageUrl: null,
+          showEvents,
         }),
       });
 
@@ -116,7 +122,7 @@ export default function EditCandidatePage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-3xl font-bold mb-8">候補者編集</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">候補者編集</h1>
         <p>読み込み中...</p>
       </div>
     );
@@ -130,7 +136,7 @@ export default function EditCandidatePage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">候補者編集</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">候補者編集</h1>
 
       <Card>
         <CardHeader>
@@ -279,7 +285,26 @@ export default function EditCandidatePage() {
               </>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
+              <div className="space-y-0.5 flex-1">
+                <Label htmlFor="show-events" className="text-base">
+                  演説予定の表示
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  この候補者の演説予定を公開側のページで表示するかどうかを制御します。
+                  <br />
+                  サイト全体の設定がOFFの場合は、この設定に関係なく非表示になります。
+                </p>
+              </div>
+              <Switch
+                id="show-events"
+                checked={showEvents}
+                onCheckedChange={setShowEvents}
+                className="flex-shrink-0"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "更新中..." : "更新"}
               </Button>

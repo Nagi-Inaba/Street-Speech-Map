@@ -76,7 +76,7 @@ export default function NewCandidatePage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">候補者追加</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">候補者追加</h1>
 
       <Card>
         <CardHeader>
@@ -225,14 +225,15 @@ export default function NewCandidatePage() {
               </>
             )}
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                 {isSubmitting ? "作成中..." : "作成"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
+                className="w-full sm:w-auto"
               >
                 キャンセル
               </Button>

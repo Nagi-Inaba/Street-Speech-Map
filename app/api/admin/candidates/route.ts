@@ -12,6 +12,7 @@ const candidateSchema = z.object({
   prefecture: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
   imageUrl: z.union([z.string().url(), z.string().length(0), z.null()]).optional(),
+  showEvents: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
         prefecture: data.prefecture || null,
         region: data.region || null,
         imageUrl: data.imageUrl || null,
+        showEvents: data.showEvents !== undefined ? data.showEvents : false,
       },
     });
 
