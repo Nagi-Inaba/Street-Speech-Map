@@ -17,7 +17,7 @@ export async function GET() {
 
     return NextResponse.json({
       showCandidateInfo: settings.showCandidateInfo,
-      candidateLabel: settings.candidateLabel ?? "候補者",
+      candidateLabel: settings.candidateLabel !== undefined ? settings.candidateLabel : "候補者",
       showEvents: settings.showEvents ?? true,
     });
   } catch (error) {

@@ -14,7 +14,7 @@ export default async function HomePage() {
     where: { id: "site-settings" },
   });
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
-  const candidateLabel = settings?.candidateLabel ?? "候補者";
+  const candidateLabel = settings?.candidateLabel !== undefined ? settings.candidateLabel : "候補者";
 
   // 表示する候補者をフィルタリング
   // 党首は常に表示、その他は立候補区分（type）が設定されている場合のみ表示

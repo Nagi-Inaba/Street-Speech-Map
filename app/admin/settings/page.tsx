@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 
 export default function SettingsPage() {
   const [showCandidateInfo, setShowCandidateInfo] = useState(true);
-  const [candidateLabel, setCandidateLabel] = useState("候補者");
+  const [candidateLabel, setCandidateLabel] = useState("");
   const [showEvents, setShowEvents] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -24,7 +24,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setShowCandidateInfo(data.showCandidateInfo ?? true);
-        setCandidateLabel(data.candidateLabel ?? "候補者");
+        setCandidateLabel(data.candidateLabel !== undefined ? data.candidateLabel : "");
         setShowEvents(data.showEvents ?? true);
       }
     } catch (error) {
@@ -120,13 +120,15 @@ export default function SettingsPage() {
               公開側のページで「候補者」という文字列を別の文字列に置き換えます。
               <br />
               例: 「公認候補予定者」「立候補予定者」など
+              <br />
+              空白にすると「候補者」という文字列は表示されません。
             </p>
             <Input
               id="candidate-label"
               type="text"
               value={candidateLabel}
               onChange={(e) => setCandidateLabel(e.target.value)}
-              placeholder="候補者"
+              placeholder="空白可（空白の場合は「候補者」は表示されません）"
               className="max-w-md"
             />
           </div>

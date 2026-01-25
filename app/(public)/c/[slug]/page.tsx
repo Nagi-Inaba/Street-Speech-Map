@@ -141,7 +141,7 @@ export default async function CandidatePage({
   }
 
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
-  const candidateLabel = settings?.candidateLabel ?? "候補者";
+  const candidateLabel = settings?.candidateLabel !== undefined ? settings.candidateLabel : "候補者";
   const showEvents = settings?.showEvents ?? true;
 
   const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");

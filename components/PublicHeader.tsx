@@ -15,7 +15,7 @@ export default function PublicHeader() {
     fetch("/api/public/settings")
       .then((res) => res.json())
       .then((data) => {
-        setCandidateLabel(data.candidateLabel ?? "候補者");
+        setCandidateLabel(data.candidateLabel !== undefined ? data.candidateLabel : "候補者");
       })
       .catch(() => {
         // エラー時はデフォルト値を使用
