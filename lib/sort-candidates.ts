@@ -126,8 +126,8 @@ export function sortCandidatesByRegion<T extends { prefecture: string | null; re
         if (indexA === indexB) {
           // prefectureがある場合、都道府県の順序でソート
           if (a.prefecture && b.prefecture) {
-            const prefIndexA = PREFECTURE_ORDER.indexOf(a.prefecture);
-            const prefIndexB = PREFECTURE_ORDER.indexOf(b.prefecture);
+            const prefIndexA = PREFECTURE_ORDER.indexOf(a.prefecture as Prefecture);
+            const prefIndexB = PREFECTURE_ORDER.indexOf(b.prefecture as Prefecture);
             if (prefIndexA !== -1 && prefIndexB !== -1) {
               // 同じ都道府県内の場合、region（選挙区）でソート
               if (prefIndexA === prefIndexB && a.region && b.region) {
