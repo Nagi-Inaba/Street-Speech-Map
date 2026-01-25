@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
-import ImageUpload from "@/components/ImageUpload";
 
 interface Candidate {
   id: string;
@@ -55,7 +54,6 @@ export default function EditCandidatePage() {
         setPrefecture(data.prefecture || "");
         setProportionalBlock(data.type === "PROPORTIONAL" ? (data.region || "") : "");
         setSingleDistrict(data.type === "SINGLE" ? (data.region || "") : "");
-        setImageUrl(data.imageUrl || "");
         setIsLoading(false);
       })
       .catch((error) => {
@@ -98,7 +96,7 @@ export default function EditCandidatePage() {
           type: typeValue,
           prefecture: prefectureValue,
           region: regionValue,
-          imageUrl: imageUrl || null,
+          imageUrl: null,
         }),
       });
 
@@ -281,19 +279,6 @@ export default function EditCandidatePage() {
               </>
             )}
 
-            <div>
-              <label htmlFor="imageUrl" className="block text-sm font-medium mb-1">
-                画像
-              </label>
-              <ImageUpload
-                value={imageUrl}
-                onChange={(url) => setImageUrl(url || "")}
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                画像をアップロードするか、URLを直接入力することもできます
-              </p>
-            </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "更新中..." : "更新"}

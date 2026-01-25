@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import Image from "next/image";
 
 interface Candidate {
   id: string;
@@ -73,16 +72,6 @@ export default function CandidatesPageClient({ candidates }: CandidatesPageClien
           {candidates.map((candidate) => (
             <Card key={candidate.id}>
               <CardHeader>
-                {candidate.imageUrl && (
-                  <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
-                    <Image
-                      src={candidate.imageUrl}
-                      alt={candidate.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                )}
                 <CardTitle>{candidate.name}</CardTitle>
                 <CardDescription>
                   {candidate.region || candidate.prefecture || "ー"}

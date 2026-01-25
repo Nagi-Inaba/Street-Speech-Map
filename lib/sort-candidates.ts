@@ -168,6 +168,7 @@ export function sortCandidatesByRegion<T extends { type?: string | null; prefect
   candidates: T[]
 ): T[] {
   return [...candidates].sort((a, b) => {
+
     // prefectureから地域ブロックを取得
     const regionA = a.prefecture ? getRegionBlock(a.prefecture) : null;
     const regionB = b.prefecture ? getRegionBlock(b.prefecture) : null;

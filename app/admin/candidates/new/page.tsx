@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
-import ImageUpload from "@/components/ImageUpload";
 
 export default function NewCandidatePage() {
   const router = useRouter();
@@ -17,7 +16,6 @@ export default function NewCandidatePage() {
   const [proportionalBlock, setProportionalBlock] = useState("");
   const [singleDistrict, setSingleDistrict] = useState("");
   const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
-  const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -58,7 +56,7 @@ export default function NewCandidatePage() {
           type: typeValue,
           prefecture: prefectureValue,
           region: regionValue, 
-          imageUrl: imageUrl || null 
+          imageUrl: null 
         }),
       });
 
@@ -227,19 +225,6 @@ export default function NewCandidatePage() {
               </>
             )}
 
-            <div>
-              <label htmlFor="imageUrl" className="block text-sm font-medium mb-1">
-                画像
-              </label>
-              <ImageUpload
-                value={imageUrl}
-                onChange={(url) => setImageUrl(url || "")}
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                画像をアップロードするか、URLを直接入力することもできます
-              </p>
-            </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "作成中..." : "作成"}

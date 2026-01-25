@@ -250,9 +250,25 @@ export default async function CandidatePage({
             </div>
           )}
           <h1 className="text-4xl font-bold mb-2">{candidate.name}</h1>
-          {showCandidateInfo && candidate.region && (
-            <p className="text-muted-foreground">{candidate.region}</p>
-          )}
+          {(() => {
+            // 党首の場合は常に「党首」と表示
+            if (candidate.type === "PARTY_LEADER") {
+              return <p className="text-muted-foreground">党首</p>;
+            }
+            // その他の場合は設定に従って表示
+            if (showCandidateInfo) {
+              if (candidate.type === "SINGLE" && candidate.region) {
+                return <p className="text-muted-foreground">{candidate.region}</p>;
+              }
+              if (candidate.type === "PROPORTIONAL" && candidate.region) {
+                return <p className="text-muted-foreground">{candidate.region}</p>;
+              }
+              if (candidate.type === "SUPPORT") {
+                return <p className="text-muted-foreground">応援弁士</p>;
+              }
+            }
+            return null;
+          })()}
         </div>
 
         {/* 地図エリア（上部に配置） */}
