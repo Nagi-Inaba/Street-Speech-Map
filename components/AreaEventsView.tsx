@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getAreaFilterOptions, candidateMatchesArea, REGION_BLOCK_DEFS } from "@/lib/area-filter";
 import type { CandidateForArea } from "@/lib/area-filter";
 import { formatJSTTime, formatJSTWithoutYear } from "@/lib/time";
+import { formatInTimeZone } from "date-fns-tz";
 import { getPrefectureCoordinates, PREFECTURE_COORDINATES } from "@/lib/constants";
 import LeafletMap from "@/components/Map/LeafletMap";
 
@@ -40,6 +41,37 @@ export default function AreaEventsView({
 }: AreaEventsViewProps) {
   const options = getAreaFilterOptions();
   const [areaId, setAreaId] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all"); // "all" | "today" | "tomorrow" | "YYYY-MM-DD"
+
+  // 日付フィルター関数
+  const matchesDateFilter = (event: EventForArea): boolean => {
+    if (dateFilter === "all") return true;
+    if (!event.startAt) {
+      // 時間未定の場合は、日付フィルターが「すべて」以外の場合は除外
+      return false;
+    }
+
+    // イベントの日付をJSTで取得
+    const eventDate = new Date(event.startAt);
+    const eventDateStr = formatInTimeZone(eventDate, "Asia/Tokyo", "yyyy-MM-dd");
+
+    if (dateFilter === "today") {
+      const now = new Date();
+      const todayStr = formatInTimeZone(now, "Asia/Tokyo", "yyyy-MM-dd");
+      return eventDateStr === todayStr;
+    } else if (dateFilter === "tomorrow") {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = formatInTimeZone(tomorrow, "Asia/Tokyo", "yyyy-MM-dd");
+      return eventDateStr === tomorrowStr;
+    } else if (dateFilter.startsWith("20")) {
+      // 特定の日付（YYYY-MM-DD形式）
+      return eventDateStr === dateFilter;
+    }
+    
+    return true;
+  };
 
   // エリアで絞り込んだ候補者のうち、イベントが1件以上あるもの。各候補のイベントのみを渡す
   const { liveEvents, plannedEvents, endedEvents } = useMemo(() => {
@@ -50,6 +82,7 @@ export default function AreaEventsView({
     for (const c of candidates) {
       if (!candidateMatchesArea(c, areaId)) continue;
       for (const e of c.events) {
+        if (!matchesDateFilter(e)) continue;
         const ev = { ...e, candidate: { name: c.name, slug: c.slug } };
         if (e.status === "LIVE") live.push(ev);
         else if (e.status === "PLANNED") planned.push(ev);
@@ -72,7 +105,7 @@ export default function AreaEventsView({
     });
 
     return { liveEvents: live, plannedEvents: planned, endedEvents: ended };
-  }, [candidates, areaId]);
+  }, [candidates, areaId, dateFilter]);
 
   const totalCount = liveEvents.length + plannedEvents.length + endedEvents.length;
 
@@ -215,28 +248,57 @@ export default function AreaEventsView({
   return (
     <div className="space-y-6">
       {/* フィルター */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <label htmlFor="area-filter" className="text-sm font-medium shrink-0">
-          エリアで絞り込む
-        </label>
-        <select
-          id="area-filter"
-          value={areaId}
-          onChange={(e) => setAreaId(e.target.value)}
-          className="max-w-md w-full px-3 py-2 border rounded-md bg-white"
-        >
-          <option value="all">{options[0]?.label ?? "すべてのエリア"}</option>
-          <optgroup label="地域ブロック">
-            {options.filter((o) => o.group === "block").map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
-          </optgroup>
-          <optgroup label="都道府県">
-            {options.filter((o) => o.group === "prefecture").map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
-          </optgroup>
-        </select>
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <label htmlFor="area-filter" className="text-sm font-medium shrink-0">
+            エリアで絞り込む
+          </label>
+          <select
+            id="area-filter"
+            value={areaId}
+            onChange={(e) => setAreaId(e.target.value)}
+            className="max-w-md w-full px-3 py-2 border rounded-md bg-white"
+          >
+            <option value="all">{options[0]?.label ?? "すべてのエリア"}</option>
+            <optgroup label="地域ブロック">
+              {options.filter((o) => o.group === "block").map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </optgroup>
+            <optgroup label="都道府県">
+              {options.filter((o) => o.group === "prefecture").map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <label htmlFor="date-filter" className="text-sm font-medium shrink-0">
+            日付で絞り込む
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2 flex-1">
+            <select
+              id="date-filter"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="max-w-md w-full px-3 py-2 border rounded-md bg-white"
+            >
+              <option value="all">すべての日付</option>
+              <option value="today">今日</option>
+              <option value="tomorrow">明日</option>
+              <option value="custom">日付を選択</option>
+            </select>
+            {dateFilter === "custom" && (
+              <input
+                type="date"
+                value={dateFilter.startsWith("20") ? dateFilter : new Date().toISOString().split("T")[0]}
+                onChange={(e) => setDateFilter(e.target.value || "all")}
+                className="px-3 py-2 border rounded-md bg-white"
+                min={new Date().toISOString().split("T")[0]}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 地図 */}
