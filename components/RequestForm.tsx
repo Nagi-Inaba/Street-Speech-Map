@@ -11,8 +11,8 @@ interface RequestFormProps {
   candidateName: string;
 }
 
-// 時間の選択肢（8-20時：選挙活動ができる時間）
-const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 8).padStart(2, "0"));
+// 時間の選択肢（5-20時：選挙活動ができる時間）
+const HOUR_OPTIONS = Array.from({ length: 16 }, (_, i) => String(i + 5).padStart(2, "0"));
 
 // 分の選択肢（0, 15, 30, 45）
 const MINUTE_OPTIONS = ["00", "15", "30", "45"];
