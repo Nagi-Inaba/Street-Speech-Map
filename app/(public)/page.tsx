@@ -30,7 +30,14 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-6">一覧</h2>
+        <Link
+          href="/area"
+          className="inline-flex items-center justify-center w-full sm:w-auto mb-6 px-6 py-4 rounded-lg border-2 border-primary bg-primary/5 text-primary font-semibold hover:bg-primary/10 transition-colors"
+        >
+          エリアごと演説予定を見る
+        </Link>
+
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6">候補者別で見る</h2>
 
         {visibleCandidates.length === 0 ? (
           <p className="text-muted-foreground">登録されていません。</p>
