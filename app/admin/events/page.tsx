@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import EventsPageClient from "./page-client";
+import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 
 export default async function EventsPage() {
   try {
@@ -47,9 +48,8 @@ export default async function EventsPage() {
       }
     }
 
-    const candidates = await prisma.candidate.findMany({
-      orderBy: { name: "asc" },
-    });
+    const candidates = await prisma.candidate.findMany();
+    const sortedCandidates = sortCandidatesByRegion(candidates);
 
     // 確認件数を追加し、安全にデータを変換
     const eventsWithCheckCount = events.map((event) => {
@@ -92,7 +92,7 @@ export default async function EventsPage() {
       };
     });
 
-    return <EventsPageClient events={eventsWithCheckCount} candidates={candidates} />;
+    return <EventsPageClient events={eventsWithCheckCount} candidates={sortedCandidates} />;
   } catch (error) {
     console.error("Error in EventsPage:", error);
     return (
