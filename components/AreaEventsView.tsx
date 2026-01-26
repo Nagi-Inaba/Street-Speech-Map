@@ -182,8 +182,21 @@ export default function AreaEventsView({
       }
       const candidateLabel = names.length > 1 ? `${names[0]} ほか${names.length - 1}名` : names[0];
       
-      // 吹き出しの内容（候補者名を黒字で表示）
-      const popupContent = `<div style="color: black; font-weight: bold;">${candidateLabel}</div>`;
+      // 時間のテキストを生成
+      const timeText = event.timeUnknown
+        ? "時間未定"
+        : event.startAt
+        ? `${formatJSTWithoutYear(new Date(event.startAt))}${event.endAt ? ` - ${formatJSTTime(new Date(event.endAt))}` : ""}`
+        : "時間未定";
+      
+      // 吹き出しの内容（名前、時間、場所を黒字で表示）
+      const popupContent = `
+        <div style="color: black;">
+          <div style="font-weight: bold; margin-bottom: 4px;">${candidateLabel}</div>
+          <div style="font-size: 12px; margin-bottom: 2px;">${timeText}</div>
+          <div style="font-size: 12px;">${event.locationText}</div>
+        </div>
+      `;
       
       return {
         id: event.id,
