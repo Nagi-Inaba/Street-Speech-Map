@@ -5,6 +5,9 @@ import Image from "next/image";
 import PublicHeader from "@/components/PublicHeader";
 import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 
+// キャッシュを無効化して常に最新データを取得
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const candidates = await prisma.candidate.findMany();
   const sortedCandidates = sortCandidatesByRegion(candidates);
@@ -16,14 +19,8 @@ export default async function HomePage() {
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
   const candidateLabel = settings?.candidateLabel !== undefined ? settings.candidateLabel : "候補者";
 
-  // 表示する候補者をフィルタリング
-  // 党首は常に表示、その他は立候補区分（type）が設定されている場合のみ表示
-  const visibleCandidates = sortedCandidates.filter((candidate) => {
-    // 党首は常に表示
-    if (candidate.type === "PARTY_LEADER") return true;
-    // その他は立候補区分が設定されている場合のみ表示
-    return candidate.type && candidate.type !== "";
-  });
+  // すべての候補者を表示（立候補区分の有無に関わらず）
+  const visibleCandidates = sortedCandidates;
 
   return (
     <>

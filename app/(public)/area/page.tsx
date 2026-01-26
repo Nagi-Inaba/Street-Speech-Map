@@ -9,6 +9,9 @@ export const metadata = {
   description: "エリアごとに候補者の街頭演説予定・実施中・終了を一覧で表示",
 };
 
+// キャッシュを無効化して常に最新データを取得
+export const dynamic = 'force-dynamic';
+
 export default async function AreaPage() {
   const [candidates, settings] = await Promise.all([
     prisma.candidate.findMany({
@@ -34,11 +37,8 @@ export default async function AreaPage() {
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
   const candidateLabel = settings?.candidateLabel ?? "候補者";
 
-  // トップと同じ: 党首は常に、その他は type が空でないもの
-  const visibleCandidates = candidates.filter((c) => {
-    if (c.type === "PARTY_LEADER") return true;
-    return !!c.type && c.type !== "";
-  });
+  // すべての候補者を表示（立候補区分の有無に関わらず）
+  const visibleCandidates = candidates;
 
   // 演説予定を表示する候補者のみ（サイト設定 AND 候補者ごと showEvents）
   const withEvents: CandidateWithEventsForArea[] = visibleCandidates
