@@ -155,8 +155,11 @@ export default function EditEventPage() {
       });
   }, [eventId, candidates]);
 
-  // 候補者選択時に地図の中心を立候補地域に設定
+  // 候補者選択時に地図の中心を立候補地域に設定（イベントデータが読み込まれていない場合のみ）
   useEffect(() => {
+    // イベントデータが既に読み込まれている場合は、既存のピンの位置を優先するため何もしない
+    if (event) return;
+    
     if (candidateId) {
       const candidate = candidates.find((c) => c.id === candidateId);
       if (candidate) {
@@ -188,7 +191,7 @@ export default function EditEventPage() {
         }
       }
     }
-  }, [candidateId, candidates]);
+  }, [candidateId, candidates, event]);
 
   // 月日と時刻をISO形式の日時文字列に変換（年は現在の年を使用）
   const combineDateTime = (date: string, hour: string, minute: string): string | null => {

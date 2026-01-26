@@ -124,11 +124,27 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
   };
 
 
-  const filteredEvents = events.filter((event) => {
-    if (filterCandidateId && event.candidateId !== filterCandidateId) return false;
-    if (filterStatus && event.status !== filterStatus) return false;
-    return true;
-  });
+  const filteredEvents = events
+    .filter((event) => {
+      if (filterCandidateId && event.candidateId !== filterCandidateId) return false;
+      if (filterStatus && event.status !== filterStatus) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // ステータスが「ENDED」のものを最下部に移動
+      if (a.status === "ENDED" && b.status !== "ENDED") return 1;
+      if (a.status !== "ENDED" && b.status === "ENDED") return -1;
+      
+      // 両方ともENDEDでない場合、または両方ともENDEDの場合、日時順でソート
+      if (a.startAt && b.startAt) {
+        return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
+      }
+      if (a.startAt) return -1;
+      if (b.startAt) return 1;
+      
+      // 日時がない場合は作成日時順
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
 
   const getStatusLabel = (status: string) => {
     switch (status) {
