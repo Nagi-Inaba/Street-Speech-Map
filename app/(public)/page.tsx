@@ -32,9 +32,13 @@ export default async function HomePage() {
       <main className="container mx-auto px-4 py-8">
         <Link
           href="/area"
-          className="inline-flex items-center justify-center w-full sm:w-auto mb-6 px-6 py-4 rounded-lg border-2 border-primary bg-primary/5 text-primary font-semibold hover:bg-primary/10 transition-colors"
+          className="inline-block w-full sm:w-auto mb-6"
         >
-          エリアごと演説予定を見る
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader className="text-center">
+              <CardTitle className="text-xl">エリアごと演説予定を見る</CardTitle>
+            </CardHeader>
+          </Card>
         </Link>
 
         <h2 className="text-2xl sm:text-3xl font-bold mb-6">候補者別で見る</h2>
