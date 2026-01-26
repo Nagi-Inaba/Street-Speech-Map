@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
-import ImageUpload from "@/components/ImageUpload";
 
 interface Candidate {
   id: string;
@@ -16,6 +17,7 @@ interface Candidate {
   prefecture: string | null;
   region: string | null;
   imageUrl: string | null;
+  showEvents: boolean;
 }
 
 export default function EditCandidatePage() {
@@ -26,12 +28,13 @@ export default function EditCandidatePage() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [type, setType] = useState<"SINGLE" | "PROPORTIONAL">("PROPORTIONAL");
+  const [type, setType] = useState<"SINGLE" | "PROPORTIONAL" | "SUPPORT" | "PARTY_LEADER" | "">("");
   const [prefecture, setPrefecture] = useState("");
   const [proportionalBlock, setProportionalBlock] = useState("");
   const [singleDistrict, setSingleDistrict] = useState("");
   const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
   const [imageUrl, setImageUrl] = useState("");
+  const [showEvents, setShowEvents] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,11 +54,11 @@ export default function EditCandidatePage() {
         setCandidate(data);
         setName(data.name);
         setSlug(data.slug);
-        setType(data.type);
+        setType(data.type || "");
         setPrefecture(data.prefecture || "");
         setProportionalBlock(data.type === "PROPORTIONAL" ? (data.region || "") : "");
         setSingleDistrict(data.type === "SINGLE" ? (data.region || "") : "");
-        setImageUrl(data.imageUrl || "");
+        setShowEvents(data.showEvents ?? false);
         setIsLoading(false);
       })
       .catch((error) => {
@@ -72,11 +75,22 @@ export default function EditCandidatePage() {
     try {
       // regionフィールドに比例ブロックまたは小選挙区名を設定
       let regionValue: string | null = null;
+      let typeValue: string | null = null;
+      let prefectureValue: string | null = null;
+      
       if (type === "PROPORTIONAL") {
+        typeValue = "PROPORTIONAL";
         regionValue = proportionalBlock || null;
       } else if (type === "SINGLE") {
+        typeValue = "SINGLE";
+        prefectureValue = prefecture || null;
         regionValue = singleDistrict || null;
+      } else if (type === "SUPPORT") {
+        typeValue = "SUPPORT";
+      } else if (type === "PARTY_LEADER") {
+        typeValue = "PARTY_LEADER";
       }
+      // typeが空文字列の場合はnull（立候補区分を表示しない）
 
       const res = await fetch(`/api/admin/candidates/${candidateId}`, {
         method: "PUT",
@@ -84,10 +98,11 @@ export default function EditCandidatePage() {
         body: JSON.stringify({
           name,
           slug,
-          type,
-          prefecture: type === "SINGLE" ? (prefecture || null) : null,
+          type: typeValue,
+          prefecture: prefectureValue,
           region: regionValue,
-          imageUrl: imageUrl || null,
+          imageUrl: null,
+          showEvents,
         }),
       });
 
@@ -107,7 +122,7 @@ export default function EditCandidatePage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-3xl font-bold mb-8">候補者編集</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">候補者編集</h1>
         <p>読み込み中...</p>
       </div>
     );
@@ -121,7 +136,7 @@ export default function EditCandidatePage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">候補者編集</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">候補者編集</h1>
 
       <Card>
         <CardHeader>
@@ -162,25 +177,32 @@ export default function EditCandidatePage() {
             </div>
             <div>
               <label htmlFor="type" className="block text-sm font-medium mb-1">
-                立候補区分 *
+                立候補区分
               </label>
               <select
                 id="type"
                 value={type}
                 onChange={(e) => {
-                  setType(e.target.value as "SINGLE" | "PROPORTIONAL");
-                  if (e.target.value === "PROPORTIONAL") {
+                  const newType = e.target.value as "SINGLE" | "PROPORTIONAL" | "SUPPORT" | "PARTY_LEADER" | "";
+                  setType(newType);
+                  if (newType === "PROPORTIONAL") {
                     setPrefecture("");
                     setSingleDistrict("");
+                  } else if (newType === "SINGLE") {
+                    setProportionalBlock("");
                   } else {
+                    setPrefecture("");
+                    setSingleDistrict("");
                     setProportionalBlock("");
                   }
                 }}
-                required
                 className="w-full px-3 py-2 border rounded-md bg-white"
               >
-                <option value="PROPORTIONAL">比例</option>
+                <option value="">表示しない</option>
                 <option value="SINGLE">小選挙区</option>
+                <option value="PROPORTIONAL">比例</option>
+                <option value="SUPPORT">応援弁士</option>
+                <option value="PARTY_LEADER">党首</option>
               </select>
             </div>
 
@@ -263,20 +285,26 @@ export default function EditCandidatePage() {
               </>
             )}
 
-            <div>
-              <label htmlFor="imageUrl" className="block text-sm font-medium mb-1">
-                画像
-              </label>
-              <ImageUpload
-                value={imageUrl}
-                onChange={(url) => setImageUrl(url || "")}
-                disabled={isSubmitting}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
+              <div className="space-y-0.5 flex-1">
+                <Label htmlFor="show-events" className="text-base">
+                  演説予定の表示
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  この候補者の演説予定を公開側のページで表示するかどうかを制御します。
+                  <br />
+                  サイト全体の設定がOFFの場合は、この設定に関係なく非表示になります。
+                </p>
+              </div>
+              <Switch
+                id="show-events"
+                checked={showEvents}
+                onCheckedChange={setShowEvents}
+                className="flex-shrink-0"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                画像をアップロードするか、URLを直接入力することもできます
-              </p>
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "更新中..." : "更新"}
               </Button>

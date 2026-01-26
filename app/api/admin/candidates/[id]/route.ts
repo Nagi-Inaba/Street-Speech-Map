@@ -7,10 +7,11 @@ import { z } from "zod";
 const candidateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9-]+$/),
-  type: z.enum(["SINGLE", "PROPORTIONAL"]),
+  type: z.enum(["SINGLE", "PROPORTIONAL", "SUPPORT", "PARTY_LEADER"]).nullable().optional(),
   prefecture: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
   imageUrl: z.union([z.string().url(), z.string().length(0), z.null()]).optional(),
+  showEvents: z.boolean().optional(),
 });
 
 // 候補者取得
@@ -74,10 +75,11 @@ export async function PUT(
       data: {
         name: data.name,
         slug: data.slug,
-        type: data.type,
+        type: data.type || "",
         prefecture: data.prefecture || null,
         region: data.region || null,
         imageUrl: data.imageUrl || null,
+        showEvents: data.showEvents !== undefined ? data.showEvents : false,
       },
     });
 

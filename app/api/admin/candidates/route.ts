@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
+import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 import { z } from "zod";
 
 const candidateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9-]+$/),
-  type: z.enum(["SINGLE", "PROPORTIONAL"]),
+  type: z.enum(["SINGLE", "PROPORTIONAL", "SUPPORT", "PARTY_LEADER"]).nullable().optional(),
   prefecture: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
   imageUrl: z.union([z.string().url(), z.string().length(0), z.null()]).optional(),
+  showEvents: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -19,11 +21,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const candidates = await prisma.candidate.findMany({
-    orderBy: { name: "asc" },
-  });
+  const candidates = await prisma.candidate.findMany();
+  const sortedCandidates = sortCandidatesByRegion(candidates);
 
-  return NextResponse.json(candidates);
+  return NextResponse.json(sortedCandidates);
 }
 
 export async function POST(request: NextRequest) {
@@ -40,10 +41,11 @@ export async function POST(request: NextRequest) {
       data: {
         name: data.name,
         slug: data.slug,
-        type: data.type,
+        type: data.type || "",
         prefecture: data.prefecture || null,
         region: data.region || null,
         imageUrl: data.imageUrl || null,
+        showEvents: data.showEvents !== undefined ? data.showEvents : false,
       },
     });
 

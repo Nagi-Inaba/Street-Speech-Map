@@ -15,7 +15,7 @@ export default function AdminNav() {
   ];
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto">
       {navItems.map((item) => {
         const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
         return (
@@ -23,7 +23,7 @@ export default function AdminNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "transition-colors",
+              "transition-colors whitespace-nowrap text-sm sm:text-base",
               isActive
                 ? "text-foreground font-medium border-b-2 border-primary pb-1"
                 : "text-muted-foreground hover:text-foreground"

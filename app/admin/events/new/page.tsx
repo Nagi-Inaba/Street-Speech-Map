@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 import { getPrefectureCoordinates } from "@/lib/constants";
-import { Calendar } from "lucide-react";
+import { Calendar, Plus, X } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -26,6 +26,7 @@ export default function NewEventPage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [candidateId, setCandidateId] = useState("");
+  const [additionalCandidateIds, setAdditionalCandidateIds] = useState<string[]>([]);
   // 今日の日付をデフォルト値として設定（MM-DD形式）
   const getTodayDateString = () => {
     const today = new Date();
@@ -120,6 +121,7 @@ export default function NewEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           candidateId,
+          additionalCandidateIds: additionalCandidateIds.filter((id) => id && id !== candidateId),
           startAt: startAtDate,
           endAt: endAtDate,
           timeUnknown,
@@ -133,10 +135,17 @@ export default function NewEventPage() {
       if (res.ok) {
         router.push("/admin/events");
       } else {
-        alert("作成に失敗しました");
+        const errorData = await res.json().catch(() => ({}));
+        const errorMessage = errorData.error 
+          ? (typeof errorData.error === "string" 
+              ? errorData.error 
+              : JSON.stringify(errorData.error))
+          : "作成に失敗しました";
+        alert(`作成に失敗しました: ${errorMessage}`);
       }
     } catch (error) {
-      alert("エラーが発生しました");
+      const errorMessage = error instanceof Error ? error.message : "エラーが発生しました";
+      alert(`エラーが発生しました: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +153,7 @@ export default function NewEventPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">新規演説予定作成</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">新規演説予定作成</h1>
 
       <Card>
         <CardHeader>
@@ -155,7 +164,7 @@ export default function NewEventPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="candidateId" className="block text-sm font-medium mb-1">
-                候補者 *
+                メイン候補者 *
               </label>
               <select
                 id="candidateId"
@@ -165,12 +174,67 @@ export default function NewEventPage() {
                 className="w-full px-3 py-2 border rounded-md bg-white"
               >
                 <option value="">選択してください</option>
-                {candidates.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {candidates
+                  .filter((c) => !additionalCandidateIds.includes(c.id))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                合同演説者
+              </label>
+              {additionalCandidateIds.map((additionalId, index) => {
+                const candidate = candidates.find((c) => c.id === additionalId);
+                return (
+                  <div key={additionalId} className="flex gap-2 mb-2">
+                    <select
+                      value={additionalId}
+                      onChange={(e) => {
+                        const newIds = [...additionalCandidateIds];
+                        newIds[index] = e.target.value;
+                        setAdditionalCandidateIds(newIds);
+                      }}
+                      className="flex-1 px-3 py-2 border rounded-md bg-white"
+                    >
+                      <option value="">選択してください</option>
+                      {candidates
+                        .filter((c) => c.id !== candidateId && !additionalCandidateIds.includes(c.id) || c.id === additionalId)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setAdditionalCandidateIds(additionalCandidateIds.filter((_, i) => i !== index));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAdditionalCandidateIds([...additionalCandidateIds, ""]);
+                }}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                合同演説者を追加
+              </Button>
             </div>
 
             <div>
@@ -204,7 +268,7 @@ export default function NewEventPage() {
                     <label htmlFor="startDate" className="block text-sm font-medium mb-1">
                       開始日時 *
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative w-full">
                         <input
                           id="startDate"
@@ -235,34 +299,36 @@ export default function NewEventPage() {
                           <Calendar className="h-4 w-4" />
                         </button>
                       </div>
-                      <select
-                        id="startHour"
-                        value={startHour}
-                        onChange={(e) => setStartHour(e.target.value)}
-                        required={!timeUnknown}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
-                      >
-                        <option value="">時</option>
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option key={hour} value={hour}>
-                            {hour}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        id="startMinute"
-                        value={startMinute}
-                        onChange={(e) => setStartMinute(e.target.value)}
-                        required={!timeUnknown}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
-                      >
-                        <option value="">分</option>
-                        {MINUTE_OPTIONS.map((minute) => (
-                          <option key={minute} value={minute}>
-                            {minute}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex gap-2 flex-1">
+                        <select
+                          id="startHour"
+                          value={startHour}
+                          onChange={(e) => setStartHour(e.target.value)}
+                          required={!timeUnknown}
+                          className="flex-1 px-3 py-2 border rounded-md bg-white"
+                        >
+                          <option value="">時</option>
+                          {HOUR_OPTIONS.map((hour) => (
+                            <option key={hour} value={hour}>
+                              {hour}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          id="startMinute"
+                          value={startMinute}
+                          onChange={(e) => setStartMinute(e.target.value)}
+                          required={!timeUnknown}
+                          className="flex-1 px-3 py-2 border rounded-md bg-white"
+                        >
+                          <option value="">分</option>
+                          {MINUTE_OPTIONS.map((minute) => (
+                            <option key={minute} value={minute}>
+                              {minute}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -274,7 +340,7 @@ export default function NewEventPage() {
                         id="endHour"
                         value={endHour}
                         onChange={(e) => setEndHour(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
+                        className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">時</option>
                         {HOUR_OPTIONS.map((hour) => (
@@ -287,7 +353,7 @@ export default function NewEventPage() {
                         id="endMinute"
                         value={endMinute}
                         onChange={(e) => setEndMinute(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
+                        className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">分</option>
                         {MINUTE_OPTIONS.map((minute) => (
@@ -360,14 +426,15 @@ export default function NewEventPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                 {isSubmitting ? "作成中..." : "作成"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
+                className="w-full sm:w-auto"
               >
                 キャンセル
               </Button>

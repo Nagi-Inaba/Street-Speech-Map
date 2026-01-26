@@ -24,11 +24,13 @@ model Candidate {
   type      String   // "SINGLE" | "PROPORTIONAL"
   prefecture String? // 小選挙区の場合の都道府県
   region    String?  // 例: 選挙区や運用上の地域
+  showEvents Boolean  @default(false) // 演説予定の表示（候補者個別設定、デフォルトは非表示）
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   events    SpeechEvent[]
   requests  PublicRequest[]
+  additionalEvents EventCandidate[] // 合同演説として参加しているイベント
 }
 
 model SpeechEvent {
@@ -58,10 +60,25 @@ model SpeechEvent {
   histories   EventHistory[]
   moveHints   MoveHint[]
   reports     PublicReport[]
+  additionalCandidates EventCandidate[] // 合同演説者
 
   @@index([candidateId])
   @@index([status])
   @@index([startAt])
+}
+
+// 合同演説者の中間テーブル
+model EventCandidate {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       SpeechEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventId, candidateId])
+  @@index([eventId])
+  @@index([candidateId])
 }
 
 model RivalEvent {
@@ -235,6 +252,10 @@ model SiteSettings {
   candidateLabel    String   @default("候補者")
   // 演説予定の表示制御
   showEvents        Boolean  @default(true)
+  // SNS投稿テンプレート（実施中）
+  shareTemplateLive String   @default("{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}")
+  // SNS投稿テンプレート（予定）
+  shareTemplatePlanned String @default("{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}")
   updatedAt DateTime @updatedAt
 
   @@unique([id])

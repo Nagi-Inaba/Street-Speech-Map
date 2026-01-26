@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 const LeafletMap = dynamic(() => import("@/components/Map/LeafletMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-96 w-full bg-gray-100 animate-pulse rounded-md flex items-center justify-center">
+    <div className="h-64 sm:h-80 md:h-96 w-full bg-gray-100 animate-pulse rounded-md flex items-center justify-center">
       <span className="text-muted-foreground">地図を読み込み中...</span>
     </div>
   ),
@@ -29,7 +29,7 @@ export default function CandidateMap({ center, markers }: CandidateMapProps) {
       center={center}
       zoom={13}
       markers={markers}
-      className="h-96 w-full rounded-md"
+      className="h-64 sm:h-80 md:h-96 w-full rounded-md"
     />
   );
 }

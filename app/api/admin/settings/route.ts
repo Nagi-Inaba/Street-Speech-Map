@@ -23,6 +23,8 @@ export async function GET() {
           showCandidateInfo: true,
           candidateLabel: "候補者",
           showEvents: true,
+          shareTemplateLive: "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
+          shareTemplatePlanned: "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
         },
       });
     }
@@ -43,7 +45,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { showCandidateInfo, candidateLabel, showEvents } = body;
+    const { showCandidateInfo, candidateLabel, showEvents, shareTemplateLive, shareTemplatePlanned } = body;
 
     if (typeof showCandidateInfo !== "boolean") {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -54,6 +56,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (showEvents !== undefined && typeof showEvents !== "boolean") {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    if (shareTemplateLive !== undefined && typeof shareTemplateLive !== "string") {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    if (shareTemplatePlanned !== undefined && typeof shareTemplatePlanned !== "string") {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
@@ -71,6 +81,16 @@ export async function PATCH(request: NextRequest) {
       updateData.showEvents = showEvents;
     }
 
+    // shareTemplateLiveが指定されている場合のみ更新
+    if (shareTemplateLive !== undefined) {
+      updateData.shareTemplateLive = shareTemplateLive;
+    }
+
+    // shareTemplatePlannedが指定されている場合のみ更新
+    if (shareTemplatePlanned !== undefined) {
+      updateData.shareTemplatePlanned = shareTemplatePlanned;
+    }
+
     const settings = await prisma.siteSettings.upsert({
       where: { id: "site-settings" },
       update: updateData,
@@ -79,6 +99,8 @@ export async function PATCH(request: NextRequest) {
         showCandidateInfo,
         candidateLabel: candidateLabel !== undefined ? candidateLabel : "候補者",
         showEvents: showEvents !== undefined ? showEvents : true,
+        shareTemplateLive: shareTemplateLive !== undefined ? shareTemplateLive : "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
+        shareTemplatePlanned: shareTemplatePlanned !== undefined ? shareTemplatePlanned : "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
       },
     });
 

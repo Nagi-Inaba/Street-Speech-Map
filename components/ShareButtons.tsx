@@ -21,6 +21,8 @@ export default function ShareButtons({
 }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
   const [fullUrl, setFullUrl] = useState("");
+  const [shareTemplateLive, setShareTemplateLive] = useState<string | null>(null);
+  const [shareTemplatePlanned, setShareTemplatePlanned] = useState<string | null>(null);
 
   useEffect(() => {
     // クライアント側でのみURLを生成
@@ -29,16 +31,44 @@ export default function ShareButtons({
     }
   }, [eventUrl]);
 
+  useEffect(() => {
+    // 設定を取得
+    fetch("/api/public/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        setShareTemplateLive(data.shareTemplateLive || null);
+        setShareTemplatePlanned(data.shareTemplatePlanned || null);
+      })
+      .catch((error) => {
+        console.error("Error fetching share templates:", error);
+      });
+  }, []);
+
   const getShareText = () => {
     // 候補者名から空白を削除してハッシュタグを作成
     const candidateHashtag = `#${candidateName.replace(/\s+/g, "")}`;
     
+    let template: string;
     if (isLive) {
-      return `${candidateName}さんが現在${locationText}で街頭演説を行っています #チームみらい ${candidateHashtag}`;
+      template = shareTemplateLive || "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}";
     } else {
-      const timeText = startAt || "時間未定";
-      return `${timeText}から${candidateName}さんの街頭演説が${locationText}で予定されています #チームみらい ${candidateHashtag}`;
+      template = shareTemplatePlanned || "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}";
     }
+
+    // テンプレート内の変数を置換
+    let text = template
+      .replace(/{候補者名}/g, candidateName)
+      .replace(/{場所}/g, locationText);
+
+    if (!isLive) {
+      const timeText = startAt || "時間未定";
+      text = text.replace(/{時間}/g, timeText);
+    }
+
+    // #{候補者名}の形式も置換（後方互換性のため）
+    text = text.replace(/#{候補者名}/g, candidateHashtag);
+
+    return text;
   };
 
   const handleCopyLink = async () => {

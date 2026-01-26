@@ -16,20 +16,20 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-2">ダッシュボード</h1>
-      <p className="text-muted-foreground mb-8">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-2">ダッシュボード</h1>
+      <p className="text-sm sm:text-base text-muted-foreground mb-6 sm:mb-8">
         ようこそ、{session?.user?.name || session?.user?.email}さん
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <Link href="/admin/candidates">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader>
               <CardTitle className="text-lg">候補者数</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-primary">{candidatesCount}</p>
-              <p className="text-sm text-muted-foreground mt-1">登録済み候補者</p>
+              <p className="text-3xl sm:text-4xl font-bold text-primary">{candidatesCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">登録済み候補者</p>
             </CardContent>
           </Card>
         </Link>
@@ -59,7 +59,7 @@ export default async function AdminDashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">クイックアクション</CardTitle>

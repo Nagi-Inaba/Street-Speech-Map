@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 import { getPrefectureCoordinates } from "@/lib/constants";
-import { Calendar } from "lucide-react";
+import { Calendar, Plus, X } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -28,6 +28,11 @@ interface SpeechEvent {
   lat: number;
   lng: number;
   notes: string | null;
+  additionalCandidates?: Array<{
+    id: string;
+    candidateId: string;
+    candidate: Candidate;
+  }>;
 }
 
 // 時間の選択肢（8-20時：選挙活動ができる時間）
@@ -44,6 +49,7 @@ export default function EditEventPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [event, setEvent] = useState<SpeechEvent | null>(null);
   const [candidateId, setCandidateId] = useState("");
+  const [additionalCandidateIds, setAdditionalCandidateIds] = useState<string[]>([]);
   const [status, setStatus] = useState<"PLANNED" | "LIVE" | "ENDED">("PLANNED");
   
   // 今日の日付をデフォルト値として設定（MM-DD形式）
@@ -78,7 +84,7 @@ export default function EditEventPage() {
 
   // イベントデータを取得
   useEffect(() => {
-    if (!eventId) return;
+    if (!eventId || candidates.length === 0) return;
     
     fetch(`/api/admin/events/${eventId}`)
       .then((res) => res.json())
@@ -87,7 +93,37 @@ export default function EditEventPage() {
         setCandidateId(data.candidateId);
         setStatus(data.status as "PLANNED" | "LIVE" | "ENDED");
         setLocationText(data.locationText);
-        setNotes(data.notes || "");
+        
+        // 中間テーブルから合同演説者を取得
+        if (data.additionalCandidates && data.additionalCandidates.length > 0) {
+          const ids = data.additionalCandidates.map((ec) => ec.candidateId);
+          setAdditionalCandidateIds(ids);
+        } else {
+          // 後方互換性: notesから合同演説者の情報を抽出（既存データ用）
+          const notesText = data.notes || "";
+          const jointSpeakersMatch = notesText.match(/合同演説者:\s*(.+?)(\n|$)/);
+          if (jointSpeakersMatch) {
+            const jointSpeakersText = jointSpeakersMatch[1];
+            const jointSpeakersNames = jointSpeakersText.split("、").map((name) => name.trim());
+            const ids = jointSpeakersNames
+              .map((name) => candidates.find((c) => c.name === name)?.id)
+              .filter((id): id is string => !!id);
+            if (ids.length > 0) {
+              setAdditionalCandidateIds(ids);
+            }
+            // notesから合同演説者の情報を削除
+            const notesWithoutJointSpeakers = notesText.replace(/合同演説者:.*?(\n|$)/, "").trim();
+            setNotes(notesWithoutJointSpeakers);
+          } else {
+            setNotes(notesText);
+          }
+        }
+        
+        if (data.additionalCandidates && data.additionalCandidates.length === 0) {
+          setNotes(data.notes || "");
+        } else if (!data.additionalCandidates) {
+          setNotes(data.notes || "");
+        }
         setLat(data.lat);
         setLng(data.lng);
         setTimeUnknown(data.timeUnknown);
@@ -117,7 +153,7 @@ export default function EditEventPage() {
         alert("イベントの取得に失敗しました");
         setIsLoading(false);
       });
-  }, [eventId]);
+  }, [eventId, candidates]);
 
   // 候補者選択時に地図の中心を立候補地域に設定
   useEffect(() => {
@@ -177,6 +213,7 @@ export default function EditEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           candidateId,
+          additionalCandidateIds: additionalCandidateIds.filter((id) => id && id !== candidateId),
           status,
           startAt: startAtDate,
           endAt: endAtDate,
@@ -205,7 +242,7 @@ export default function EditEventPage() {
   if (isLoading) {
     return (
       <div className="max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8">演説予定編集</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">演説予定編集</h1>
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             読み込み中...
@@ -218,7 +255,7 @@ export default function EditEventPage() {
   if (!event) {
     return (
       <div className="max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8">演説予定編集</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">演説予定編集</h1>
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             イベントが見つかりませんでした
@@ -241,7 +278,7 @@ export default function EditEventPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="candidateId" className="block text-sm font-medium mb-1">
-                候補者 *
+                メイン候補者 *
               </label>
               <select
                 id="candidateId"
@@ -251,12 +288,67 @@ export default function EditEventPage() {
                 className="w-full px-3 py-2 border rounded-md bg-white"
               >
                 <option value="">選択してください</option>
-                {candidates.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {candidates
+                  .filter((c) => !additionalCandidateIds.includes(c.id))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                合同演説者
+              </label>
+              {additionalCandidateIds.map((additionalId, index) => {
+                const candidate = candidates.find((c) => c.id === additionalId);
+                return (
+                  <div key={`${additionalId}-${index}`} className="flex gap-2 mb-2">
+                    <select
+                      value={additionalId}
+                      onChange={(e) => {
+                        const newIds = [...additionalCandidateIds];
+                        newIds[index] = e.target.value;
+                        setAdditionalCandidateIds(newIds);
+                      }}
+                      className="flex-1 px-3 py-2 border rounded-md bg-white"
+                    >
+                      <option value="">選択してください</option>
+                      {candidates
+                        .filter((c) => c.id !== candidateId && (!additionalCandidateIds.includes(c.id) || c.id === additionalId))
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setAdditionalCandidateIds(additionalCandidateIds.filter((_, i) => i !== index));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAdditionalCandidateIds([...additionalCandidateIds, ""]);
+                }}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                合同演説者を追加
+              </Button>
             </div>
 
             <div>
@@ -307,7 +399,7 @@ export default function EditEventPage() {
                     <label htmlFor="startDate" className="block text-sm font-medium mb-1">
                       開始日時 *
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative w-full">
                         <input
                           id="startDate"
@@ -338,46 +430,48 @@ export default function EditEventPage() {
                           <Calendar className="h-4 w-4" />
                         </button>
                       </div>
-                      <select
-                        id="startHour"
-                        value={startHour}
-                        onChange={(e) => setStartHour(e.target.value)}
-                        required={!timeUnknown}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
-                      >
-                        <option value="">時</option>
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option key={hour} value={hour}>
-                            {hour}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        id="startMinute"
-                        value={startMinute}
-                        onChange={(e) => setStartMinute(e.target.value)}
-                        required={!timeUnknown}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
-                      >
-                        <option value="">分</option>
-                        {MINUTE_OPTIONS.map((minute) => (
-                          <option key={minute} value={minute}>
-                            {minute}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex gap-2 flex-1">
+                        <select
+                          id="startHour"
+                          value={startHour}
+                          onChange={(e) => setStartHour(e.target.value)}
+                          required={!timeUnknown}
+                          className="flex-1 px-3 py-2 border rounded-md bg-white"
+                        >
+                          <option value="">時</option>
+                          {HOUR_OPTIONS.map((hour) => (
+                            <option key={hour} value={hour}>
+                              {hour}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          id="startMinute"
+                          value={startMinute}
+                          onChange={(e) => setStartMinute(e.target.value)}
+                          required={!timeUnknown}
+                          className="flex-1 px-3 py-2 border rounded-md bg-white"
+                        >
+                          <option value="">分</option>
+                          {MINUTE_OPTIONS.map((minute) => (
+                            <option key={minute} value={minute}>
+                              {minute}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                   <div>
                     <label htmlFor="endTime" className="block text-sm font-medium mb-1">
                       終了時刻
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <select
                         id="endHour"
                         value={endHour}
                         onChange={(e) => setEndHour(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
+                        className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">時</option>
                         {HOUR_OPTIONS.map((hour) => (
@@ -390,7 +484,7 @@ export default function EditEventPage() {
                         id="endMinute"
                         value={endMinute}
                         onChange={(e) => setEndMinute(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md bg-white"
+                        className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">分</option>
                         {MINUTE_OPTIONS.map((minute) => (
@@ -463,7 +557,7 @@ export default function EditEventPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "更新中..." : "更新"}
               </Button>
