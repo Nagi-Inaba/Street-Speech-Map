@@ -1,33 +1,43 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-// 公開側用の設定取得（認証不要）
+// 公開設定取得（認証不要）
 export async function GET() {
   try {
     let settings = await prisma.siteSettings.findUnique({
       where: { id: "site-settings" },
+      select: {
+        showCandidateInfo: true,
+        candidateLabel: true,
+        showEvents: true,
+        shareTemplateLive: true,
+        shareTemplatePlanned: true,
+      },
     });
 
-    // 設定が存在しない場合はデフォルト値（表示する）を返す
+    // 設定が存在しない場合はデフォルト値
     if (!settings) {
       return NextResponse.json({
         showCandidateInfo: true,
+        candidateLabel: "候補者",
+        showEvents: true,
+        shareTemplateLive: "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
+        shareTemplatePlanned: "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
       });
     }
 
-    return NextResponse.json({
-      showCandidateInfo: settings.showCandidateInfo,
-      candidateLabel: settings.candidateLabel !== undefined ? settings.candidateLabel : "候補者",
-      showEvents: settings.showEvents ?? true,
-    });
+    return NextResponse.json(settings);
   } catch (error) {
     console.error("Error fetching public settings:", error);
-    // エラー時は表示する（デフォルト）
-    return NextResponse.json({
-      showCandidateInfo: true,
-      candidateLabel: "候補者",
-      showEvents: true,
-    });
+    return NextResponse.json(
+      {
+        showCandidateInfo: true,
+        candidateLabel: "候補者",
+        showEvents: true,
+        shareTemplateLive: "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
+        shareTemplatePlanned: "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
+      },
+      { status: 200 }
+    );
   }
 }
-

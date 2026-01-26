@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Candidate {
   id: string;
@@ -17,6 +18,8 @@ export default function SettingsPage() {
   const [showCandidateInfo, setShowCandidateInfo] = useState(true);
   const [candidateLabel, setCandidateLabel] = useState("");
   const [showEvents, setShowEvents] = useState(true);
+  const [shareTemplateLive, setShareTemplateLive] = useState("");
+  const [shareTemplatePlanned, setShareTemplatePlanned] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,6 +41,8 @@ export default function SettingsPage() {
         setShowCandidateInfo(data.showCandidateInfo ?? true);
         setCandidateLabel(data.candidateLabel !== undefined ? data.candidateLabel : "");
         setShowEvents(data.showEvents ?? true);
+        setShareTemplateLive(data.shareTemplateLive ?? "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}");
+        setShareTemplatePlanned(data.shareTemplatePlanned ?? "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}");
       }
 
       if (candidatesRes.ok) {
@@ -67,6 +72,8 @@ export default function SettingsPage() {
           showCandidateInfo,
           candidateLabel,
           showEvents,
+          shareTemplateLive,
+          shareTemplatePlanned,
         }),
       });
 
@@ -199,6 +206,56 @@ export default function SettingsPage() {
               onChange={(e) => setCandidateLabel(e.target.value)}
               placeholder="空白可（空白の場合は「候補者」は表示されません）"
               className="max-w-md"
+            />
+          </div>
+
+          <div className="pt-4 border-t">
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "保存中..." : "設定を保存"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl w-full mt-6">
+        <CardHeader>
+          <CardTitle>SNS投稿テンプレート</CardTitle>
+          <CardDescription>
+            SNS共有ボタンで使用される投稿テンプレートを設定します。
+            <br />
+            使用可能な変数: <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{候補者名}"}</code>, <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{場所}"}</code>, <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{時間}"}</code>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="share-template-live" className="text-base">
+              実施中のテンプレート
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              演説実施中の共有時に使用されるテンプレート
+            </p>
+            <Textarea
+              id="share-template-live"
+              value={shareTemplateLive}
+              onChange={(e) => setShareTemplateLive(e.target.value)}
+              placeholder="{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}"
+              className="min-h-[100px] font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="share-template-planned" className="text-base">
+              予定のテンプレート
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              演説予定の共有時に使用されるテンプレート
+            </p>
+            <Textarea
+              id="share-template-planned"
+              value={shareTemplatePlanned}
+              onChange={(e) => setShareTemplatePlanned(e.target.value)}
+              placeholder="{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}"
+              className="min-h-[100px] font-mono text-sm"
             />
           </div>
 

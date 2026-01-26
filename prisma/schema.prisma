@@ -252,6 +252,10 @@ model SiteSettings {
   candidateLabel    String   @default("候補者")
   // 演説予定の表示制御
   showEvents        Boolean  @default(true)
+  // SNS投稿テンプレート（実施中）
+  shareTemplateLive String   @default("{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}")
+  // SNS投稿テンプレート（予定）
+  shareTemplatePlanned String @default("{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}")
   updatedAt DateTime @updatedAt
 
   @@unique([id])
