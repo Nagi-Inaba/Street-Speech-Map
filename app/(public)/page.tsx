@@ -61,26 +61,32 @@ export default async function HomePage() {
               }
 
               return (
-                <Link key={candidate.id} href={`/c/${candidate.slug}`}>
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      {candidate.imageUrl && (
-                        <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
-                          <Image
-                            src={candidate.imageUrl}
-                            alt={candidate.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-                      <CardTitle>{candidate.name}</CardTitle>
-                      {typeText && (
-                        <CardDescription>{typeText}</CardDescription>
-                      )}
-                    </CardHeader>
-                  </Card>
-                </Link>
+                <Card key={candidate.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    {candidate.imageUrl && (
+                      <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
+                        <Image
+                          src={candidate.imageUrl}
+                          alt={candidate.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <CardTitle>{candidate.name}</CardTitle>
+                    {typeText && (
+                      <CardDescription>{typeText}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Link
+                      href={`/c/${candidate.slug}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      地図で見る
+                    </Link>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>

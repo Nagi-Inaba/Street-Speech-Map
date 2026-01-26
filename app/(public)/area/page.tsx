@@ -58,6 +58,8 @@ export default async function AreaPage() {
         endAt: e.endAt?.toISOString() ?? null,
         timeUnknown: e.timeUnknown,
         locationText: e.locationText,
+        lat: e.lat,
+        lng: e.lng,
         candidateId: e.candidateId,
         candidate: { name: c.name, slug: c.slug },
         additionalCandidates: e.additionalCandidates,

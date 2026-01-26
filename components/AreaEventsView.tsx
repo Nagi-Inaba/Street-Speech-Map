@@ -3,9 +3,11 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAreaFilterOptions, candidateMatchesArea } from "@/lib/area-filter";
+import { getAreaFilterOptions, candidateMatchesArea, REGION_BLOCK_DEFS } from "@/lib/area-filter";
 import type { CandidateForArea } from "@/lib/area-filter";
 import { formatJSTTime, formatJSTWithoutYear } from "@/lib/time";
+import { getPrefectureCoordinates, PREFECTURE_COORDINATES } from "@/lib/constants";
+import LeafletMap from "@/components/Map/LeafletMap";
 
 export interface EventForArea {
   id: string;
@@ -14,6 +16,8 @@ export interface EventForArea {
   endAt: string | null;
   timeUnknown: boolean;
   locationText: string;
+  lat: number;
+  lng: number;
   candidateId: string;
   candidate: { name: string; slug: string };
   additionalCandidates?: Array<{ candidate: { name: string } }>;
@@ -134,6 +138,80 @@ export default function AreaEventsView({
   // イベントから候補者を引く
   const getCandidate = (candidateId: string) => candidates.find((c) => c.id === candidateId)!;
 
+  // 地図用のマーカーを生成
+  const mapMarkers = useMemo(() => {
+    const allEvents = [...liveEvents, ...plannedEvents, ...endedEvents];
+    return allEvents.map((event) => {
+      const candidate = getCandidate(event.candidateId);
+      const names = [event.candidate.name];
+      if (event.additionalCandidates?.length) {
+        event.additionalCandidates.forEach((a) => names.push(a.candidate.name));
+      }
+      const candidateLabel = names.length > 1 ? `${names[0]} ほか${names.length - 1}名` : names[0];
+      
+      // 吹き出しの内容（候補者名を黒字で表示）
+      const popupContent = `<div style="color: black; font-weight: bold;">${candidateLabel}</div>`;
+      
+      return {
+        id: event.id,
+        position: [event.lat, event.lng] as [number, number],
+        popup: popupContent,
+        color: event.status === "LIVE" ? "red" : event.status === "ENDED" ? undefined : "blue",
+      };
+    });
+  }, [liveEvents, plannedEvents, endedEvents, candidates]);
+
+  // 地図の中心位置とズームレベルを計算
+  const { mapCenter, mapZoom } = useMemo(() => {
+    // エリアフィルタに応じて中心位置とズームを決定
+    if (areaId === "all") {
+      // すべてのエリア: すべてのイベントの中心
+      if (mapMarkers.length === 0) return { mapCenter: [35.6812, 139.7671] as [number, number], mapZoom: 6 };
+      const avgLat = mapMarkers.reduce((sum, m) => sum + m.position[0], 0) / mapMarkers.length;
+      const avgLng = mapMarkers.reduce((sum, m) => sum + m.position[1], 0) / mapMarkers.length;
+      return { mapCenter: [avgLat, avgLng] as [number, number], mapZoom: 10 };
+    } else if (areaId.startsWith("block:")) {
+      // 地域ブロック: ブロックの中心座標を計算
+      const blockKey = areaId.slice(6);
+      const def = REGION_BLOCK_DEFS[blockKey];
+      if (def && def.prefectures.length > 0) {
+        // ブロック内の都道府県の座標の平均を計算
+        const coords = def.prefectures
+          .map((pref) => PREFECTURE_COORDINATES[pref])
+          .filter((coord): coord is [number, number] => coord !== undefined);
+        if (coords.length > 0) {
+          const avgLat = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
+          const avgLng = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
+          return { mapCenter: [avgLat, avgLng] as [number, number], mapZoom: 8 };
+        }
+      }
+      // フォールバック: イベントの中心
+      if (mapMarkers.length > 0) {
+        const avgLat = mapMarkers.reduce((sum, m) => sum + m.position[0], 0) / mapMarkers.length;
+        const avgLng = mapMarkers.reduce((sum, m) => sum + m.position[1], 0) / mapMarkers.length;
+        return { mapCenter: [avgLat, avgLng] as [number, number], mapZoom: 8 };
+      }
+      return { mapCenter: [35.6812, 139.7671] as [number, number], mapZoom: 6 };
+    } else if (areaId.startsWith("pref:")) {
+      // 都道府県: その都道府県の中心座標
+      const prefecture = areaId.slice(5);
+      const coords = getPrefectureCoordinates(prefecture);
+      if (coords) {
+        return { mapCenter: coords, mapZoom: 10 };
+      }
+      // フォールバック: イベントの中心
+      if (mapMarkers.length > 0) {
+        const avgLat = mapMarkers.reduce((sum, m) => sum + m.position[0], 0) / mapMarkers.length;
+        const avgLng = mapMarkers.reduce((sum, m) => sum + m.position[1], 0) / mapMarkers.length;
+        return { mapCenter: [avgLat, avgLng] as [number, number], mapZoom: 10 };
+      }
+      return { mapCenter: [35.6812, 139.7671] as [number, number], mapZoom: 6 };
+    }
+    
+    // デフォルト
+    return { mapCenter: [35.6812, 139.7671] as [number, number], mapZoom: 6 };
+  }, [mapMarkers, areaId]);
+
   return (
     <div className="space-y-6">
       {/* フィルター */}
@@ -160,6 +238,19 @@ export default function AreaEventsView({
           </optgroup>
         </select>
       </div>
+
+      {/* 地図 */}
+      {totalCount > 0 && (
+        <div className="w-full">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">地図で見る</h2>
+          <LeafletMap
+            center={mapCenter}
+            zoom={mapZoom}
+            markers={mapMarkers}
+            className="h-96 w-full rounded-md border"
+          />
+        </div>
+      )}
 
       {totalCount === 0 ? (
         <p className="text-muted-foreground py-8">
