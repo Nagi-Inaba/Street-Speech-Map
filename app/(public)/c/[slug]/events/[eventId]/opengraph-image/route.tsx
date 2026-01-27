@@ -8,30 +8,19 @@ export const revalidate = 60;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string; eventId: string }> }
 ) {
   try {
-    const { slug } = await params;
+    const { slug, eventId } = await params;
 
-    const candidate = await prisma.candidate.findUnique({
-      where: { slug },
+    const event = await prisma.speechEvent.findUnique({
+      where: { id: eventId },
       include: {
-        events: {
-          where: {
-            status: {
-              in: ["PLANNED", "LIVE"],
-            },
-          },
-          orderBy: [
-            { status: "asc" },
-            { startAt: "asc" },
-          ],
-          take: 1,
-        },
+        candidate: true,
       },
     });
 
-    if (!candidate) {
+    if (!event || event.candidate.slug !== slug) {
       const errorResponse = new ImageResponse(
         (
           <div
@@ -46,7 +35,7 @@ export async function GET(
               color: "#6b7280",
             }}
           >
-            候補者が見つかりません
+            イベントが見つかりません
           </div>
         ),
         {
@@ -59,12 +48,11 @@ export async function GET(
       return errorResponse;
     }
 
-    const firstEvent = candidate.events[0];
-    const isLive = firstEvent?.status === "LIVE";
+    const isLive = event.status === "LIVE";
 
     let dateTimeText = "時間未定";
-    if (firstEvent?.startAt) {
-      dateTimeText = formatJSTWithoutYear(firstEvent.startAt);
+    if (event.startAt) {
+      dateTimeText = formatJSTWithoutYear(event.startAt);
     }
 
     const statusText = isLive ? "実施中" : "予定";
@@ -128,21 +116,19 @@ export async function GET(
                 textAlign: "center",
               }}
             >
-              {candidate.name}
+              {event.candidate.name}
             </div>
 
-            {firstEvent && (
-              <div
-                style={{
-                  fontSize: "48px",
-                  color: "#000000",
-                  marginBottom: "40px",
-                  textAlign: "center",
-                }}
-              >
-                {firstEvent.locationText}
-              </div>
-            )}
+            <div
+              style={{
+                fontSize: "48px",
+                color: "#000000",
+                marginBottom: "40px",
+                textAlign: "center",
+              }}
+            >
+              {event.locationText}
+            </div>
 
             <div
               style={{
@@ -171,8 +157,8 @@ export async function GET(
       }
     );
 
-  // キャッシュヘッダーを追加
-  imageResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    // キャッシュヘッダーを追加
+    imageResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
     imageResponse.headers.set("Content-Type", "image/png");
 
     return imageResponse;
@@ -205,4 +191,3 @@ export async function GET(
     return errorResponse;
   }
 }
-

@@ -327,7 +327,7 @@ export default async function CandidatePage({
                         登録時刻: {formatJST(event.submittedAt)}
                       </p>
                       <ShareButtons
-                        eventUrl={`/c/${candidate.slug}#event-${event.id}`}
+                        eventUrl={`/c/${candidate.slug}/events/${event.id}`}
                         candidateName={candidate.name}
                         locationText={event.locationText}
                         isLive={true}
@@ -388,7 +388,7 @@ export default async function CandidatePage({
                         登録時刻: {formatJST(event.submittedAt)}
                       </p>
                       <ShareButtons
-                        eventUrl={`/c/${candidate.slug}#event-${event.id}`}
+                        eventUrl={`/c/${candidate.slug}/events/${event.id}`}
                         candidateName={candidate.name}
                         locationText={event.locationText}
                         isLive={false}
