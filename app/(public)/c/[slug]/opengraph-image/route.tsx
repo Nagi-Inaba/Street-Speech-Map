@@ -77,18 +77,13 @@ export async function GET(
             width: "100%",
             display: "flex",
             flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
             fontFamily: "system-ui, -apple-system, sans-serif",
+            padding: "60px 80px",
           }}
         >
-          {/* 上部グラデーション */}
-          <div
-            style={{
-              height: "150px",
-              width: "100%",
-              background: "linear-gradient(to bottom, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
-            }}
-          />
-
           {/* 白背景の中央部分（横は完全に白背景） */}
           <div
             style={{
@@ -98,8 +93,9 @@ export async function GET(
               justifyContent: "center",
               backgroundColor: "white",
               width: "100%",
-              flex: 1,
+              height: "100%",
               padding: "60px 80px",
+              border: "2px solid #000000",
             }}
           >
             <div
@@ -113,7 +109,7 @@ export async function GET(
                 borderRadius: "8px",
                 fontSize: "32px",
                 fontWeight: "bold",
-                marginBottom: "40px",
+                marginBottom: "60px",
               }}
             >
               {statusText}
@@ -124,7 +120,7 @@ export async function GET(
                 fontSize: "72px",
                 fontWeight: "bold",
                 color: "#000000",
-                marginBottom: "40px",
+                marginBottom: "60px",
                 textAlign: "center",
               }}
             >
@@ -136,7 +132,7 @@ export async function GET(
                 style={{
                   fontSize: "48px",
                   color: "#000000",
-                  marginBottom: "40px",
+                  marginBottom: "60px",
                   textAlign: "center",
                 }}
               >
@@ -154,15 +150,6 @@ export async function GET(
               {dateTimeText}
             </div>
           </div>
-
-          {/* 下部グラデーション */}
-          <div
-            style={{
-              height: "150px",
-              width: "100%",
-              background: "linear-gradient(to top, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
-            }}
-          />
         </div>
       ),
       {
