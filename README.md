@@ -244,6 +244,49 @@ NeonとVercelを使用した本番環境のセットアップ手順：
 
 **セキュリティ**: 本番環境では必ず`CRON_SECRET`環境変数を設定し、Cronリクエストに`Authorization: Bearer <CRON_SECRET>`ヘッダーを追加してください。
 
+## API公開
+
+外部連携のためにAPIを公開することができます。
+
+### セットアップ
+
+1. **データベースマイグレーション**
+   ```bash
+   npm run db:migrate
+   ```
+
+2. **環境変数の設定**（オプション）
+   ```env
+   # CORS設定（許可するオリジンをカンマ区切りで指定）
+   ALLOWED_ORIGINS="https://example.com,https://app.example.com"
+   ```
+
+3. **APIキーの作成**
+   - 管理画面からAPIキーを作成（今後、管理画面UIに追加予定）
+   - 現在は `/api/admin/api-keys` エンドポイントを使用
+
+### APIドキュメント
+
+- **詳細ドキュメント**: [docs/API.md](docs/API.md)
+- **セットアップガイド**: [docs/API_SETUP.md](docs/API_SETUP.md)
+- **OpenAPI仕様**: `/api/docs` エンドポイントで取得可能
+
+### 主な機能
+
+- **APIキー認証**: X-API-Key ヘッダーまたは Authorization: Bearer 形式
+- **レート制限**: APIキーごとに設定可能（デフォルト: 1分あたり100リクエスト）
+- **CORS対応**: 外部ドメインからのアクセスを許可
+- **OpenAPI仕様**: Swagger UIなどで使用可能
+
+### 利用可能なエンドポイント
+
+- `GET /api/public/candidates` - 候補者一覧取得
+- `GET /api/public/candidates/{slug}/events` - 候補者の演説イベント一覧取得
+- `GET /api/public/settings` - 公開設定取得（認証不要）
+- `GET /api/docs` - OpenAPI仕様取得（認証不要）
+
+詳細は [docs/API.md](docs/API.md) を参照してください。
+
 ## システム仕様
 
 詳細なシステム仕様については [docs/SPECIFICATION.md](docs/SPECIFICATION.md) を参照してください。
@@ -291,6 +334,7 @@ NeonとVercelを使用した本番環境のセットアップ手順：
 - データクリーンアップスクリプト（サンプルデータ削除）
 - 分析基盤（`lib/analytics.ts`、Umami統合準備済み）
 - 変更履歴の記録（EventHistory、表示機能は未実装）
+- API公開機能（APIキー認証、レート制限、CORS対応、OpenAPI仕様）
 
 ### 実装予定機能
 - 他党イベント登録＆表示（CRUD機能）
@@ -316,6 +360,7 @@ NeonとVercelを使用した本番環境のセットアップ手順：
 
 ## 今後の改善
 
+- [ ] APIキー管理画面UI（管理画面でのAPIキー作成・管理）
 - [ ] 画像アップロード機能（Vercel Blob）
 - [ ] 他党イベント登録＆表示（CRUD機能）
 - [ ] 施設レイヤー表示機能（地図上での可視化）

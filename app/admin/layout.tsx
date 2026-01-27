@@ -23,7 +23,7 @@ export default async function AdminLayout({
               <Link href="/admin" className="text-lg sm:text-xl font-bold text-primary">
                 管理画面
               </Link>
-              <AdminNav />
+              <AdminNav userRole={session.user?.role} />
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div className="text-sm">

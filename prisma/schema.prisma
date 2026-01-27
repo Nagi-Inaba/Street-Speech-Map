@@ -260,3 +260,18 @@ model SiteSettings {
 
   @@unique([id])
 }
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  name        String   // APIキーの名前（識別用）
+  keyHash     String   @unique // ハッシュ化されたAPIキー
+  rateLimit   Int      @default(100) // 1分あたりのリクエスト数
+  isActive    Boolean  @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdByUserId String? // 作成者（オプション）
+
+  @@index([keyHash])
+  @@index([isActive])
+}

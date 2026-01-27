@@ -3,8 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { hasPermission } from "@/lib/rbac";
 
-export default function AdminNav() {
+interface AdminNavProps {
+  userRole?: string | null;
+}
+
+export default function AdminNav({ userRole }: AdminNavProps) {
   const pathname = usePathname();
 
   const navItems = [
@@ -12,6 +17,10 @@ export default function AdminNav() {
     { href: "/admin/events", label: "演説予定" },
     { href: "/admin/requests", label: "リクエスト" },
     { href: "/admin/settings", label: "設定" },
+    // SiteAdminのみ表示
+    ...(hasPermission({ role: userRole || "" }, "SiteAdmin")
+      ? [{ href: "/admin/api-keys", label: "APIキー" }]
+      : []),
   ];
 
   return (
