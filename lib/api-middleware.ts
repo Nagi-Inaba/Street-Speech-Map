@@ -5,7 +5,7 @@ import { withRateLimit } from "@/lib/rate-limit";
 /**
  * API認証とレート制限を適用するミドルウェア
  */
-export function withApiMiddleware(
+export async function withApiMiddleware(
   request: NextRequest,
   handler: (request: NextRequest, apiKey: { id: string; name: string; rateLimit: number }) => Promise<NextResponse>
 ): Promise<NextResponse> {

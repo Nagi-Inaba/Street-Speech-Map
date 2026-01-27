@@ -72,7 +72,7 @@ if (typeof setInterval !== "undefined") {
 /**
  * レート制限ミドルウェア
  */
-export function withRateLimit(
+export async function withRateLimit(
   request: NextRequest,
   apiKey: { id: string; rateLimit: number },
   handler: (request: NextRequest) => Promise<NextResponse>
