@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
@@ -69,9 +70,12 @@ export async function PUT(
     const body = await request.json();
     const data = updateEventSchema.parse(body);
 
-    // 既存の演説予定を取得（変更履歴用）
+    // 既存の演説予定を取得（変更履歴用とキャッシュ無効化用）
     const existingEvent = await prisma.speechEvent.findUnique({
       where: { id },
+      include: {
+        candidate: true,
+      },
     });
 
     if (!existingEvent) {
@@ -143,6 +147,24 @@ export async function PUT(
       },
     });
 
+    // OGP画像とページのキャッシュを無効化
+    const candidateSlug = event.candidate.slug;
+    revalidatePath(`/c/${candidateSlug}`);
+    revalidatePath(`/c/${candidateSlug}/opengraph-image`);
+    revalidatePath(`/c/${candidateSlug}/events/${id}`);
+    revalidatePath(`/c/${candidateSlug}/events/${id}/opengraph-image`);
+    
+    // 候補者が変更された場合、旧候補者のページも無効化
+    if (existingEvent.candidateId !== data.candidateId) {
+      const oldCandidate = await prisma.candidate.findUnique({
+        where: { id: existingEvent.candidateId },
+      });
+      if (oldCandidate) {
+        revalidatePath(`/c/${oldCandidate.slug}`);
+        revalidatePath(`/c/${oldCandidate.slug}/opengraph-image`);
+      }
+    }
+
     return NextResponse.json(event);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -171,9 +193,12 @@ export async function PATCH(
       status: z.enum(["PLANNED", "LIVE", "ENDED"]),
     }).parse(body);
 
-    // 既存の演説予定を取得
+    // 既存の演説予定を取得（キャッシュ無効化用）
     const existingEvent = await prisma.speechEvent.findUnique({
       where: { id },
+      include: {
+        candidate: true,
+      },
     });
 
     if (!existingEvent) {
@@ -203,7 +228,17 @@ export async function PATCH(
     const event = await prisma.speechEvent.update({
       where: { id },
       data: { status },
+      include: {
+        candidate: true,
+      },
     });
+
+    // OGP画像とページのキャッシュを無効化
+    const candidateSlug = event.candidate.slug;
+    revalidatePath(`/c/${candidateSlug}`);
+    revalidatePath(`/c/${candidateSlug}/opengraph-image`);
+    revalidatePath(`/c/${candidateSlug}/events/${id}`);
+    revalidatePath(`/c/${candidateSlug}/events/${id}/opengraph-image`);
 
     return NextResponse.json(event);
   } catch (error) {
@@ -228,9 +263,28 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    // 削除前に候補者情報を取得（キャッシュ無効化用）
+    const event = await prisma.speechEvent.findUnique({
+      where: { id },
+      include: {
+        candidate: true,
+      },
+    });
+
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
     await prisma.speechEvent.delete({
       where: { id },
     });
+
+    // OGP画像とページのキャッシュを無効化
+    const candidateSlug = event.candidate.slug;
+    revalidatePath(`/c/${candidateSlug}`);
+    revalidatePath(`/c/${candidateSlug}/opengraph-image`);
+    revalidatePath(`/c/${candidateSlug}/events/${id}`);
+    revalidatePath(`/c/${candidateSlug}/events/${id}/opengraph-image`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
@@ -133,6 +134,11 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // OGP画像とページのキャッシュを無効化
+    const candidateSlug = event.candidate.slug;
+    revalidatePath(`/c/${candidateSlug}`);
+    revalidatePath(`/c/${candidateSlug}/opengraph-image`);
 
     return NextResponse.json(event);
   } catch (error) {
