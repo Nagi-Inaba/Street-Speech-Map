@@ -112,9 +112,21 @@ export default function NewEventPage() {
     setIsSubmitting(true);
 
     try {
-      const startAtDate = timeUnknown || !startDate || !startHour || !startMinute ? null : combineDateTime(startDate, startHour, startMinute);
-      // 終了時刻は開始日時の日付と同じ日付を使用
-      const endAtDate = timeUnknown || !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute);
+      let startAtDate: string | null = null;
+      let endAtDate: string | null = null;
+
+      if (timeUnknown) {
+        // 日付のみ指定されている場合は、00:00として保存し、timeUnknownフラグで「時間未定」を表現
+        if (startDate) {
+          startAtDate = combineDateTime(startDate, "00", "00");
+        }
+      } else {
+        // 時間が指定されている場合のみ、開始・終了時刻を保存
+        startAtDate =
+          !startDate || !startHour || !startMinute ? null : combineDateTime(startDate, startHour, startMinute);
+        // 終了時刻は開始日時の日付と同じ日付を使用
+        endAtDate = !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute);
+      }
 
       const res = await fetch("/api/admin/events", {
         method: "POST",
@@ -243,17 +255,14 @@ export default function NewEventPage() {
                   type="checkbox"
                   checked={timeUnknown}
                   onChange={(e) => {
-                    setTimeUnknown(e.target.checked);
-                    if (e.target.checked) {
-                      setStartDate("");
+                    const checked = e.target.checked;
+                    setTimeUnknown(checked);
+                    if (checked) {
+                      // 「時間未定」の場合は時間だけクリア（日時フィールド自体は残す）
                       setStartHour("");
                       setStartMinute("");
                       setEndHour("");
                       setEndMinute("");
-                    } else {
-                      setStartDate(getTodayDateString());
-                      setStartHour("");
-                      setStartMinute("");
                     }
                   }}
                 />
@@ -261,85 +270,51 @@ export default function NewEventPage() {
               </label>
             </div>
 
-            {!timeUnknown && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="startDate" className="block text-sm font-medium mb-1">
-                      開始日時 *
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="relative w-full">
-                        <input
-                          id="startDate"
-                          type="date"
-                          value={`${new Date().getFullYear()}-${startDate}`}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value) {
-                              const [, month, day] = value.split("-");
-                              setStartDate(`${month}-${day}`);
-                            }
-                          }}
-                          required={!timeUnknown}
-                          className="w-full px-3 py-2 pr-10 border rounded-md bg-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const input = document.getElementById("startDate") as HTMLInputElement;
-                            if (input?.showPicker) {
-                              input.showPicker();
-                            } else {
-                              input?.focus();
-                            }
-                          }}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer"
-                        >
-                          <Calendar className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="flex gap-2 flex-1">
-                        <select
-                          id="startHour"
-                          value={startHour}
-                          onChange={(e) => setStartHour(e.target.value)}
-                          required={!timeUnknown}
-                          className="flex-1 px-3 py-2 border rounded-md bg-white"
-                        >
-                          <option value="">時</option>
-                          {HOUR_OPTIONS.map((hour) => (
-                            <option key={hour} value={hour}>
-                              {hour}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          id="startMinute"
-                          value={startMinute}
-                          onChange={(e) => setStartMinute(e.target.value)}
-                          required={!timeUnknown}
-                          className="flex-1 px-3 py-2 border rounded-md bg-white"
-                        >
-                          <option value="">分</option>
-                          {MINUTE_OPTIONS.map((minute) => (
-                            <option key={minute} value={minute}>
-                              {minute}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="startDate" className="block text-sm font-medium mb-1">
+                  開始日 *
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      id="startDate"
+                      type="date"
+                      value={startDate ? `${new Date().getFullYear()}-${startDate}` : ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value) {
+                          const [, month, day] = value.split("-");
+                          setStartDate(`${month}-${day}`);
+                        } else {
+                          setStartDate("");
+                        }
+                      }}
+                      required={!timeUnknown}
+                      className="w-full px-3 py-2 pr-10 border rounded-md bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById("startDate") as HTMLInputElement;
+                        if (input?.showPicker) {
+                          input.showPicker();
+                        } else {
+                          input?.focus();
+                        }
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <Calendar className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div>
-                    <label htmlFor="endTime" className="block text-sm font-medium mb-1">
-                      終了時刻
-                    </label>
-                    <div className="flex gap-2">
+                  {!timeUnknown && (
+                    <div className="flex gap-2 flex-1">
                       <select
-                        id="endHour"
-                        value={endHour}
-                        onChange={(e) => setEndHour(e.target.value)}
+                        id="startHour"
+                        value={startHour}
+                        onChange={(e) => setStartHour(e.target.value)}
+                        required={!timeUnknown}
                         className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">時</option>
@@ -350,9 +325,10 @@ export default function NewEventPage() {
                         ))}
                       </select>
                       <select
-                        id="endMinute"
-                        value={endMinute}
-                        onChange={(e) => setEndMinute(e.target.value)}
+                        id="startMinute"
+                        value={startMinute}
+                        onChange={(e) => setStartMinute(e.target.value)}
+                        required={!timeUnknown}
                         className="flex-1 px-3 py-2 border rounded-md bg-white"
                       >
                         <option value="">分</option>
@@ -363,10 +339,46 @@ export default function NewEventPage() {
                         ))}
                       </select>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </>
-            )}
+              </div>
+              <div>
+                <label htmlFor="endTime" className="block text-sm font-medium mb-1">
+                  終了時刻
+                </label>
+                {!timeUnknown && (
+                  <div className="flex gap-2">
+                    <select
+                      id="endHour"
+                      value={endHour}
+                      onChange={(e) => setEndHour(e.target.value)}
+                      className="flex-1 px-3 py-2 border rounded-md bg-white"
+                    >
+                      <option value="">時</option>
+                      {HOUR_OPTIONS.map((hour) => (
+                        <option key={hour} value={hour}>
+                          {hour}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      id="endMinute"
+                      value={endMinute}
+                      onChange={(e) => setEndMinute(e.target.value)}
+                      className="flex-1 px-3 py-2 border rounded-md bg-white"
+                    >
+                      <option value="">分</option>
+                      {MINUTE_OPTIONS.map((minute) => (
+                        <option key={minute} value={minute}>
+                          {minute}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {timeUnknown && <p className="text-xs text-muted-foreground mt-1">時間未定のため入力不要です</p>}
+              </div>
+            </div>
 
             <div>
               <label htmlFor="locationText" className="block text-sm font-medium mb-1">

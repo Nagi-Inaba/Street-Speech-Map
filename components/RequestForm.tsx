@@ -59,10 +59,24 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
     setIsSuccess(false);
 
     try {
-      const payload = {
-        startAt: timeUnknown || !startDate || !startHour || !startMinute ? null : combineDateTime(startDate, startHour, startMinute),
+      let startAt: string | null = null;
+      let endAt: string | null = null;
+
+      if (timeUnknown) {
+        // 日付のみ指定されている場合は、00:00として保存し、timeUnknownフラグで「時間未定」を表現
+        if (startDate) {
+          startAt = combineDateTime(startDate, "00", "00");
+        }
+      } else {
+        startAt =
+          !startDate || !startHour || !startMinute ? null : combineDateTime(startDate, startHour, startMinute);
         // 終了時刻は開始日時の日付と同じ日付を使用
-        endAt: timeUnknown || !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute),
+        endAt = !endHour || !endMinute ? null : combineDateTime(startDate, endHour, endMinute);
+      }
+
+      const payload = {
+        startAt,
+        endAt,
         timeUnknown,
         locationText,
         lat,
@@ -135,17 +149,14 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
                 type="checkbox"
                 checked={timeUnknown}
                 onChange={(e) => {
-                  setTimeUnknown(e.target.checked);
-                  if (e.target.checked) {
-                    setStartDate("");
+                  const checked = e.target.checked;
+                  setTimeUnknown(checked);
+                  if (checked) {
+                    // 「時間未定」の場合は時間だけクリア（日時フィールド自体は残す）
                     setStartHour("");
                     setStartMinute("");
                     setEndHour("");
                     setEndMinute("");
-                  } else {
-                    setStartDate(getTodayDateString());
-                    setStartHour("");
-                    setStartMinute("");
                   }
                 }}
               />
@@ -153,26 +164,28 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
             </label>
           </div>
 
-          {!timeUnknown && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="startDate" className="block text-sm font-medium mb-1">
-                  開始日時
-                </label>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    id="startDate"
-                    type="date"
-                    value={`${new Date().getFullYear()}-${startDate}`}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value) {
-                        const [, month, day] = value.split("-");
-                        setStartDate(`${month}-${day}`);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border rounded-md bg-white"
-                  />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="startDate" className="block text-sm font-medium mb-1">
+                開始日
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  id="startDate"
+                  type="date"
+                  value={startDate ? `${new Date().getFullYear()}-${startDate}` : ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      const [, month, day] = value.split("-");
+                      setStartDate(`${month}-${day}`);
+                    } else {
+                      setStartDate("");
+                    }
+                  }}
+                  className="w-full px-3 py-2 border rounded-md bg-white"
+                />
+                {!timeUnknown && (
                   <div className="flex gap-2 flex-1">
                     <select
                       id="startHour"
@@ -201,12 +214,14 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
                       ))}
                     </select>
                   </div>
-                </div>
+                )}
               </div>
-              <div>
-                <label htmlFor="endHour" className="block text-sm font-medium mb-1">
-                  終了時刻
-                </label>
+            </div>
+            <div>
+              <label htmlFor="endHour" className="block text-sm font-medium mb-1">
+                終了時刻
+              </label>
+              {!timeUnknown && (
                 <div className="flex gap-2">
                   <select
                     id="endHour"
@@ -235,9 +250,12 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
                     ))}
                   </select>
                 </div>
-              </div>
+              )}
+              {timeUnknown && (
+                <p className="text-xs text-muted-foreground mt-1">時間未定のため入力不要です（開始日のみ指定できます）</p>
+              )}
             </div>
-          )}
+          </div>
 
           <div>
             <label htmlFor="locationText" className="block text-sm font-medium mb-1">
