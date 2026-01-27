@@ -103,13 +103,15 @@ export async function GET(
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "#000000",
-                color: "#ffffff",
-                padding: "12px 32px",
-                borderRadius: "8px",
-                fontSize: "32px",
+                padding: "16px 40px",
+                borderRadius: "999px",
+                fontSize: "40px",
                 fontWeight: "bold",
                 marginBottom: "60px",
+                letterSpacing: "0.08em",
+                border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
+                backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
+                color: isLive ? "#166534" : "#9a3412",
               }}
             >
               {statusText}
