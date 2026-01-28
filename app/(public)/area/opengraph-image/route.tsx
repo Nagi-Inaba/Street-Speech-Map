@@ -1,14 +1,19 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
-import { generateKantoAreaMapUrl } from "@/lib/map-image";
+import { generateMapScreenshot } from "@/lib/map-screenshot";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
   try {
-    // 地図画像URLを生成（関東エリア全体）
-    const mapImageUrl = generateKantoAreaMapUrl(1000, 630);
+    // 地図スクリーンショットを生成（関東エリア全体）
+    const mapImageDataUrl = await generateMapScreenshot(
+      [36.0, 139.5], // 関東エリアの中心
+      8, // 関東エリア全体が入るズームレベル
+      1000,
+      630
+    );
 
     const imageResponse = new ImageResponse(
       (
@@ -41,8 +46,10 @@ export async function GET(request: NextRequest) {
             }}
           >
             <img
-              src={mapImageUrl}
+              src={mapImageDataUrl}
               alt="地図"
+              width={1000}
+              height={630}
               style={{
                 width: "100%",
                 height: "100%",

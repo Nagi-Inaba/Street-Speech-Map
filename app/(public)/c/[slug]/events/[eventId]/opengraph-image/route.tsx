@@ -2,7 +2,7 @@ import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { formatJSTWithoutYear } from "@/lib/time";
-import { generateEventMapUrl } from "@/lib/map-image";
+import { generateMapScreenshot } from "@/lib/map-screenshot";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -58,8 +58,14 @@ export async function GET(
 
     const statusText = isLive ? "実施中" : "予定";
 
-    // 地図画像URLを生成（ピン位置のクローズアップ）
-    const mapImageUrl = generateEventMapUrl([event.lat, event.lng], 1000, 630, isLive);
+    // 地図スクリーンショットを生成（ピン位置のクローズアップ）
+    const mapImageDataUrl = await generateMapScreenshot(
+      [event.lat, event.lng],
+      16, // クローズアップ用にズームレベル16
+      1000,
+      630,
+      [{ position: [event.lat, event.lng], color: isLive ? "red" : "blue" }]
+    );
 
     const imageResponse = new ImageResponse(
       (
@@ -92,8 +98,10 @@ export async function GET(
             }}
           >
             <img
-              src={mapImageUrl}
+              src={mapImageDataUrl}
               alt="地図"
+              width={1000}
+              height={630}
               style={{
                 width: "100%",
                 height: "100%",

@@ -1,14 +1,19 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
-import { generateTokyoAreaMapUrl } from "@/lib/map-image";
+import { generateMapScreenshot } from "@/lib/map-screenshot";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
   try {
-    // 地図画像URLを生成（東京エリア全体）
-    const mapImageUrl = generateTokyoAreaMapUrl(1000, 630);
+    // 地図スクリーンショットを生成（東京エリア全体）
+    const mapImageDataUrl = await generateMapScreenshot(
+      [35.6812, 139.7671], // 東京駅周辺
+      10, // 東京エリア全体が入るズームレベル
+      1000,
+      630
+    );
 
     const imageResponse = new ImageResponse(
       (
@@ -41,8 +46,10 @@ export async function GET(request: NextRequest) {
             }}
           >
             <img
-              src={mapImageUrl}
+              src={mapImageDataUrl}
               alt="地図"
+              width={1000}
+              height={630}
               style={{
                 width: "100%",
                 height: "100%",

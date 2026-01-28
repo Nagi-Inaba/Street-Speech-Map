@@ -105,7 +105,7 @@ export default function AreaEventsView({
     });
 
     return { liveEvents: live, plannedEvents: planned, endedEvents: ended };
-  }, [candidates, areaId, dateFilter]);
+  }, [candidates, areaId, dateFilter, matchesDateFilter]);
 
   const totalCount = liveEvents.length + plannedEvents.length + endedEvents.length;
 
@@ -205,7 +205,7 @@ export default function AreaEventsView({
         color: event.status === "LIVE" ? "red" : event.status === "ENDED" ? undefined : "blue",
       };
     });
-  }, [liveEvents, plannedEvents, endedEvents, candidates]);
+  }, [liveEvents, plannedEvents, endedEvents, candidates, getCandidate]);
 
   // 地図の中心位置とズームレベルを計算
   const { mapCenter, mapZoom } = useMemo(() => {

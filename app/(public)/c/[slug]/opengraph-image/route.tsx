@@ -2,7 +2,7 @@ import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { formatJSTWithoutYear } from "@/lib/time";
-import { generateCandidateMapUrl } from "@/lib/map-image";
+import { generateMapScreenshot } from "@/lib/map-screenshot";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -75,8 +75,49 @@ export async function GET(
       .filter((e) => e.status !== "ENDED")
       .map((e) => [e.lat, e.lng] as [number, number]);
 
-    // 地図画像URLを生成（複数のピンが入る範囲）
-    const mapImageUrl = generateCandidateMapUrl(eventPositions, 1000, 630);
+    // 地図の中心位置を計算
+    let mapCenter: [number, number] = [35.6812, 139.7671]; // デフォルト: 東京駅
+    let zoom = 13;
+    if (eventPositions.length > 0) {
+      const centerLat = eventPositions.reduce((sum, [lat]) => sum + lat, 0) / eventPositions.length;
+      const centerLng = eventPositions.reduce((sum, [, lng]) => sum + lng, 0) / eventPositions.length;
+      mapCenter = [centerLat, centerLng];
+      
+      // ピン間の距離を計算して適切なズームレベルを決定
+      const distances = eventPositions.map(([lat, lng]) => {
+        const dLat = lat - centerLat;
+        const dLng = lng - centerLng;
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+      });
+      const maxDistance = Math.max(...distances);
+      
+      if (maxDistance > 0.1) {
+        zoom = 10;
+      } else if (maxDistance > 0.05) {
+        zoom = 11;
+      } else if (maxDistance > 0.02) {
+        zoom = 12;
+      } else if (maxDistance > 0.01) {
+        zoom = 13;
+      } else {
+        zoom = 14;
+      }
+    }
+
+    // マーカーを準備
+    const markers = eventPositions.map((pos) => ({
+      position: pos,
+      color: "blue" as const,
+    }));
+
+    // 地図スクリーンショットを生成（複数のピンが入る範囲）
+    const mapImageDataUrl = await generateMapScreenshot(
+      mapCenter,
+      zoom,
+      1000,
+      630,
+      markers
+    );
 
     const imageResponse = new ImageResponse(
       (
@@ -109,8 +150,10 @@ export async function GET(
             }}
           >
             <img
-              src={mapImageUrl}
+              src={mapImageDataUrl}
               alt="地図"
+              width={1000}
+              height={630}
               style={{
                 width: "100%",
                 height: "100%",
