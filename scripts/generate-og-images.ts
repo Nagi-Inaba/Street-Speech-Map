@@ -79,7 +79,9 @@ async function main() {
     console.log("\nすべてのOGP画像の生成が完了しました！");
   } catch (error) {
     console.error("OGP画像生成中にエラーが発生しました:", error);
-    process.exit(1);
+    console.error("エラーが発生しましたが、ビルドは続行します。");
+    // ビルド時にエラーが発生してもビルドを続行できるように、exit code 0を返す
+    process.exit(0);
   } finally {
     await prisma.$disconnect();
   }
