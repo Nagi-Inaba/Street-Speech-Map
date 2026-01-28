@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
               border: "4px solid #000000",
               borderRadius: "8px",
               overflow: "hidden",
+              display: "flex",
             }}
           >
             <img

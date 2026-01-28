@@ -147,6 +147,7 @@ export async function GET(
               border: "4px solid #000000",
               borderRadius: "8px",
               overflow: "hidden",
+              display: "flex",
             }}
           >
             <img
