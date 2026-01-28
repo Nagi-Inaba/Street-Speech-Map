@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateMapScreenshot } from "@/lib/map-screenshot";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 /**

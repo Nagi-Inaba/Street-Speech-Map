@@ -3,6 +3,7 @@
  * 事前生成用の画像をファイルとして保存
  */
 
+import React from "react";
 import { ImageResponse } from "@vercel/og";
 import { writeFile, mkdir, appendFile, readFile, unlink } from "fs/promises";
 import { join } from "path";
@@ -524,6 +525,7 @@ export async function generateEventOgImage(
               display: "flex",
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mapImageDataUrl}
               alt="地図"
@@ -738,6 +740,7 @@ export async function generateCandidateOgImage(
               display: "flex",
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mapImageDataUrl}
               alt="地図"
@@ -902,6 +905,7 @@ export async function generateHomeOgImage(): Promise<string> {
               display: "flex",
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mapImageDataUrl}
               alt="地図"
@@ -1024,6 +1028,7 @@ export async function generateAreaOgImage(): Promise<string> {
               display: "flex",
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mapImageDataUrl}
               alt="地図"
