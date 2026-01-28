@@ -211,11 +211,9 @@ export default function AreaEventsView({
   const { mapCenter, mapZoom } = useMemo(() => {
     // エリアフィルタに応じて中心位置とズームを決定
     if (areaId === "all") {
-      // すべてのエリア: すべてのイベントの中心
-      if (mapMarkers.length === 0) return { mapCenter: [35.6812, 139.7671] as [number, number], mapZoom: 6 };
-      const avgLat = mapMarkers.reduce((sum, m) => sum + m.position[0], 0) / mapMarkers.length;
-      const avgLng = mapMarkers.reduce((sum, m) => sum + m.position[1], 0) / mapMarkers.length;
-      return { mapCenter: [avgLat, avgLng] as [number, number], mapZoom: 10 };
+      // すべてのエリア: 日本全体が見えるように、固定の中心・ズームにする
+      // （初期表示で全国のイベントの分布が把握しやすいようにする）
+      return { mapCenter: [36.2048, 138.2529] as [number, number], mapZoom: 5 };
     } else if (areaId.startsWith("block:")) {
       // 地域ブロック: ブロックの中心座標を計算
       const blockKey = areaId.slice(6);
