@@ -699,7 +699,7 @@ export async function generateCandidateOgImage(
           markers
         ),
         new Promise<string>((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout")), 10000)
+          setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
         ),
       ]);
     } catch (error) {
@@ -865,7 +865,7 @@ export async function generateHomeOgImage(): Promise<string> {
         630
       ),
       new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 10000)
+        setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
       ),
     ]);
   } catch (error) {
@@ -988,7 +988,7 @@ export async function generateAreaOgImage(): Promise<string> {
         630
       ),
       new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 10000)
+        setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
       ),
     ]);
   } catch (error) {
