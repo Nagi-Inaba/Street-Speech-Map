@@ -71,6 +71,11 @@ export async function generateMapScreenshot(
   markers?: Array<{
     position: [number, number];
     color?: string;
+    popup?: {
+      candidateName?: string;
+      locationText?: string;
+      timeText?: string;
+    };
   }>
 ): Promise<string> {
   // @napi-rs/canvasを使用（Vercel対応）
@@ -141,7 +146,74 @@ export async function generateMapScreenshot(
       const x = width / 2 + offsetX;
       const y = height / 2 + offsetY;
       
-      // マーカーアイコンを描画（簡易版：円で表現）
+      // 吹き出しを描画（popupがある場合）
+      if (marker.popup) {
+        const popupWidth = 220;
+        const popupPadding = 12;
+        const popupLineHeight = 18;
+        let popupHeight = popupPadding * 2;
+        
+        // テキストの行数を計算
+        if (marker.popup.candidateName) popupHeight += popupLineHeight + 4;
+        if (marker.popup.locationText) popupHeight += popupLineHeight + 2;
+        if (marker.popup.timeText) popupHeight += popupLineHeight;
+        
+        const popupX = x - popupWidth / 2;
+        const popupY = y - 50 - popupHeight; // ピンの上に表示
+        
+        // 吹き出しの背景（白）
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2;
+        
+        // 角丸の矩形を描画
+        const radius = 8;
+        ctx.beginPath();
+        ctx.moveTo(popupX + radius, popupY);
+        ctx.lineTo(popupX + popupWidth - radius, popupY);
+        ctx.quadraticCurveTo(popupX + popupWidth, popupY, popupX + popupWidth, popupY + radius);
+        ctx.lineTo(popupX + popupWidth, popupY + popupHeight - radius);
+        ctx.quadraticCurveTo(popupX + popupWidth, popupY + popupHeight, popupX + popupWidth - radius, popupY + popupHeight);
+        ctx.lineTo(popupX + radius, popupY + popupHeight);
+        ctx.quadraticCurveTo(popupX, popupY + popupHeight, popupX, popupY + popupHeight - radius);
+        ctx.lineTo(popupX, popupY + radius);
+        ctx.quadraticCurveTo(popupX, popupY, popupX + radius, popupY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // 吹き出しの三角形（ピンへの接続）
+        ctx.beginPath();
+        ctx.moveTo(x - 10, popupY + popupHeight);
+        ctx.lineTo(x, popupY + popupHeight + 10);
+        ctx.lineTo(x + 10, popupY + popupHeight);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // テキストを描画
+        ctx.fillStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        
+        let textY = popupY + popupPadding;
+        if (marker.popup.candidateName) {
+          ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+          ctx.fillText(marker.popup.candidateName, popupX + popupWidth / 2, textY);
+          textY += popupLineHeight + 4;
+        }
+        if (marker.popup.locationText) {
+          ctx.font = "12px system-ui, -apple-system, sans-serif";
+          ctx.fillText(marker.popup.locationText, popupX + popupWidth / 2, textY);
+          textY += popupLineHeight + 2;
+        }
+        if (marker.popup.timeText) {
+          ctx.font = "11px system-ui, -apple-system, sans-serif";
+          ctx.fillText(marker.popup.timeText, popupX + popupWidth / 2, textY);
+        }
+      }
+      
+      // マーカーアイコンを描画（吹き出しの下に表示）
       ctx.fillStyle = marker.color === "red" ? "#ef4444" : marker.color === "blue" ? "#3b82f6" : "#f97316";
       ctx.beginPath();
       ctx.arc(x, y, 8, 0, Math.PI * 2);

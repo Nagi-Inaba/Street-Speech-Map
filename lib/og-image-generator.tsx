@@ -428,7 +428,15 @@ export async function generateEventOgImage(
         16, // クローズアップ用にズームレベル16
         1000,
         630,
-        [{ position: [event.lat, event.lng], color: isLive ? "red" : "blue" }]
+        [{
+          position: [event.lat, event.lng],
+          color: isLive ? "red" : "blue",
+          popup: {
+            candidateName: event.candidate.name,
+            locationText: event.locationText,
+            timeText: dateTimeText,
+          },
+        }]
       ),
       new Promise<string>((_, reject) => 
         setTimeout(() => reject(new Error("Timeout")), 10000)
@@ -456,7 +464,7 @@ export async function generateEventOgImage(
         }}
       >
         {/* 地図画像を背景として使用 */}
-        {mapImageDataUrl && (
+        {mapImageDataUrl ? (
           <div
             style={{
               position: "absolute",
@@ -483,85 +491,85 @@ export async function generateEventOgImage(
               }}
             />
           </div>
-        )}
-
-        {/* 吹き出し風のテキストボックス（地図の上に重ねる） */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "white",
-            padding: "40px 60px",
-            borderRadius: "16px",
-            border: "3px solid #000000",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-            maxWidth: "800px",
-            zIndex: 10,
-          }}
-        >
-          {/* ステータスバッジ */}
+        ) : (
+          /* 地図が生成されなかった場合のみテキストカードを表示 */
           <div
             style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              padding: "12px 32px",
-              borderRadius: "999px",
-              fontSize: "32px",
-              fontWeight: "bold",
-              marginBottom: "40px",
-              letterSpacing: "0.08em",
-              border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
-              backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
-              color: isLive ? "#166534" : "#9a3412",
+              backgroundColor: "white",
+              padding: "40px 60px",
+              borderRadius: "16px",
+              border: "3px solid #000000",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+              maxWidth: "800px",
+              zIndex: 10,
             }}
           >
-            {statusText}
-          </div>
+            {/* ステータスバッジ */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "12px 32px",
+                borderRadius: "999px",
+                fontSize: "32px",
+                fontWeight: "bold",
+                marginBottom: "40px",
+                letterSpacing: "0.08em",
+                border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
+                backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
+                color: isLive ? "#166534" : "#9a3412",
+              }}
+            >
+              {statusText}
+            </div>
 
-          {/* 候補者名 */}
-          <div
-            style={{
-              fontSize: "56px",
-              fontWeight: "bold",
-              color: "#000000",
-              marginBottom: "32px",
-              textAlign: "center",
-            }}
-          >
-            {event.candidate.name}
-          </div>
+            {/* 候補者名 */}
+            <div
+              style={{
+                fontSize: "56px",
+                fontWeight: "bold",
+                color: "#000000",
+                marginBottom: "32px",
+                textAlign: "center",
+              }}
+            >
+              {event.candidate.name}
+            </div>
 
-          {/* 場所名 */}
-          <div
-            style={{
-              fontSize: "36px",
-              color: "#000000",
-              marginBottom: "24px",
-              textAlign: "center",
-              fontWeight: "600",
-            }}
-          >
-            {event.locationText}
-          </div>
+            {/* 場所名 */}
+            <div
+              style={{
+                fontSize: "36px",
+                color: "#000000",
+                marginBottom: "24px",
+                textAlign: "center",
+                fontWeight: "600",
+              }}
+            >
+              {event.locationText}
+            </div>
 
-          {/* 時間 */}
-          <div
-            style={{
-              fontSize: "28px",
-              color: "#000000",
-              textAlign: "center",
-            }}
-          >
-            {dateTimeText}
+            {/* 時間 */}
+            <div
+              style={{
+                fontSize: "28px",
+                color: "#000000",
+                textAlign: "center",
+              }}
+            >
+              {dateTimeText}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     ),
     {
