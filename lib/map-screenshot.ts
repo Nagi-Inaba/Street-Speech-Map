@@ -3,6 +3,28 @@
  * Canvas APIを使ってOpenStreetMapのタイル画像を取得・合成
  */
 
+import { appendFile } from "fs/promises";
+import { join } from "path";
+
+const DEBUG_LOG_PATH = join(process.cwd(), ".cursor", "debug.log");
+
+async function debugLog(location: string, message: string, data: any, hypothesisId: string) {
+  const logEntry = {
+    timestamp: Date.now(),
+    location,
+    message,
+    data,
+    sessionId: "debug-session",
+    runId: "run1",
+    hypothesisId,
+  };
+  try {
+    await appendFile(DEBUG_LOG_PATH, JSON.stringify(logEntry) + "\n");
+  } catch (error) {
+    // ログファイルの書き込みに失敗しても処理は続行
+  }
+}
+
 /**
  * 緯度経度からタイル座標を計算
  */
@@ -46,10 +68,26 @@ async function getTileImage(x: number, y: number, z: number): Promise<string> {
   const server = servers[Math.floor(Math.random() * servers.length)];
   const url = `https://${server}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
   
+  // #region agent log
+  await debugLog('lib/map-screenshot.ts:43', 'Before tile fetch', {x,y,z,server,url}, 'B');
+  // #endregion
+  
   try {
-    return await imageToBase64(url);
+    const result = await imageToBase64(url);
+    
+    // #region agent log
+    await debugLog('lib/map-screenshot.ts:50', 'Tile fetch success', {x,y,z,resultLength:result.length,resultPrefix:result.substring(0,30)}, 'B');
+    // #endregion
+    
+    return result;
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`Failed to fetch tile ${z}/${x}/${y}:`, error);
+    
+    // #region agent log
+    await debugLog('lib/map-screenshot.ts:52', 'Tile fetch failed, using fallback', {x,y,z,error:errorMsg,errorType:error?.constructor?.name}, 'B');
+    // #endregion
+    
     // フォールバック: 白い画像を返す
     return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
   }
@@ -82,19 +120,45 @@ export async function generateMapScreenshot(
   // 注意: この実装はNode.js環境でのみ動作します
   console.log(`[地図生成] 開始: center=[${center[0]}, ${center[1]}], zoom=${zoom}, size=${width}x${height}`);
   
+  // #region agent log
+  await debugLog('lib/map-screenshot.ts:66', 'generateMapScreenshot entry', {center,zoom,width,height,markersCount:markers?.length||0}, 'A');
+  // #endregion
+  
   let createCanvas, loadImage;
   try {
+    // #region agent log
+    await debugLog('lib/map-screenshot.ts:87', 'Before @napi-rs/canvas import', {}, 'A');
+    // #endregion
+    
     const canvasModule = await import("@napi-rs/canvas");
     createCanvas = canvasModule.createCanvas;
     loadImage = canvasModule.loadImage;
     console.log(`[地図生成] @napi-rs/canvasのインポートに成功`);
+    
+    // #region agent log
+    await debugLog('lib/map-screenshot.ts:90', 'After @napi-rs/canvas import success', {hasCreateCanvas:!!createCanvas,hasLoadImage:!!loadImage}, 'A');
+    // #endregion
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`[地図生成] @napi-rs/canvasのインポートに失敗:`, error);
-    throw new Error(`Failed to import @napi-rs/canvas: ${error instanceof Error ? error.message : String(error)}`);
+    
+    // #region agent log
+    await debugLog('lib/map-screenshot.ts:93', '@napi-rs/canvas import failed', {error:errorMsg,errorType:error?.constructor?.name}, 'A');
+    // #endregion
+    
+    throw new Error(`Failed to import @napi-rs/canvas: ${errorMsg}`);
   }
+  
+  // #region agent log
+  await debugLog('lib/map-screenshot.ts:96', 'Before canvas creation', {width,height}, 'C');
+  // #endregion
   
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
+  
+  // #region agent log
+  await debugLog('lib/map-screenshot.ts:99', 'After canvas creation', {canvasWidth:canvas.width,canvasHeight:canvas.height}, 'C');
+  // #endregion
   
   // 背景を白で塗りつぶし
   ctx.fillStyle = "#ffffff";
@@ -130,7 +194,16 @@ export async function generateMapScreenshot(
       }
       
       try {
+        // #region agent log
+        await debugLog('lib/map-screenshot.ts:133', 'Before tile fetch', {tileX,tileY,zoom}, 'B');
+        // #endregion
+        
         const tileImageData = await getTileImage(tileX, tileY, zoom);
+        
+        // #region agent log
+        await debugLog('lib/map-screenshot.ts:136', 'After tile fetch', {tileX,tileY,zoom,dataUrlLength:tileImageData?.length||0,dataUrlPrefix:tileImageData?.substring(0,30)||''}, 'B');
+        // #endregion
+        
         const tileImage = await loadImage(tileImageData);
         
         // タイルの位置を計算
@@ -144,11 +217,25 @@ export async function generateMapScreenshot(
         const x = width / 2 + offsetX;
         const y = height / 2 + offsetY;
         
+        // #region agent log
+        await debugLog('lib/map-screenshot.ts:147', 'Before drawImage', {tileX,tileY,x,y,tileSize}, 'C');
+        // #endregion
+        
         ctx.drawImage(tileImage, x, y, tileSize, tileSize);
+        
+        // #region agent log
+        await debugLog('lib/map-screenshot.ts:149', 'After drawImage success', {tileX,tileY}, 'C');
+        // #endregion
+        
         loadedTiles++;
       } catch (error) {
         failedTiles++;
+        const errorMsg = error instanceof Error ? error.message : String(error);
         console.error(`[地図生成] タイル ${zoom}/${tileX}/${tileY} の描画に失敗:`, error);
+        
+        // #region agent log
+        await debugLog('lib/map-screenshot.ts:152', 'Tile drawImage failed', {tileX,tileY,zoom,error:errorMsg,errorType:error?.constructor?.name}, 'B');
+        // #endregion
       }
     }
   }
@@ -248,7 +335,16 @@ export async function generateMapScreenshot(
   }
   
   // Base64エンコードして返す
+  // #region agent log
+  await debugLog('lib/map-screenshot.ts:251', 'Before toDataURL', {loadedTiles,failedTiles,markersCount:markers?.length||0}, 'D');
+  // #endregion
+  
   const dataUrl = canvas.toDataURL("image/png");
+  
+  // #region agent log
+  await debugLog('lib/map-screenshot.ts:253', 'After toDataURL', {dataUrlLength:dataUrl.length,dataUrlPrefix:dataUrl.substring(0,50)}, 'D');
+  // #endregion
+  
   console.log(`[地図生成] 完了: データURL長さ=${dataUrl.length}`);
   return dataUrl;
 }

@@ -4,7 +4,7 @@
  */
 
 import { ImageResponse } from "@vercel/og";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, appendFile } from "fs/promises";
 import { join } from "path";
 import { generateMapScreenshot } from "./map-screenshot";
 import { formatJSTWithoutYear } from "./time";
@@ -423,6 +423,12 @@ export async function generateEventOgImage(
   let mapImageDataUrl: string | null = null;
   try {
     console.log(`[OGP画像生成] イベント ${event.id} の地図生成を開始...`);
+    
+    // #region agent log
+    const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
+    await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:425',message:'Before map generation',data:{eventId:event.id,lat:event.lat,lng:event.lng,isLive},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+    // #endregion
+    
     mapImageDataUrl = await Promise.race([
       generateMapScreenshot(
         [event.lat, event.lng],
@@ -443,13 +449,28 @@ export async function generateEventOgImage(
         setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
       ),
     ]);
+    
+    // #region agent log
+    await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:446',message:'Map generation success',data:{eventId:event.id,mapImageDataUrlLength:mapImageDataUrl?.length||0,hasMapImage:!!mapImageDataUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+    // #endregion
+    
     console.log(`[OGP画像生成] イベント ${event.id} の地図生成に成功`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[OGP画像生成] イベント ${event.id} の地図生成に失敗:`, errorMessage);
     console.error(`[OGP画像生成] エラーの詳細:`, error);
+    
+    // #region agent log
+    await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:448',message:'Map generation failed',data:{eventId:event.id,error:errorMessage,errorType:error?.constructor?.name,errorStack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+    // #endregion
+    
     // 地図なしで続行
   }
+  
+  // #region agent log
+  const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
+  await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:454',message:'Before ImageResponse creation',data:{eventId:event.id,hasMapImage:!!mapImageDataUrl,mapImageDataUrlLength:mapImageDataUrl?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+  // #endregion
 
   const imageResponse = new ImageResponse(
     (
