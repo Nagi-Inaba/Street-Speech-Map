@@ -4,7 +4,7 @@
  */
 
 import { ImageResponse } from "@vercel/og";
-import { writeFile, mkdir, appendFile } from "fs/promises";
+import { writeFile, mkdir, appendFile, readFile, unlink } from "fs/promises";
 import { join } from "path";
 import { generateMapScreenshot } from "./map-screenshot";
 import { formatJSTWithoutYear } from "./time";
@@ -421,15 +421,17 @@ export async function generateEventOgImage(
 
   // 地図スクリーンショットを生成（ピン位置のクローズアップ）
   let mapImageDataUrl: string | null = null;
+  let tempMapImagePath: string | null = null;
+  const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
+  
   try {
     console.log(`[OGP画像生成] イベント ${event.id} の地図生成を開始...`);
     
     // #region agent log
-    const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
     await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:425',message:'Before map generation',data:{eventId:event.id,lat:event.lat,lng:event.lng,isLive},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
     // #endregion
     
-    mapImageDataUrl = await Promise.race([
+    const mapBase64 = await Promise.race([
       generateMapScreenshot(
         [event.lat, event.lng],
         16, // クローズアップ用にズームレベル16
@@ -450,8 +452,18 @@ export async function generateEventOgImage(
       ),
     ]);
     
+    // Base64データURLから画像データを抽出して一時ファイルとして保存
+    const base64Data = mapBase64.replace(/^data:image\/png;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, "base64");
+    tempMapImagePath = join(process.cwd(), ".cursor", `temp-map-${event.id}.png`);
+    await mkdir(join(process.cwd(), ".cursor"), { recursive: true });
+    await writeFile(tempMapImagePath, imageBuffer);
+    
+    // 一時ファイルのパスをBase64データURLとして使用（@vercel/ogが読み込めるように）
+    mapImageDataUrl = mapBase64; // 一時的にBase64データURLを使用
+    
     // #region agent log
-    await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:446',message:'Map generation success',data:{eventId:event.id,mapImageDataUrlLength:mapImageDataUrl?.length||0,hasMapImage:!!mapImageDataUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+    await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:446',message:'Map generation success',data:{eventId:event.id,mapImageDataUrlLength:mapImageDataUrl?.length||0,hasMapImage:!!mapImageDataUrl,tempMapImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
     // #endregion
     
     console.log(`[OGP画像生成] イベント ${event.id} の地図生成に成功`);
@@ -468,9 +480,17 @@ export async function generateEventOgImage(
   }
   
   // #region agent log
-  const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
   await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:454',message:'Before ImageResponse creation',data:{eventId:event.id,hasMapImage:!!mapImageDataUrl,mapImageDataUrlLength:mapImageDataUrl?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
   // #endregion
+  
+  // 一時ファイルをクリーンアップ
+  if (tempMapImagePath) {
+    try {
+      await unlink(tempMapImagePath);
+    } catch (error) {
+      // クリーンアップに失敗しても続行
+    }
+  }
 
   const imageResponse = new ImageResponse(
     (

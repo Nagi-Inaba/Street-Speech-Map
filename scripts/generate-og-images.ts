@@ -69,10 +69,26 @@ async function main() {
     console.log(`${events.length}件のイベントのOGP画像を生成中...`);
     for (const event of events) {
       try {
-        await generateEventOgImage(event);
-        console.log(`✓ イベント ${event.id} のOGP画像を生成しました`);
+        console.log(`[スクリプト] イベント ${event.id} のOGP画像生成を開始...`);
+        const result = await generateEventOgImage(event);
+        console.log(`✓ イベント ${event.id} のOGP画像を生成しました: ${result}`);
+        
+        // #region agent log
+        const { appendFile } = await import("fs/promises");
+        const { join } = await import("path");
+        const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
+        await appendFile(debugLogPath, JSON.stringify({location:'scripts/generate-og-images.ts:72',message:'Event OG image generation success',data:{eventId:event.id,result},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+        // #endregion
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         console.error(`✗ イベント ${event.id} のOGP画像生成に失敗:`, error);
+        
+        // #region agent log
+        const { appendFile } = await import("fs/promises");
+        const { join } = await import("path");
+        const debugLogPath = join(process.cwd(), ".cursor", "debug.log");
+        await appendFile(debugLogPath, JSON.stringify({location:'scripts/generate-og-images.ts:76',message:'Event OG image generation failed',data:{eventId:event.id,error:errorMsg,errorType:error?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+        // #endregion
       }
     }
 
