@@ -8,12 +8,24 @@ export const revalidate = 60;
 export async function GET(request: NextRequest) {
   try {
     // 地図スクリーンショットを生成（東京エリア全体）
-    const mapImageDataUrl = await generateMapScreenshot(
-      [35.6812, 139.7671], // 東京駅周辺
-      10, // 東京エリア全体が入るズームレベル
-      1000,
-      630
-    );
+    // エラー時は地図なしで続行
+    let mapImageDataUrl: string | null = null;
+    try {
+      mapImageDataUrl = await Promise.race([
+        generateMapScreenshot(
+          [35.6812, 139.7671], // 東京駅周辺
+          10, // 東京エリア全体が入るズームレベル
+          1000,
+          630
+        ),
+        new Promise<string>((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout")), 5000)
+        ),
+      ]);
+    } catch (error) {
+      console.error("Failed to generate map screenshot:", error);
+      // 地図なしで続行
+    }
 
     const imageResponse = new ImageResponse(
       (
@@ -32,32 +44,34 @@ export async function GET(request: NextRequest) {
           }}
         >
           {/* 地図画像を背景として使用 */}
-          <div
-            style={{
-              position: "absolute",
-              top: "60px",
-              left: "80px",
-              right: "80px",
-              bottom: "60px",
-              backgroundColor: "white",
-              border: "4px solid #000000",
-              borderRadius: "8px",
-              overflow: "hidden",
-              display: "flex",
-            }}
-          >
-            <img
-              src={mapImageDataUrl}
-              alt="地図"
-              width={1000}
-              height={630}
+          {mapImageDataUrl && (
+            <div
               style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
+                position: "absolute",
+                top: "60px",
+                left: "80px",
+                right: "80px",
+                bottom: "60px",
+                backgroundColor: "white",
+                border: "4px solid #000000",
+                borderRadius: "8px",
+                overflow: "hidden",
+                display: "flex",
               }}
-            />
-          </div>
+            >
+              <img
+                src={mapImageDataUrl}
+                alt="地図"
+                width={1000}
+                height={630}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            </div>
+          )}
 
           {/* タイトルテキスト（地図の上に重ねる） */}
           <div
