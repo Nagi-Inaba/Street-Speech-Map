@@ -80,7 +80,18 @@ export async function generateMapScreenshot(
 ): Promise<string> {
   // @napi-rs/canvasを使用（Vercel対応）
   // 注意: この実装はNode.js環境でのみ動作します
-  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+  console.log(`[地図生成] 開始: center=[${center[0]}, ${center[1]}], zoom=${zoom}, size=${width}x${height}`);
+  
+  let createCanvas, loadImage;
+  try {
+    const canvasModule = await import("@napi-rs/canvas");
+    createCanvas = canvasModule.createCanvas;
+    loadImage = canvasModule.loadImage;
+    console.log(`[地図生成] @napi-rs/canvasのインポートに成功`);
+  } catch (error) {
+    console.error(`[地図生成] @napi-rs/canvasのインポートに失敗:`, error);
+    throw new Error(`Failed to import @napi-rs/canvas: ${error instanceof Error ? error.message : String(error)}`);
+  }
   
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
@@ -91,6 +102,7 @@ export async function generateMapScreenshot(
   
   // タイルを取得して描画
   const centerTile = latLngToTile(center[0], center[1], zoom);
+  console.log(`[地図生成] 中心タイル座標: [${centerTile.x}, ${centerTile.y}]`);
   
   // 画面に表示するタイルの範囲を計算
   const tileSize = 256;
@@ -99,6 +111,11 @@ export async function generateMapScreenshot(
   
   const startX = centerTile.x - Math.floor(tilesX / 2);
   const startY = centerTile.y - Math.floor(tilesY / 2);
+  
+  console.log(`[地図生成] タイル範囲: ${tilesX}x${tilesY} (${startX}, ${startY}から開始)`);
+  
+  let loadedTiles = 0;
+  let failedTiles = 0;
   
   // 各タイルを描画
   for (let ty = 0; ty < tilesY; ty++) {
@@ -128,11 +145,15 @@ export async function generateMapScreenshot(
         const y = height / 2 + offsetY;
         
         ctx.drawImage(tileImage, x, y, tileSize, tileSize);
+        loadedTiles++;
       } catch (error) {
-        console.error(`Failed to draw tile ${zoom}/${tileX}/${tileY}:`, error);
+        failedTiles++;
+        console.error(`[地図生成] タイル ${zoom}/${tileX}/${tileY} の描画に失敗:`, error);
       }
     }
   }
+  
+  console.log(`[地図生成] タイル読み込み完了: 成功=${loadedTiles}, 失敗=${failedTiles}`);
   
   // マーカーを描画
   if (markers && markers.length > 0) {
@@ -227,5 +248,7 @@ export async function generateMapScreenshot(
   }
   
   // Base64エンコードして返す
-  return canvas.toDataURL("image/png");
+  const dataUrl = canvas.toDataURL("image/png");
+  console.log(`[地図生成] 完了: データURL長さ=${dataUrl.length}`);
+  return dataUrl;
 }

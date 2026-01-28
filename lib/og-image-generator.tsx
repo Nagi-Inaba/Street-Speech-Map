@@ -422,6 +422,7 @@ export async function generateEventOgImage(
   // 地図スクリーンショットを生成（ピン位置のクローズアップ）
   let mapImageDataUrl: string | null = null;
   try {
+    console.log(`[OGP画像生成] イベント ${event.id} の地図生成を開始...`);
     mapImageDataUrl = await Promise.race([
       generateMapScreenshot(
         [event.lat, event.lng],
@@ -439,11 +440,14 @@ export async function generateEventOgImage(
         }]
       ),
       new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 10000)
+        setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
       ),
     ]);
+    console.log(`[OGP画像生成] イベント ${event.id} の地図生成に成功`);
   } catch (error) {
-    console.error("Failed to generate map screenshot:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[OGP画像生成] イベント ${event.id} の地図生成に失敗:`, errorMessage);
+    console.error(`[OGP画像生成] エラーの詳細:`, error);
     // 地図なしで続行
   }
 
