@@ -4,6 +4,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
 import { z } from "zod";
+import { generateEventOgImage, generateCandidateOgImage } from "@/lib/og-image-generator";
+import { unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 const updateEventSchema = z.object({
   candidateId: z.string(),
@@ -147,6 +151,52 @@ export async function PUT(
       },
     });
 
+    // OGP画像を再生成（時間や場所が変更された場合）
+    const needsRegenerate = 
+      existingEvent.lat !== data.lat ||
+      existingEvent.lng !== data.lng ||
+      existingEvent.locationText !== data.locationText ||
+      existingEvent.startAt?.getTime() !== (data.startAt ? new Date(data.startAt).getTime() : null) ||
+      existingEvent.status !== data.status;
+
+    if (needsRegenerate) {
+      try {
+        // イベントのOGP画像を再生成
+        await generateEventOgImage(event);
+        console.log(`OGP画像を再生成しました: event-${event.id}.png`);
+      } catch (error) {
+        console.error("OGP画像の再生成に失敗しました:", error);
+        // エラーでも処理は続行
+      }
+
+      // 候補者ページのOGP画像も再生成（イベントが変更されたため）
+      try {
+        const candidateWithEvents = await prisma.candidate.findUnique({
+          where: { id: event.candidateId },
+          include: {
+            events: {
+              where: {
+                status: {
+                  in: ["PLANNED", "LIVE"],
+                },
+              },
+              orderBy: [
+                { status: "asc" },
+                { startAt: "asc" },
+              ],
+            },
+          },
+        });
+        if (candidateWithEvents) {
+          await generateCandidateOgImage(candidateWithEvents);
+          console.log(`候補者OGP画像を再生成しました: candidate-${candidateWithEvents.slug}.png`);
+        }
+      } catch (error) {
+        console.error("候補者OGP画像の再生成に失敗しました:", error);
+        // エラーでも処理は続行
+      }
+    }
+
     // OGP画像とページのキャッシュを無効化
     const candidateSlug = event.candidate.slug;
     revalidatePath(`/c/${candidateSlug}`);
@@ -233,6 +283,47 @@ export async function PATCH(
       },
     });
 
+    // OGP画像を再生成（ステータスが変更された場合）
+    const needsRegenerate = existingEvent.status !== status;
+
+    if (needsRegenerate) {
+      try {
+        // イベントのOGP画像を再生成
+        await generateEventOgImage(event);
+        console.log(`OGP画像を再生成しました: event-${event.id}.png`);
+      } catch (error) {
+        console.error("OGP画像の再生成に失敗しました:", error);
+        // エラーでも処理は続行
+      }
+
+      // 候補者ページのOGP画像も再生成
+      try {
+        const candidateWithEvents = await prisma.candidate.findUnique({
+          where: { id: event.candidateId },
+          include: {
+            events: {
+              where: {
+                status: {
+                  in: ["PLANNED", "LIVE"],
+                },
+              },
+              orderBy: [
+                { status: "asc" },
+                { startAt: "asc" },
+              ],
+            },
+          },
+        });
+        if (candidateWithEvents) {
+          await generateCandidateOgImage(candidateWithEvents);
+          console.log(`候補者OGP画像を再生成しました: candidate-${candidateWithEvents.slug}.png`);
+        }
+      } catch (error) {
+        console.error("候補者OGP画像の再生成に失敗しました:", error);
+        // エラーでも処理は続行
+      }
+    }
+
     // OGP画像とページのキャッシュを無効化
     const candidateSlug = event.candidate.slug;
     revalidatePath(`/c/${candidateSlug}`);
@@ -278,6 +369,45 @@ export async function DELETE(
     await prisma.speechEvent.delete({
       where: { id },
     });
+
+    // OGP画像ファイルを削除
+    const imagePath = join(process.cwd(), "public", "og-images", `event-${id}.png`);
+    if (existsSync(imagePath)) {
+      try {
+        await unlink(imagePath);
+        console.log(`OGP画像を削除しました: event-${id}.png`);
+      } catch (error) {
+        console.error("OGP画像の削除に失敗しました:", error);
+        // エラーでも処理は続行
+      }
+    }
+
+    // 候補者ページのOGP画像も再生成（イベントが削除されたため）
+    try {
+      const candidateWithEvents = await prisma.candidate.findUnique({
+        where: { id: event.candidateId },
+        include: {
+          events: {
+            where: {
+              status: {
+                in: ["PLANNED", "LIVE"],
+              },
+            },
+            orderBy: [
+              { status: "asc" },
+              { startAt: "asc" },
+            ],
+          },
+        },
+      });
+      if (candidateWithEvents) {
+        await generateCandidateOgImage(candidateWithEvents);
+        console.log(`候補者OGP画像を再生成しました: candidate-${candidateWithEvents.slug}.png`);
+      }
+    } catch (error) {
+      console.error("候補者OGP画像の再生成に失敗しました:", error);
+      // エラーでも処理は続行
+    }
 
     // OGP画像とページのキャッシュを無効化
     const candidateSlug = event.candidate.slug;

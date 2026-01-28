@@ -19,6 +19,7 @@
     "cleanup:all-candidates-and-events": "tsx scripts/cleanup-all-candidates-and-events.ts",
     "create:admin-user": "tsx scripts/create-admin-user.ts",
     "seed": "tsx scripts/seed.ts",
+    "generate:og-images": "tsx scripts/generate-og-images.ts",
     "test": "vitest",
     "test:e2e": "playwright test"
   },

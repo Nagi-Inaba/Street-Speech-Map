@@ -1,158 +1,31 @@
-import { ImageResponse } from "@vercel/og";
-import { NextRequest } from "next/server";
-import { generateMapScreenshot } from "@/lib/map-screenshot";
+import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
   try {
-    // 地図スクリーンショットを生成（関東エリア全体）
-    // エラー時は地図なしで続行
-    let mapImageDataUrl: string | null = null;
-    try {
-      mapImageDataUrl = await Promise.race([
-        generateMapScreenshot(
-          [36.0, 139.5], // 関東エリアの中心
-          8, // 関東エリア全体が入るズームレベル
-          1000,
-          630
-        ),
-        new Promise<string>((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout")), 5000)
-        ),
-      ]);
-    } catch (error) {
-      console.error("Failed to generate map screenshot:", error);
-      // 地図なしで続行
+    // 事前生成された画像ファイルを読み込む
+    const imagePath = join(process.cwd(), "public", "og-images", "area.png");
+
+    if (!existsSync(imagePath)) {
+      // 画像が存在しない場合は404を返す
+      return new NextResponse("OGP画像が見つかりません", { status: 404 });
     }
 
-    const imageResponse = new ImageResponse(
-      (
-        <div
-          style={{
-            height: "100%",
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            padding: "60px 80px",
-            position: "relative",
-          }}
-        >
-          {/* 地図画像を背景として使用 */}
-          {mapImageDataUrl && (
-            <div
-              style={{
-                position: "absolute",
-                top: "60px",
-                left: "80px",
-                right: "80px",
-                bottom: "60px",
-                backgroundColor: "white",
-                border: "4px solid #000000",
-                borderRadius: "8px",
-                overflow: "hidden",
-                display: "flex",
-              }}
-            >
-              <img
-                src={mapImageDataUrl}
-                alt="地図"
-                width={1000}
-                height={630}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
-            </div>
-          )}
+    const imageBuffer = await readFile(imagePath);
 
-          {/* タイトルテキスト（地図の上に重ねる） */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "white",
-              padding: "40px 60px",
-              borderRadius: "16px",
-              border: "3px solid #000000",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-              maxWidth: "800px",
-              zIndex: 10,
-            }}
-          >
-            <div
-              style={{
-                fontSize: "56px",
-                fontWeight: "bold",
-                color: "#000000",
-                textAlign: "center",
-              }}
-            >
-              エリアごと演説予定
-            </div>
-            <div
-              style={{
-                fontSize: "48px",
-                fontWeight: "bold",
-                color: "#000000",
-                marginTop: "20px",
-                textAlign: "center",
-              }}
-            >
-              チームみらい 街頭演説マップ
-            </div>
-          </div>
-        </div>
-      ),
-      {
-        width: 1200,
-        height: 630,
-      }
-    );
-
-    imageResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-    imageResponse.headers.set("Content-Type", "image/png");
-
-    return imageResponse;
+    return new NextResponse(imageBuffer, {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
   } catch (error) {
-    console.error("Error generating OG image:", error);
-    const errorResponse = new ImageResponse(
-      (
-        <div
-          style={{
-            height: "100%",
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#f3f4f6",
-            fontSize: "48px",
-            color: "#6b7280",
-          }}
-        >
-          画像の生成に失敗しました
-        </div>
-      ),
-      {
-        width: 1200,
-        height: 630,
-      }
-    );
-    errorResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-    errorResponse.headers.set("Content-Type", "image/png");
-    return errorResponse;
+    console.error("Error serving OG image:", error);
+    return new NextResponse("画像の読み込みに失敗しました", { status: 500 });
   }
 }

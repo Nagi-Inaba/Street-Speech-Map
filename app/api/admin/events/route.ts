@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
 import { z } from "zod";
+import { generateEventOgImage, generateCandidateOgImage } from "@/lib/og-image-generator";
 
 const eventSchema = z.object({
   candidateId: z.string(),
@@ -134,6 +135,38 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // OGP画像を生成
+    try {
+      // イベントのOGP画像を生成
+      await generateEventOgImage(event);
+      console.log(`OGP画像を生成しました: event-${event.id}.png`);
+
+      // 候補者ページのOGP画像も再生成（新しいイベントが追加されたため）
+      const candidateWithEvents = await prisma.candidate.findUnique({
+        where: { id: event.candidateId },
+        include: {
+          events: {
+            where: {
+              status: {
+                in: ["PLANNED", "LIVE"],
+              },
+            },
+            orderBy: [
+              { status: "asc" },
+              { startAt: "asc" },
+            ],
+          },
+        },
+      });
+      if (candidateWithEvents) {
+        await generateCandidateOgImage(candidateWithEvents);
+        console.log(`候補者OGP画像を再生成しました: candidate-${candidateWithEvents.slug}.png`);
+      }
+    } catch (error) {
+      console.error("OGP画像の生成に失敗しました:", error);
+      // エラーでも処理は続行
+    }
 
     // OGP画像とページのキャッシュを無効化
     const candidateSlug = event.candidate.slug;
