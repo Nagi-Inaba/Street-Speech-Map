@@ -150,21 +150,27 @@ export default async function CandidatePage({
   const endedEvents = candidate.events.filter((e) => e.status === "ENDED");
 
   // 地図用のマーカー（通常のイベントピン）
+  // 吹き出しに候補者名、場所名、時間を表示
   const mapMarkers = candidate.events
     .filter((e) => e.status !== "ENDED")
     .map((event) => {
-      let popupText = event.locationText;
+      let timeText = "時間未定";
       if (event.startAt) {
         const day = formatJSTDay(event.startAt);
         const time = formatJSTTime(event.startAt);
-        popupText += `\n${day} ${time}`;
-      } else {
-        popupText += "\n時間未定";
+        timeText = `${day} ${time}`;
       }
+      const popupContent = `
+        <div style="color: black;">
+          <div style="font-weight: bold; margin-bottom: 4px;">${candidate.name}</div>
+          <div style="font-size: 12px; margin-bottom: 2px;">${timeText}</div>
+          <div style="font-size: 12px;">${event.locationText}</div>
+        </div>
+      `;
       return {
         id: event.id,
         position: [event.lat, event.lng] as [number, number],
-        popup: popupText,
+        popup: popupContent,
         color: event.status === "LIVE" ? "red" : "blue",
       };
     });

@@ -116,11 +116,23 @@ export default async function EventPage({
   const isEnded = event.status === "ENDED";
 
   // 地図用のマーカー
+  // 吹き出しに候補者名、場所名、時間を表示
+  let timeText = "時間未定";
+  if (event.startAt) {
+    timeText = formatJSTWithoutYear(event.startAt);
+  }
+  const popupContent = `
+    <div style="color: black;">
+      <div style="font-weight: bold; margin-bottom: 4px;">${event.candidate.name}</div>
+      <div style="font-size: 12px; margin-bottom: 2px;">${timeText}</div>
+      <div style="font-size: 12px;">${event.locationText}</div>
+    </div>
+  `;
   const mapMarkers = [
     {
       id: event.id,
       position: [event.lat, event.lng] as [number, number],
-      popup: event.locationText,
+      popup: popupContent,
       color: isLive ? "red" : "blue",
     },
   ];

@@ -2,6 +2,7 @@ import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { formatJSTWithoutYear } from "@/lib/time";
+import { generateCandidateMapUrl } from "@/lib/map-image";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -69,6 +70,14 @@ export async function GET(
 
     const statusText = isLive ? "実施中" : "予定";
 
+    // 候補者のすべてのイベント位置を取得
+    const eventPositions: Array<[number, number]> = candidate.events
+      .filter((e) => e.status !== "ENDED")
+      .map((e) => [e.lat, e.lng] as [number, number]);
+
+    // 地図画像URLを生成（複数のピンが入る範囲）
+    const mapImageUrl = generateCandidateMapUrl(eventPositions, 1000, 630);
+
     const imageResponse = new ImageResponse(
       (
         <div
@@ -82,75 +91,116 @@ export async function GET(
             background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
             fontFamily: "system-ui, -apple-system, sans-serif",
             padding: "60px 80px",
+            position: "relative",
           }}
         >
-          {/* 白背景の中央部分（横は完全に白背景） */}
+          {/* 地図画像を背景として使用 */}
           <div
             style={{
+              position: "absolute",
+              top: "60px",
+              left: "80px",
+              right: "80px",
+              bottom: "60px",
+              backgroundColor: "white",
+              border: "4px solid #000000",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            <img
+              src={mapImageUrl}
+              alt="地図"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          </div>
+
+          {/* 吹き出し風のテキストボックス（地図の上に重ねる） */}
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: "white",
-              width: "100%",
-              height: "100%",
-              padding: "60px 80px",
-              border: "2px solid #000000",
+              padding: "40px 60px",
+              borderRadius: "16px",
+              border: "3px solid #000000",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+              maxWidth: "800px",
+              zIndex: 10,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "16px 40px",
-                borderRadius: "999px",
-                fontSize: "40px",
-                fontWeight: "bold",
-                marginBottom: "60px",
-                letterSpacing: "0.08em",
-                border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
-                backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
-                color: isLive ? "#166534" : "#9a3412",
-              }}
-            >
-              {statusText}
-            </div>
+            {/* ステータスバッジ */}
+            {firstEvent && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "12px 32px",
+                  borderRadius: "999px",
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  marginBottom: "40px",
+                  letterSpacing: "0.08em",
+                  border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
+                  backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
+                  color: isLive ? "#166534" : "#9a3412",
+                }}
+              >
+                {statusText}
+              </div>
+            )}
 
+            {/* 候補者名（吹き出しに表示） */}
             <div
               style={{
-                fontSize: "72px",
+                fontSize: "56px",
                 fontWeight: "bold",
                 color: "#000000",
-                marginBottom: "60px",
+                marginBottom: firstEvent ? "32px" : "0",
                 textAlign: "center",
               }}
             >
               {candidate.name}
             </div>
 
+            {/* 場所名と時間（最初のイベントがある場合） */}
             {firstEvent && (
-              <div
-                style={{
-                  fontSize: "48px",
-                  color: "#000000",
-                  marginBottom: "60px",
-                  textAlign: "center",
-                }}
-              >
-                {firstEvent.locationText}
-              </div>
-            )}
+              <>
+                <div
+                  style={{
+                    fontSize: "36px",
+                    color: "#000000",
+                    marginTop: "32px",
+                    marginBottom: "24px",
+                    textAlign: "center",
+                    fontWeight: "600",
+                  }}
+                >
+                  {firstEvent.locationText}
+                </div>
 
-            <div
-              style={{
-                fontSize: "40px",
-                color: "#000000",
-                textAlign: "center",
-              }}
-            >
-              {dateTimeText}
-            </div>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    color: "#000000",
+                    textAlign: "center",
+                  }}
+                >
+                  {dateTimeText}
+                </div>
+              </>
+            )}
           </div>
         </div>
       ),

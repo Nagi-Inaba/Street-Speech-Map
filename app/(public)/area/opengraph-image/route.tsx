@@ -1,65 +1,14 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
-import { formatJSTWithoutYear } from "@/lib/time";
-import { generateEventMapUrl } from "@/lib/map-image";
+import { generateKantoAreaMapUrl } from "@/lib/map-image";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ slug: string; eventId: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { slug, eventId } = await params;
-
-    const event = await prisma.speechEvent.findUnique({
-      where: { id: eventId },
-      include: {
-        candidate: true,
-      },
-    });
-
-    if (!event || event.candidate.slug !== slug) {
-      const errorResponse = new ImageResponse(
-        (
-          <div
-            style={{
-              height: "100%",
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "#f3f4f6",
-              fontSize: "48px",
-              color: "#6b7280",
-            }}
-          >
-            イベントが見つかりません
-          </div>
-        ),
-        {
-          width: 1200,
-          height: 630,
-        }
-      );
-      errorResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-      errorResponse.headers.set("Content-Type", "image/png");
-      return errorResponse;
-    }
-
-    const isLive = event.status === "LIVE";
-
-    let dateTimeText = "時間未定";
-    if (event.startAt) {
-      dateTimeText = formatJSTWithoutYear(event.startAt);
-    }
-
-    const statusText = isLive ? "実施中" : "予定";
-
-    // 地図画像URLを生成（ピン位置のクローズアップ）
-    const mapImageUrl = generateEventMapUrl([event.lat, event.lng], 1000, 630, isLive);
+    // 地図画像URLを生成（関東エリア全体）
+    const mapImageUrl = generateKantoAreaMapUrl(1000, 630);
 
     const imageResponse = new ImageResponse(
       (
@@ -102,7 +51,7 @@ export async function GET(
             />
           </div>
 
-          {/* 吹き出し風のテキストボックス（地図の上に重ねる） */}
+          {/* タイトルテキスト（地図の上に重ねる） */}
           <div
             style={{
               position: "absolute",
@@ -122,61 +71,26 @@ export async function GET(
               zIndex: 10,
             }}
           >
-            {/* ステータスバッジ */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "12px 32px",
-                borderRadius: "999px",
-                fontSize: "32px",
-                fontWeight: "bold",
-                marginBottom: "40px",
-                letterSpacing: "0.08em",
-                border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
-                backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
-                color: isLive ? "#166534" : "#9a3412",
-              }}
-            >
-              {statusText}
-            </div>
-
-            {/* 候補者名 */}
             <div
               style={{
                 fontSize: "56px",
                 fontWeight: "bold",
                 color: "#000000",
-                marginBottom: "32px",
                 textAlign: "center",
               }}
             >
-              {event.candidate.name}
+              エリアごと演説予定
             </div>
-
-            {/* 場所名 */}
             <div
               style={{
-                fontSize: "36px",
+                fontSize: "48px",
+                fontWeight: "bold",
                 color: "#000000",
-                marginBottom: "24px",
-                textAlign: "center",
-                fontWeight: "600",
-              }}
-            >
-              {event.locationText}
-            </div>
-
-            {/* 時間 */}
-            <div
-              style={{
-                fontSize: "28px",
-                color: "#000000",
+                marginTop: "20px",
                 textAlign: "center",
               }}
             >
-              {dateTimeText}
+              チームみらい 街頭演説マップ
             </div>
           </div>
         </div>
@@ -187,7 +101,6 @@ export async function GET(
       }
     );
 
-    // キャッシュヘッダーを追加
     imageResponse.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
     imageResponse.headers.set("Content-Type", "image/png");
 
