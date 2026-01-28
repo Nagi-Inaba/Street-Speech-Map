@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npm run generate:og-images",
     "build": "prisma generate && next build",
+    "postbuild": "npm run generate:og-images",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
