@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { prisma } from "@/lib/db";
+import { generateFallbackEventOgImage } from "@/lib/og-image-generator";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -16,17 +18,35 @@ export async function GET(
     // 事前生成された画像ファイルを読み込む
     const imagePath = join(process.cwd(), "public", "og-images", `event-${eventId}.png`);
 
-    if (!existsSync(imagePath)) {
-      // 画像が存在しない場合は404を返す
-      return new NextResponse("OGP画像が見つかりません", { status: 404 });
+    if (existsSync(imagePath)) {
+      const imageBuffer = await readFile(imagePath);
+      return new NextResponse(imageBuffer, {
+        headers: {
+          "Content-Type": "image/png",
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      });
     }
 
-    const imageBuffer = await readFile(imagePath);
+    // 画像が存在しない場合はフォールバック画像を生成
+    const event = await prisma.speechEvent.findUnique({
+      where: { id: eventId },
+      include: {
+        candidate: true,
+      },
+    });
+
+    if (!event) {
+      return new NextResponse("イベントが見つかりません", { status: 404 });
+    }
+
+    const fallbackImage = generateFallbackEventOgImage(event);
+    const imageBuffer = await fallbackImage.arrayBuffer();
 
     return new NextResponse(imageBuffer, {
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
       },
     });
   } catch (error) {

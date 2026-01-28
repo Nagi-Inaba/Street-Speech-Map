@@ -10,6 +10,377 @@ import { generateMapScreenshot } from "./map-screenshot";
 import { formatJSTWithoutYear } from "./time";
 import type { SpeechEvent, Candidate } from "@prisma/client";
 
+/**
+ * フォールバック用：地図なしのテキストのみのOGP画像を生成（ファイル保存なし）
+ */
+function generateFallbackEventOgImage(
+  event: SpeechEvent & { candidate: Candidate }
+): ImageResponse {
+  const isLive = event.status === "LIVE";
+  const statusText = isLive ? "実施中" : "予定";
+
+  let dateTimeText = "時間未定";
+  if (event.startAt) {
+    dateTimeText = formatJSTWithoutYear(event.startAt);
+  }
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          padding: "60px 80px",
+          position: "relative",
+        }}
+      >
+        {/* 吹き出し風のテキストボックス */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "white",
+            padding: "40px 60px",
+            borderRadius: "16px",
+            border: "3px solid #000000",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+            maxWidth: "800px",
+          }}
+        >
+          {/* ステータスバッジ */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "12px 32px",
+              borderRadius: "999px",
+              fontSize: "32px",
+              fontWeight: "bold",
+              marginBottom: "40px",
+              letterSpacing: "0.08em",
+              border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
+              backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
+              color: isLive ? "#166534" : "#9a3412",
+            }}
+          >
+            {statusText}
+          </div>
+
+          {/* 候補者名 */}
+          <div
+            style={{
+              fontSize: "56px",
+              fontWeight: "bold",
+              color: "#000000",
+              marginBottom: "32px",
+              textAlign: "center",
+            }}
+          >
+            {event.candidate.name}
+          </div>
+
+          {/* 場所名 */}
+          <div
+            style={{
+              fontSize: "36px",
+              color: "#000000",
+              marginBottom: "24px",
+              textAlign: "center",
+              fontWeight: "600",
+            }}
+          >
+            {event.locationText}
+          </div>
+
+          {/* 時間 */}
+          <div
+            style={{
+              fontSize: "28px",
+              color: "#000000",
+              textAlign: "center",
+            }}
+          >
+            {dateTimeText}
+          </div>
+        </div>
+      </div>
+    ),
+    {
+      width: 1200,
+      height: 630,
+    }
+  );
+}
+
+/**
+ * フォールバック用：候補者ページの地図なしOGP画像を生成（ファイル保存なし）
+ */
+function generateFallbackCandidateOgImage(
+  candidate: Candidate & { events: SpeechEvent[] }
+): ImageResponse {
+  const firstEvent = candidate.events.find(
+    (e) => e.status === "PLANNED" || e.status === "LIVE"
+  );
+  const isLive = firstEvent?.status === "LIVE";
+  const statusText = isLive ? "実施中" : "予定";
+
+  let dateTimeText = "時間未定";
+  if (firstEvent?.startAt) {
+    dateTimeText = formatJSTWithoutYear(firstEvent.startAt);
+  }
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          padding: "60px 80px",
+          position: "relative",
+        }}
+      >
+        {/* 吹き出し風のテキストボックス */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "white",
+            padding: "40px 60px",
+            borderRadius: "16px",
+            border: "3px solid #000000",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+            maxWidth: "800px",
+          }}
+        >
+          {/* ステータスバッジ */}
+          {firstEvent && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "12px 32px",
+                borderRadius: "999px",
+                fontSize: "32px",
+                fontWeight: "bold",
+                marginBottom: "40px",
+                letterSpacing: "0.08em",
+                border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
+                backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
+                color: isLive ? "#166534" : "#9a3412",
+              }}
+            >
+              {statusText}
+            </div>
+          )}
+
+          {/* 候補者名 */}
+          <div
+            style={{
+              fontSize: "56px",
+              fontWeight: "bold",
+              color: "#000000",
+              marginBottom: firstEvent ? "32px" : "0",
+              textAlign: "center",
+            }}
+          >
+            {candidate.name}
+          </div>
+
+          {/* 場所名と時間（最初のイベントがある場合） */}
+          {firstEvent && (
+            <>
+              <div
+                style={{
+                  fontSize: "36px",
+                  color: "#000000",
+                  marginTop: "32px",
+                  marginBottom: "24px",
+                  textAlign: "center",
+                  fontWeight: "600",
+                }}
+              >
+                {firstEvent.locationText}
+              </div>
+
+              <div
+                style={{
+                  fontSize: "28px",
+                  color: "#000000",
+                  textAlign: "center",
+                }}
+              >
+                {dateTimeText}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    ),
+    {
+      width: 1200,
+      height: 630,
+    }
+  );
+}
+
+/**
+ * フォールバック用：トップページの地図なしOGP画像を生成（ファイル保存なし）
+ */
+function generateFallbackHomeOgImage(): ImageResponse {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          padding: "60px 80px",
+          position: "relative",
+        }}
+      >
+        {/* タイトルテキスト */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "white",
+            padding: "40px 60px",
+            borderRadius: "16px",
+            border: "3px solid #000000",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+            maxWidth: "800px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "56px",
+              fontWeight: "bold",
+              color: "#000000",
+              textAlign: "center",
+            }}
+          >
+            チームみらい
+          </div>
+          <div
+            style={{
+              fontSize: "48px",
+              fontWeight: "bold",
+              color: "#000000",
+              marginTop: "20px",
+              textAlign: "center",
+            }}
+          >
+            街頭演説マップ
+          </div>
+        </div>
+      </div>
+    ),
+    {
+      width: 1200,
+      height: 630,
+    }
+  );
+}
+
+/**
+ * フォールバック用：エリアページの地図なしOGP画像を生成（ファイル保存なし）
+ */
+function generateFallbackAreaOgImage(): ImageResponse {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(to right, #64D8C6 0%, #64D8C6 50%, #bcecd3 100%)",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          padding: "60px 80px",
+          position: "relative",
+        }}
+      >
+        {/* タイトルテキスト */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "white",
+            padding: "40px 60px",
+            borderRadius: "16px",
+            border: "3px solid #000000",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+            maxWidth: "800px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "56px",
+              fontWeight: "bold",
+              color: "#000000",
+              textAlign: "center",
+            }}
+          >
+            エリアごと演説予定
+          </div>
+          <div
+            style={{
+              fontSize: "48px",
+              fontWeight: "bold",
+              color: "#000000",
+              marginTop: "20px",
+              textAlign: "center",
+            }}
+          >
+            チームみらい 街頭演説マップ
+          </div>
+        </div>
+      </div>
+    ),
+    {
+      width: 1200,
+      height: 630,
+    }
+  );
+}
+
+// フォールバック関数をエクスポート
+export {
+  generateFallbackEventOgImage,
+  generateFallbackCandidateOgImage,
+  generateFallbackHomeOgImage,
+  generateFallbackAreaOgImage,
+};
+
 const OG_IMAGES_DIR = join(process.cwd(), "public", "og-images");
 
 /**
