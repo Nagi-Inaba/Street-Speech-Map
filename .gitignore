@@ -45,3 +45,6 @@ next-env.d.ts
 data/*.csv
 data/*.geojson
 !data/sample/
+
+# OGP images: Blob運用のためローカル生成物はコミットしない
+/public/og-images/

@@ -9,7 +9,8 @@ import { join } from "path";
 
 export const OG_BLOB_PREFIX = "og-images/";
 
-function hasBlobToken(): boolean {
+/** 本番(Vercel)では true。Blob運用時はローカルファイルを参照しない。 */
+export function hasBlobToken(): boolean {
   return !!process.env.BLOB_READ_WRITE_TOKEN;
 }
 
