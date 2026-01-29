@@ -35,9 +35,9 @@ export async function putOgBlob(
 
   const { put } = await import("@vercel/blob");
   const ab = await imageResponse.arrayBuffer();
-  const body = Buffer.from(ab);
 
-  const { url } = await put(pathname, body, {
+  // PutBody は Fetch Body（ArrayBuffer/Blob/ReadableStream/string等）。Buffer は型的に弾かれるため ArrayBuffer を渡す。
+  const { url } = await put(pathname, ab, {
     access: "public",
     addRandomSuffix: false,
     contentType: "image/png",

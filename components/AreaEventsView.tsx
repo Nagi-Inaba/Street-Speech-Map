@@ -43,38 +43,38 @@ export default function AreaEventsView({
   const [areaId, setAreaId] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all"); // "all" | "today" | "tomorrow" | "YYYY-MM-DD"
 
-  // 日付フィルター関数
-  const matchesDateFilter = (event: EventForArea): boolean => {
-    if (dateFilter === "all") return true;
-    if (!event.startAt) {
-      // 時間未定の場合は、日付フィルターが「すべて」以外の場合は除外
-      return false;
-    }
-
-    // イベントの日付をJSTで取得
-    const eventDate = new Date(event.startAt);
-    const eventDateStr = formatInTimeZone(eventDate, "Asia/Tokyo", "yyyy-MM-dd");
-
-    if (dateFilter === "today") {
-      const now = new Date();
-      const todayStr = formatInTimeZone(now, "Asia/Tokyo", "yyyy-MM-dd");
-      return eventDateStr === todayStr;
-    } else if (dateFilter === "tomorrow") {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = formatInTimeZone(tomorrow, "Asia/Tokyo", "yyyy-MM-dd");
-      return eventDateStr === tomorrowStr;
-    } else if (dateFilter.startsWith("20")) {
-      // 特定の日付（YYYY-MM-DD形式）
-      return eventDateStr === dateFilter;
-    }
-    
-    return true;
-  };
-
   // エリアで絞り込んだ候補者のうち、イベントが1件以上あるもの。各候補のイベントのみを渡す
   const { liveEvents, plannedEvents, endedEvents } = useMemo(() => {
+    // useMemo 内に閉じ込めて依存を安定化
+    const matchesDateFilter = (event: EventForArea): boolean => {
+      if (dateFilter === "all") return true;
+      if (!event.startAt) {
+        // 時間未定の場合は、日付フィルターが「すべて」以外の場合は除外
+        return false;
+      }
+
+      // イベントの日付をJSTで取得
+      const eventDate = new Date(event.startAt);
+      const eventDateStr = formatInTimeZone(eventDate, "Asia/Tokyo", "yyyy-MM-dd");
+
+      if (dateFilter === "today") {
+        const now = new Date();
+        const todayStr = formatInTimeZone(now, "Asia/Tokyo", "yyyy-MM-dd");
+        return eventDateStr === todayStr;
+      } else if (dateFilter === "tomorrow") {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = formatInTimeZone(tomorrow, "Asia/Tokyo", "yyyy-MM-dd");
+        return eventDateStr === tomorrowStr;
+      } else if (dateFilter.startsWith("20")) {
+        // 特定の日付（YYYY-MM-DD形式）
+        return eventDateStr === dateFilter;
+      }
+
+      return true;
+    };
+
     const live: EventForArea[] = [];
     const planned: EventForArea[] = [];
     const ended: EventForArea[] = [];
@@ -105,7 +105,7 @@ export default function AreaEventsView({
     });
 
     return { liveEvents: live, plannedEvents: planned, endedEvents: ended };
-  }, [candidates, areaId, matchesDateFilter]);
+  }, [candidates, areaId, dateFilter]);
 
   const totalCount = liveEvents.length + plannedEvents.length + endedEvents.length;
 
@@ -168,14 +168,11 @@ export default function AreaEventsView({
     );
   };
 
-  // イベントから候補者を引く
-  const getCandidate = (candidateId: string) => candidates.find((c) => c.id === candidateId)!;
-
   // 地図用のマーカーを生成
   const mapMarkers = useMemo(() => {
     const allEvents = [...liveEvents, ...plannedEvents, ...endedEvents];
     return allEvents.map((event) => {
-      const candidate = getCandidate(event.candidateId);
+      const candidate = candidates.find((c) => c.id === event.candidateId)!;
       const names = [event.candidate.name];
       if (event.additionalCandidates?.length) {
         event.additionalCandidates.forEach((a) => names.push(a.candidate.name));
@@ -205,7 +202,7 @@ export default function AreaEventsView({
         color: event.status === "LIVE" ? "red" : event.status === "ENDED" ? undefined : "blue",
       };
     });
-  }, [liveEvents, plannedEvents, endedEvents, getCandidate]);
+  }, [liveEvents, plannedEvents, endedEvents, candidates]);
 
   // 地図の中心位置とズームレベルを計算
   const { mapCenter, mapZoom } = useMemo(() => {
