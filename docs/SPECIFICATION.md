@@ -29,7 +29,7 @@
 - **ホスティング**: Vercel（推奨）
 - **Cron**: Vercel Cron（自動承認バッチ処理）
 - **OGP画像生成**: 事前生成方式（`@vercel/og` + `@napi-rs/canvas`）
-- **画像ストレージ**: Vercel Blob（予定）
+- **OGP画像ストレージ**: **Vercel Blob 運用を基本方針**（本番は Blob に保存・配信。ローカルは `public/og-images` は開発用のみ）
 - **分析**: Umami Analytics（基盤実装済み、統合予定）
 
 ### 開発ツール
@@ -170,7 +170,7 @@ public/                  # 静的ファイル
 - `REPORTER_HASH_SALT`: レポーターハッシュ用ソルト
 
 ### オプション環境変数
-- `BLOB_READ_WRITE_TOKEN`: Vercel Blobトークン
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob トークン（**本番推奨**。Blob運用の基本方針のため、設定時は OGP 画像は Blob に保存・配信）
 - `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: Umami Analytics Website ID
 - `NEXT_PUBLIC_UMAMI_SCRIPT_URL`: Umami Analytics Script URL
 
@@ -208,11 +208,12 @@ public/                  # 静的ファイル
 - 画像最適化（Next.js Image）
 
 ### OGP画像生成仕様
-- **生成方式**: 事前生成（ビルド時に`public/og-images/`に保存）
-- **地図生成**: Canvas API（`@napi-rs/canvas`）を使用してOpenStreetMapタイルを合成
+- **ストレージ方針**: **Blob運用を基本方針**。本番（`BLOB_READ_WRITE_TOKEN` 設定時）は Vercel Blob に保存し、opengraph-image は Blob URL へリダイレクト。ローカルは `public/og-images` を参照可能（開発用）。
+- **生成方式**: 事前生成（Blob またはローカルの `public/og-images/`）
+- **地図生成**: Canvas API（`@napi-rs/canvas`）を使用して OpenStreetMap タイルを合成
 - **フォント**: Noto Sans JP（自動ダウンロードスクリプト付き）
-- **フォールバック**: 地図生成失敗時はテキストのみのOGP画像を動的生成
-- **自動更新**: イベント作成・更新・削除時にOGP画像を自動再生成
+- **フォールバック**: 地図生成失敗時はテキストのみの OGP 画像を動的生成
+- **自動更新**: イベント作成・更新・削除時に OGP 画像を自動再生成（Blob またはローカルに保存）
 
 ### 今後の改善予定
 - 施設データのクラスタリング

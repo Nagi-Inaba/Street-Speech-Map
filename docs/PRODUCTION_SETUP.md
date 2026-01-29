@@ -145,9 +145,9 @@ node -e "console.log(require('crypto').randomBytes(16).toString('base64'))"
 - [ ] 候補者の追加・編集ができる
 - [ ] 演説予定の追加・編集ができる
 
-## ステップ4: Vercel Blobの設定（オプション）
+## ステップ4: Vercel Blobの設定（OGP画像はBlob運用が基本方針）
 
-画像アップロード機能を使用する場合：
+OGP画像の保存・配信は **Blob運用を基本方針** としています。本番では設定を推奨します。画像アップロード機能でも利用します。
 
 1. Vercelダッシュボードで「Storage」→「Create Database」→「Blob」を選択
 2. ストレージ名を入力して作成

@@ -1,8 +1,8 @@
 /**
- * OGP画像の保存/参照を Vercel Blob に寄せるためのヘルパー。
+ * OGP画像の保存/参照用ヘルパー（基本方針: Blob運用）
  *
- * - 本番(Vercel)では `BLOB_READ_WRITE_TOKEN` が設定されていれば Blob を優先
- * - ローカル等でトークンが無ければ null を返す（=従来の public/og-images を使用）
+ * - 本番(Vercel): `BLOB_READ_WRITE_TOKEN` 設定時は Blob に保存・配信（ローカルファイルは参照しない）
+ * - ローカル: トークンが無い場合は public/og-images を参照可能（開発用）
  */
 import type { ImageResponse } from "@vercel/og";
 import { join } from "path";
