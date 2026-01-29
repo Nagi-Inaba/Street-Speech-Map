@@ -4,7 +4,11 @@
  */
 
 import { appendFile } from "fs/promises";
+import { existsSync } from "fs";
 import { join } from "path";
+
+/** 吹き出し用日本語フォント（登録に成功した場合のみ使用） */
+const POPUP_FONT_FAMILY = "Noto Sans JP";
 
 const DEBUG_LOG_PATH = join(process.cwd(), ".cursor", "debug.log");
 
@@ -124,7 +128,7 @@ export async function generateMapScreenshot(
   await debugLog('lib/map-screenshot.ts:66', 'generateMapScreenshot entry', {center,zoom,width,height,markersCount:markers?.length||0}, 'A');
   // #endregion
   
-  let createCanvas, loadImage;
+  let createCanvas, loadImage, GlobalFonts: { registerFromPath: (path: string, name?: string) => boolean } | undefined;
   try {
     // #region agent log
     await debugLog('lib/map-screenshot.ts:87', 'Before @napi-rs/canvas import', {}, 'A');
@@ -133,7 +137,23 @@ export async function generateMapScreenshot(
     const canvasModule = await import("@napi-rs/canvas");
     createCanvas = canvasModule.createCanvas;
     loadImage = canvasModule.loadImage;
+    GlobalFonts = canvasModule.GlobalFonts;
     console.log(`[地図生成] @napi-rs/canvasのインポートに成功`);
+    
+    // 日本語フォントを登録（Canvas作成前に実行）。TTF/OTFのいずれかが存在すれば使用
+    const fontPaths = [
+      join(process.cwd(), "lib", "fonts", "NotoSansJP-Regular.ttf"),
+      join(process.cwd(), "lib", "fonts", "NotoSansJP-Regular.otf"),
+      join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf"),
+      join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.otf"),
+      join(process.cwd(), "node_modules", "typeface-notosans-jp", "NotoSansJP-Regular.otf"),
+    ];
+    for (const fontPath of fontPaths) {
+      if (existsSync(fontPath) && GlobalFonts?.registerFromPath(fontPath, POPUP_FONT_FAMILY)) {
+        console.log(`[地図生成] 日本語フォントを登録しました: ${fontPath}`);
+        break;
+      }
+    }
     
     // #region agent log
     await debugLog('lib/map-screenshot.ts:90', 'After @napi-rs/canvas import success', {hasCreateCanvas:!!createCanvas,hasLoadImage:!!loadImage}, 'A');
@@ -164,8 +184,20 @@ export async function generateMapScreenshot(
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
   
+  // 吹き出しが中央付近に来るよう、ピンをやや下にずらす（単一マーカー＋吹き出しの場合）
+  const PIN_OFFSET_Y_PX = 90; // ピンを中央より下に表示するピクセル数
+  const TILE_SIZE = 256;
+  let effectiveCenter = center;
+  if (markers && markers.length === 1 && markers[0].popup) {
+    const [pinLat, pinLng] = markers[0].position;
+    const markerTile = latLngToTile(pinLat, pinLng, zoom);
+    const centerTileY = markerTile.y - PIN_OFFSET_Y_PX / TILE_SIZE;
+    const adjustedCenterLatLng = tileToLatLng(markerTile.x, centerTileY, zoom);
+    effectiveCenter = [adjustedCenterLatLng.lat, adjustedCenterLatLng.lng];
+  }
+  
   // タイルを取得して描画
-  const centerTile = latLngToTile(center[0], center[1], zoom);
+  const centerTile = latLngToTile(effectiveCenter[0], effectiveCenter[1], zoom);
   console.log(`[地図生成] 中心タイル座標: [${centerTile.x}, ${centerTile.y}]`);
   
   // 画面に表示するタイルの範囲を計算
@@ -256,9 +288,9 @@ export async function generateMapScreenshot(
       
       // 吹き出しを描画（popupがある場合）
       if (marker.popup) {
-        const popupWidth = 220;
-        const popupPadding = 12;
-        const popupLineHeight = 18;
+        const popupWidth = 300;
+        const popupPadding = 16;
+        const popupLineHeight = 26;
         let popupHeight = popupPadding * 2;
         
         // テキストの行数を計算
@@ -275,7 +307,7 @@ export async function generateMapScreenshot(
         ctx.lineWidth = 2;
         
         // 角丸の矩形を描画
-        const radius = 8;
+        const radius = 10;
         ctx.beginPath();
         ctx.moveTo(popupX + radius, popupY);
         ctx.lineTo(popupX + popupWidth - radius, popupY);
@@ -299,24 +331,25 @@ export async function generateMapScreenshot(
         ctx.fill();
         ctx.stroke();
         
-        // テキストを描画
+        // テキストを描画（文字色は黒、日本語用フォントを使用）
         ctx.fillStyle = "#000000";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
+        const fontFamily = `${POPUP_FONT_FAMILY}, sans-serif`;
         
         let textY = popupY + popupPadding;
         if (marker.popup.candidateName) {
-          ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+          ctx.font = `bold 20px ${fontFamily}`;
           ctx.fillText(marker.popup.candidateName, popupX + popupWidth / 2, textY);
           textY += popupLineHeight + 4;
         }
         if (marker.popup.locationText) {
-          ctx.font = "12px system-ui, -apple-system, sans-serif";
+          ctx.font = `16px ${fontFamily}`;
           ctx.fillText(marker.popup.locationText, popupX + popupWidth / 2, textY);
           textY += popupLineHeight + 2;
         }
         if (marker.popup.timeText) {
-          ctx.font = "11px system-ui, -apple-system, sans-serif";
+          ctx.font = `14px ${fontFamily}`;
           ctx.fillText(marker.popup.timeText, popupX + popupWidth / 2, textY);
         }
       }
