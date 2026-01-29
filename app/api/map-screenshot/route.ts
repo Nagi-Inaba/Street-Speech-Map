@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const imageDataUrl = await generateMapScreenshot(
+    const { dataUrl } = await generateMapScreenshot(
       [lat, lng],
       zoom,
       width,
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Base64データURLからBufferを抽出
-    const base64Data = imageDataUrl.replace(/^data:image\/png;base64,/, "");
+    const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
     const buffer = Buffer.from(base64Data, "base64");
 
     return new NextResponse(buffer, {

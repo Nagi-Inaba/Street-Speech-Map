@@ -3,12 +3,18 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { generateFallbackAreaOgImage } from "@/lib/og-image-generator";
+import { getOgBlobUrl } from "@/lib/og-blob";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
   try {
+    const blobUrl = await getOgBlobUrl("og-images/area.png");
+    if (blobUrl) {
+      return NextResponse.redirect(blobUrl, { status: 302 });
+    }
+
     // 事前生成された画像ファイルを読み込む
     const imagePath = join(process.cwd(), "public", "og-images", "area.png");
 

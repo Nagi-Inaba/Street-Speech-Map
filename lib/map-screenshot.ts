@@ -53,48 +53,92 @@ function tileToLatLng(x: number, y: number, zoom: number): { lat: number; lng: n
   return { lat, lng };
 }
 
-/**
- * 画像をBase64に変換
- */
-async function imageToBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  return `data:image/png;base64,${buffer.toString("base64")}`;
+/** 1x1 白ピクセルのPNG（タイル取得失敗時のフォールバック） */
+const FALLBACK_TILE_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+/** PNGのマジックバイト（先頭8バイト） */
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+function isValidPngBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 8) return false;
+  return PNG_SIGNATURE.equals(buffer.subarray(0, 8));
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryHttpStatus(status: number): boolean {
+  // 一時的な過負荷/ゲートウェイ系のみ
+  return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
 /**
  * OpenStreetMapのタイル画像を取得
+ * レスポンスがPNGでない場合（404 HTML等）はフォールバックを返す
  */
 async function getTileImage(x: number, y: number, z: number): Promise<string> {
-  // OpenStreetMapのタイルサーバー（複数のサーバーからランダムに選択）
   const servers = ["a", "b", "c"];
   const server = servers[Math.floor(Math.random() * servers.length)];
   const url = `https://${server}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
-  
-  // #region agent log
-  await debugLog('lib/map-screenshot.ts:43', 'Before tile fetch', {x,y,z,server,url}, 'B');
-  // #endregion
-  
-  try {
-    const result = await imageToBase64(url);
-    
-    // #region agent log
-    await debugLog('lib/map-screenshot.ts:50', 'Tile fetch success', {x,y,z,resultLength:result.length,resultPrefix:result.substring(0,30)}, 'B');
-    // #endregion
-    
-    return result;
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to fetch tile ${z}/${x}/${y}:`, error);
-    
-    // #region agent log
-    await debugLog('lib/map-screenshot.ts:52', 'Tile fetch failed, using fallback', {x,y,z,error:errorMsg,errorType:error?.constructor?.name}, 'B');
-    // #endregion
-    
-    // フォールバック: 白い画像を返す
-    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+  // 最大2回リトライ（合計最大3試行）
+  const maxRetries = 2;
+  let lastErrorMessage = "";
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const msg = `HTTP ${response.status}`;
+        lastErrorMessage = msg;
+        if (attempt < maxRetries && shouldRetryHttpStatus(response.status)) {
+          await sleep(attempt === 0 ? 250 : 800);
+          continue;
+        }
+        throw new Error(msg);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.toLowerCase().includes("image/png")) {
+        // たまにHTML等が返ることがある（=Unsupported image typeの原因）。ここはリトライ対象。
+        lastErrorMessage = `Invalid Content-Type: ${contentType}`;
+        if (attempt < maxRetries) {
+          await sleep(attempt === 0 ? 250 : 800);
+          continue;
+        }
+        throw new Error(lastErrorMessage);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      if (!isValidPngBuffer(buffer)) {
+        lastErrorMessage = "Not a valid PNG buffer";
+        if (attempt < maxRetries) {
+          await sleep(attempt === 0 ? 250 : 800);
+          continue;
+        }
+        throw new Error(lastErrorMessage);
+      }
+
+      return `data:image/png;base64,${buffer.toString("base64")}`;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      lastErrorMessage = errorMsg;
+      // ネットワーク等の例外はリトライ対象（最後のattempt以外）
+      if (attempt < maxRetries) {
+        await sleep(attempt === 0 ? 250 : 800);
+        continue;
+      }
+    }
   }
+
+  console.warn(
+    `[地図生成] タイル ${z}/${x}/${y} 取得失敗（最大リトライ後）、フォールバック使用:`,
+    lastErrorMessage
+  );
+  return FALLBACK_TILE_BASE64;
 }
 
 /**
@@ -119,7 +163,7 @@ export async function generateMapScreenshot(
       timeText?: string;
     };
   }>
-): Promise<string> {
+): Promise<{ dataUrl: string; loadedTiles: number; failedTiles: number }> {
   // @napi-rs/canvasを使用（Vercel対応）
   // 注意: この実装はNode.js環境でのみ動作します
   console.log(`[地図生成] 開始: center=[${center[0]}, ${center[1]}], zoom=${zoom}, size=${width}x${height}`);
@@ -226,48 +270,32 @@ export async function generateMapScreenshot(
       }
       
       try {
-        // #region agent log
-        await debugLog('lib/map-screenshot.ts:133', 'Before tile fetch', {tileX,tileY,zoom}, 'B');
-        // #endregion
-        
         const tileImageData = await getTileImage(tileX, tileY, zoom);
-        
-        // #region agent log
-        await debugLog('lib/map-screenshot.ts:136', 'After tile fetch', {tileX,tileY,zoom,dataUrlLength:tileImageData?.length||0,dataUrlPrefix:tileImageData?.substring(0,30)||''}, 'B');
-        // #endregion
-        
-        const tileImage = await loadImage(tileImageData);
-        
-        // タイルの位置を計算
-        const tileLatLng = tileToLatLng(tileX, tileY, zoom);
-        const centerLatLng = tileToLatLng(centerTile.x, centerTile.y, zoom);
-        
-        // ピクセル位置を計算（簡易版）
+
+        let tileImage: Awaited<ReturnType<typeof loadImage>>;
+        try {
+          tileImage = await loadImage(tileImageData);
+        } catch (loadErr: unknown) {
+          // Unsupported image type 等: フォールバックタイルで描画
+          const code = loadErr && typeof loadErr === "object" && "code" in loadErr ? (loadErr as { code: string }).code : "";
+          if (code === "InvalidArg" || (loadErr instanceof Error && loadErr.message?.includes("Unsupported"))) {
+            tileImage = await loadImage(FALLBACK_TILE_BASE64);
+          } else {
+            throw loadErr;
+          }
+        }
+
         const offsetX = (tileX - centerTile.x) * tileSize;
         const offsetY = (tileY - centerTile.y) * tileSize;
-        
-        const x = width / 2 + offsetX;
-        const y = height / 2 + offsetY;
-        
-        // #region agent log
-        await debugLog('lib/map-screenshot.ts:147', 'Before drawImage', {tileX,tileY,x,y,tileSize}, 'C');
-        // #endregion
-        
-        ctx.drawImage(tileImage, x, y, tileSize, tileSize);
-        
-        // #region agent log
-        await debugLog('lib/map-screenshot.ts:149', 'After drawImage success', {tileX,tileY}, 'C');
-        // #endregion
-        
+        const px = width / 2 + offsetX;
+        const py = height / 2 + offsetY;
+
+        ctx.drawImage(tileImage, px, py, tileSize, tileSize);
         loadedTiles++;
       } catch (error) {
         failedTiles++;
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`[地図生成] タイル ${zoom}/${tileX}/${tileY} の描画に失敗:`, error);
-        
-        // #region agent log
-        await debugLog('lib/map-screenshot.ts:152', 'Tile drawImage failed', {tileX,tileY,zoom,error:errorMsg,errorType:error?.constructor?.name}, 'B');
-        // #endregion
+        console.warn(`[地図生成] タイル ${zoom}/${tileX}/${tileY} の描画に失敗、スキップ:`, errorMsg);
       }
     }
   }
@@ -378,6 +406,6 @@ export async function generateMapScreenshot(
   await debugLog('lib/map-screenshot.ts:253', 'After toDataURL', {dataUrlLength:dataUrl.length,dataUrlPrefix:dataUrl.substring(0,50)}, 'D');
   // #endregion
   
-  console.log(`[地図生成] 完了: データURL長さ=${dataUrl.length}`);
-  return dataUrl;
+  console.log(`[地図生成] 完了: データURL長さ=${dataUrl.length}, 成功=${loadedTiles}, 失敗=${failedTiles}`);
+  return { dataUrl, loadedTiles, failedTiles };
 }

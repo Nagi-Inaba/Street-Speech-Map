@@ -4,6 +4,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { prisma } from "@/lib/db";
 import { generateFallbackCandidateOgImage } from "@/lib/og-image-generator";
+import { getOgBlobUrl } from "@/lib/og-blob";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -14,6 +15,11 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
+
+    const blobUrl = await getOgBlobUrl(`og-images/candidate-${slug}.png`);
+    if (blobUrl) {
+      return NextResponse.redirect(blobUrl, { status: 302 });
+    }
 
     // 事前生成された画像ファイルを読み込む
     const imagePath = join(process.cwd(), "public", "og-images", `candidate-${slug}.png`);

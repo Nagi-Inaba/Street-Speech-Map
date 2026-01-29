@@ -10,6 +10,7 @@ import { join } from "path";
 import { generateMapScreenshot } from "./map-screenshot";
 import { formatJSTWithoutYear } from "./time";
 import type { SpeechEvent, Candidate } from "@prisma/client";
+import { putOgBlob } from "./og-blob";
 
 /**
  * フォールバック用：地図なしのテキストのみのOGP画像を生成（ファイル保存なし）
@@ -399,6 +400,11 @@ async function ensureDirectory() {
  * OGP画像をファイルとして保存
  */
 async function saveOgImage(filename: string, imageResponse: ImageResponse): Promise<string> {
+  // Blobが使える環境では Blob を優先（URLは固定pathnameなので上書き更新可能）
+  const blobUrl = await putOgBlob(filename, imageResponse);
+  if (blobUrl) return blobUrl;
+
+  // トークンが無い（ローカル等）場合は従来どおり public/og-images に保存
   await ensureDirectory();
   const buffer = await imageResponse.arrayBuffer();
   const filePath = join(OG_IMAGES_DIR, filename);
@@ -432,7 +438,7 @@ export async function generateEventOgImage(
     await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:425',message:'Before map generation',data:{eventId:event.id,lat:event.lat,lng:event.lng,isLive},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
     // #endregion
     
-    const mapBase64 = await Promise.race([
+    const mapResult = await Promise.race([
       generateMapScreenshot(
         [event.lat, event.lng],
         17, // クローズアップ用にズームレベル17（やや拡大）
@@ -448,26 +454,28 @@ export async function generateEventOgImage(
           },
         }]
       ),
-      new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
+      new Promise<{ dataUrl: string; loadedTiles: number; failedTiles: number }>((_, reject) =>
+        setTimeout(() => reject(new Error("Map generation timeout after 45 seconds")), 45000)
       ),
     ]);
-    
-    // Base64データURLから画像データを抽出して一時ファイルとして保存
-    const base64Data = mapBase64.replace(/^data:image\/png;base64,/, "");
-    const imageBuffer = Buffer.from(base64Data, "base64");
-    tempMapImagePath = join(process.cwd(), ".cursor", `temp-map-${event.id}.png`);
-    await mkdir(join(process.cwd(), ".cursor"), { recursive: true });
-    await writeFile(tempMapImagePath, imageBuffer);
-    
-    // 一時ファイルのパスをBase64データURLとして使用（@vercel/ogが読み込めるように）
-    mapImageDataUrl = mapBase64; // 一時的にBase64データURLを使用
-    
-    // #region agent log
-    await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:446',message:'Map generation success',data:{eventId:event.id,mapImageDataUrlLength:mapImageDataUrl?.length||0,hasMapImage:!!mapImageDataUrl,tempMapImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
-    // #endregion
-    
-    console.log(`[OGP画像生成] イベント ${event.id} の地図生成に成功`);
+
+    const totalTiles = mapResult.loadedTiles + mapResult.failedTiles;
+    const failureRatio = totalTiles > 0 ? mapResult.failedTiles / totalTiles : 0;
+    if (failureRatio > 0.25) {
+      console.log(`[OGP画像生成] イベント ${event.id} はタイル失敗率が高いため文字のみ画像を使用: ${mapResult.failedTiles}/${totalTiles}`);
+      mapImageDataUrl = null;
+    } else {
+      const base64Data = mapResult.dataUrl.replace(/^data:image\/png;base64,/, "");
+      const imageBuffer = Buffer.from(base64Data, "base64");
+      tempMapImagePath = join(process.cwd(), ".cursor", `temp-map-${event.id}.png`);
+      await mkdir(join(process.cwd(), ".cursor"), { recursive: true });
+      await writeFile(tempMapImagePath, imageBuffer);
+      mapImageDataUrl = mapResult.dataUrl;
+      // #region agent log
+      await appendFile(debugLogPath, JSON.stringify({location:'lib/og-image-generator.tsx:446',message:'Map generation success',data:{eventId:event.id,mapImageDataUrlLength:mapImageDataUrl?.length||0,hasMapImage:!!mapImageDataUrl,tempMapImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'}) + "\n").catch(()=>{});
+      // #endregion
+      console.log(`[OGP画像生成] イベント ${event.id} の地図生成に成功`);
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[OGP画像生成] イベント ${event.id} の地図生成に失敗:`, errorMessage);
@@ -686,25 +694,25 @@ export async function generateCandidateOgImage(
     color: "blue" as const,
   }));
 
-  // 地図スクリーンショットを生成
+  // 地図スクリーンショットを生成（タイル失敗率が25%超の場合は文字のみ画像を使用）
   let mapImageDataUrl: string | null = null;
   if (eventPositions.length > 0) {
     try {
-      mapImageDataUrl = await Promise.race([
-        generateMapScreenshot(
-          mapCenter,
-          zoom,
-          1000,
-          630,
-          markers
-        ),
-        new Promise<string>((_, reject) => 
-          setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
+      const mapResult = await Promise.race([
+        generateMapScreenshot(mapCenter, zoom, 1000, 630, markers),
+        new Promise<{ dataUrl: string; loadedTiles: number; failedTiles: number }>((_, reject) =>
+          setTimeout(() => reject(new Error("Map generation timeout after 45 seconds")), 45000)
         ),
       ]);
+      const totalTiles = mapResult.loadedTiles + mapResult.failedTiles;
+      const failureRatio = totalTiles > 0 ? mapResult.failedTiles / totalTiles : 0;
+      if (failureRatio <= 0.25) {
+        mapImageDataUrl = mapResult.dataUrl;
+      } else {
+        console.log(`[OGP画像生成] 候補者地図はタイル失敗率が高いため文字のみ画像を使用: ${mapResult.failedTiles}/${totalTiles}`);
+      }
     } catch (error) {
       console.error("Failed to generate map screenshot:", error);
-      // 地図なしで続行
     }
   }
 
@@ -854,23 +862,24 @@ export async function generateCandidateOgImage(
  * トップページのOGP画像を生成して保存
  */
 export async function generateHomeOgImage(): Promise<string> {
-  // 地図スクリーンショットを生成（東京エリア全体）
+  // 地図スクリーンショットを生成（東京エリア全体）。タイル失敗率が25%超の場合は文字のみ画像を使用
   let mapImageDataUrl: string | null = null;
   try {
-    mapImageDataUrl = await Promise.race([
-      generateMapScreenshot(
-        [35.6812, 139.7671], // 東京駅周辺
-        10, // 東京エリア全体が入るズームレベル
-        1000,
-        630
-      ),
-      new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
+    const mapResult = await Promise.race([
+      generateMapScreenshot([35.6812, 139.7671], 10, 1000, 630),
+      new Promise<{ dataUrl: string; loadedTiles: number; failedTiles: number }>((_, reject) =>
+        setTimeout(() => reject(new Error("Map generation timeout after 45 seconds")), 45000)
       ),
     ]);
+    const totalTiles = mapResult.loadedTiles + mapResult.failedTiles;
+    const failureRatio = totalTiles > 0 ? mapResult.failedTiles / totalTiles : 0;
+    if (failureRatio <= 0.25) {
+      mapImageDataUrl = mapResult.dataUrl;
+    } else {
+      console.log(`[OGP画像生成] トップ地図はタイル失敗率が高いため文字のみ画像を使用: ${mapResult.failedTiles}/${totalTiles}`);
+    }
   } catch (error) {
     console.error("Failed to generate map screenshot:", error);
-    // 地図なしで続行
   }
 
   const imageResponse = new ImageResponse(
@@ -977,23 +986,24 @@ export async function generateHomeOgImage(): Promise<string> {
  * エリアページのOGP画像を生成して保存
  */
 export async function generateAreaOgImage(): Promise<string> {
-  // 地図スクリーンショットを生成（関東エリア全体）
+  // 地図スクリーンショットを生成（関東エリア全体）。タイル失敗率が25%超の場合は文字のみ画像を使用
   let mapImageDataUrl: string | null = null;
   try {
-    mapImageDataUrl = await Promise.race([
-      generateMapScreenshot(
-        [36.0, 139.5], // 関東エリアの中心
-        8, // 関東エリア全体が入るズームレベル
-        1000,
-        630
-      ),
-      new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Map generation timeout after 30 seconds")), 30000)
+    const mapResult = await Promise.race([
+      generateMapScreenshot([36.0, 139.5], 8, 1000, 630),
+      new Promise<{ dataUrl: string; loadedTiles: number; failedTiles: number }>((_, reject) =>
+        setTimeout(() => reject(new Error("Map generation timeout after 45 seconds")), 45000)
       ),
     ]);
+    const totalTiles = mapResult.loadedTiles + mapResult.failedTiles;
+    const failureRatio = totalTiles > 0 ? mapResult.failedTiles / totalTiles : 0;
+    if (failureRatio <= 0.25) {
+      mapImageDataUrl = mapResult.dataUrl;
+    } else {
+      console.log(`[OGP画像生成] エリア地図はタイル失敗率が高いため文字のみ画像を使用: ${mapResult.failedTiles}/${totalTiles}`);
+    }
   } catch (error) {
     console.error("Failed to generate map screenshot:", error);
-    // 地図なしで続行
   }
 
   const imageResponse = new ImageResponse(
