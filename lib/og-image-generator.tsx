@@ -435,7 +435,7 @@ export async function generateEventOgImage(
     const mapBase64 = await Promise.race([
       generateMapScreenshot(
         [event.lat, event.lng],
-        16, // クローズアップ用にズームレベル16
+        17, // クローズアップ用にズームレベル17（やや拡大）
         1000,
         630,
         [{

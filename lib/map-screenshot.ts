@@ -286,11 +286,11 @@ export async function generateMapScreenshot(
       const x = width / 2 + offsetX;
       const y = height / 2 + offsetY;
       
-      // 吹き出しを描画（popupがある場合）
+      // 吹き出しを描画（popupがある場合）※スマホでも読めるよう文字サイズ・余白を大きめに
       if (marker.popup) {
-        const popupWidth = 300;
-        const popupPadding = 16;
-        const popupLineHeight = 26;
+        const popupWidth = 340;
+        const popupPadding = 20;
+        const popupLineHeight = 34;
         let popupHeight = popupPadding * 2;
         
         // テキストの行数を計算
@@ -307,7 +307,7 @@ export async function generateMapScreenshot(
         ctx.lineWidth = 2;
         
         // 角丸の矩形を描画
-        const radius = 10;
+        const radius = 12;
         ctx.beginPath();
         ctx.moveTo(popupX + radius, popupY);
         ctx.lineTo(popupX + popupWidth - radius, popupY);
@@ -331,7 +331,7 @@ export async function generateMapScreenshot(
         ctx.fill();
         ctx.stroke();
         
-        // テキストを描画（文字色は黒、日本語用フォントを使用）
+        // テキストを描画（文字色は黒、スマホでも読めるよう大きめのフォント）
         ctx.fillStyle = "#000000";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
@@ -339,17 +339,17 @@ export async function generateMapScreenshot(
         
         let textY = popupY + popupPadding;
         if (marker.popup.candidateName) {
-          ctx.font = `bold 20px ${fontFamily}`;
+          ctx.font = `bold 28px ${fontFamily}`;
           ctx.fillText(marker.popup.candidateName, popupX + popupWidth / 2, textY);
           textY += popupLineHeight + 4;
         }
         if (marker.popup.locationText) {
-          ctx.font = `16px ${fontFamily}`;
+          ctx.font = `22px ${fontFamily}`;
           ctx.fillText(marker.popup.locationText, popupX + popupWidth / 2, textY);
           textY += popupLineHeight + 2;
         }
         if (marker.popup.timeText) {
-          ctx.font = `14px ${fontFamily}`;
+          ctx.font = `20px ${fontFamily}`;
           ctx.fillText(marker.popup.timeText, popupX + popupWidth / 2, textY);
         }
       }
