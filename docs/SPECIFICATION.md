@@ -27,8 +27,10 @@
 
 ### デプロイ・インフラ
 - **ホスティング**: Vercel（推奨）
+- **Cron**: Vercel Cron（自動承認バッチ処理）
+- **OGP画像生成**: 事前生成方式（`@vercel/og` + `@napi-rs/canvas`）
 - **画像ストレージ**: Vercel Blob（予定）
-- **分析**: Umami Analytics（予定）
+- **分析**: Umami Analytics（基盤実装済み、統合予定）
 
 ### 開発ツール
 - **パッケージマネージャー**: npm
@@ -116,8 +118,12 @@ public/                  # 静的ファイル
 ## API仕様
 
 ### 公開API
-- `POST /api/requests`: 公開リクエストの投稿
-- `POST /api/reports`: 報告（開始/終了/場所変更）
+- `GET /api/public/candidates`: 候補者一覧取得（APIキー認証）
+- `GET /api/public/candidates/{slug}/events`: 候補者の演説イベント一覧取得（APIキー認証）
+- `GET /api/public/settings`: 公開設定取得（認証不要）
+- `GET /api/docs`: OpenAPI仕様取得（認証不要）
+- `POST /api/public/requests`: 公開リクエストの投稿（認証不要）
+- `POST /api/public/reports`: 報告（開始/終了/場所変更、認証不要）
 
 ### 管理API
 - `GET /api/admin/candidates`: 候補者一覧取得
@@ -132,6 +138,16 @@ public/                  # 静的ファイル
 - `DELETE /api/admin/events/[id]`: 演説予定削除
 - `GET /api/admin/requests`: リクエスト一覧取得
 - `PUT /api/admin/requests/[id]`: リクエスト承認/却下
+- `POST /api/admin/generate-all-og-images`: 全OGP画像の強制再生成
+
+### OGP画像エンドポイント
+- `GET /opengraph-image`: トップページのOGP画像
+- `GET /area/opengraph-image`: エリアページのOGP画像
+- `GET /c/[slug]/opengraph-image`: 候補者ページのOGP画像
+- `GET /c/[slug]/events/[eventId]/opengraph-image`: イベントページのOGP画像
+
+### Cronエンドポイント
+- `GET /api/cron/auto-approve`: 自動承認バッチ処理（Vercel Cronから呼び出し）
 
 ## データ管理
 
@@ -191,8 +207,16 @@ public/                  # 静的ファイル
 - Server Componentsによるサーバーサイドレンダリング
 - 画像最適化（Next.js Image）
 
+### OGP画像生成仕様
+- **生成方式**: 事前生成（ビルド時に`public/og-images/`に保存）
+- **地図生成**: Canvas API（`@napi-rs/canvas`）を使用してOpenStreetMapタイルを合成
+- **フォント**: Noto Sans JP（自動ダウンロードスクリプト付き）
+- **フォールバック**: 地図生成失敗時はテキストのみのOGP画像を動的生成
+- **自動更新**: イベント作成・更新・削除時にOGP画像を自動再生成
+
 ### 今後の改善予定
 - 施設データのクラスタリング
 - 地図表示の最適化
 - キャッシュ戦略の見直し
+- OGP画像生成の最適化（並列処理、キャッシュ戦略）
 
