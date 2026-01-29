@@ -332,7 +332,7 @@ export default function AreaEventsView({
             <section>
               <h2 className="text-xl sm:text-2xl font-bold mb-4 text-red-600">実施中</h2>
               <div className="space-y-3">
-                {liveEvents.map((e) => renderEventCard(e, getCandidate(e.candidateId), "実施中", "border-red-200 bg-red-50"))}
+                {liveEvents.map((e) => renderEventCard(e, candidates.find((c) => c.id === e.candidateId)!, "実施中", "border-red-200 bg-red-50"))}
               </div>
             </section>
           )}
@@ -341,7 +341,7 @@ export default function AreaEventsView({
             <section>
               <h2 className="text-xl sm:text-2xl font-bold mb-4">予定</h2>
               <div className="space-y-3">
-                {plannedEvents.map((e) => renderEventCard(e, getCandidate(e.candidateId), "予定", ""))}
+                {plannedEvents.map((e) => renderEventCard(e, candidates.find((c) => c.id === e.candidateId)!, "予定", ""))}
               </div>
             </section>
           )}
@@ -350,7 +350,7 @@ export default function AreaEventsView({
             <section>
               <h2 className="text-xl sm:text-2xl font-bold mb-4 text-muted-foreground">終了</h2>
               <div className="space-y-3">
-                {endedEvents.map((e) => renderEventCard(e, getCandidate(e.candidateId), "終了", "opacity-75"))}
+                {endedEvents.map((e) => renderEventCard(e, candidates.find((c) => c.id === e.candidateId)!, "終了", "opacity-75"))}
               </div>
             </section>
           )}
