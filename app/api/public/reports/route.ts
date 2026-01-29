@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 5件の報告があったら自動的にステータスを変更
+    // 2件の報告があったら自動的にステータスを変更
     if (data.kind === "start" || data.kind === "end") {
       const reportCount = await prisma.publicReport.count({
         where: {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      if (reportCount >= 5) {
+      if (reportCount >= 2) {
         // イベントの現在のステータスを取得
         const event = await prisma.speechEvent.findUnique({
           where: { id: data.eventId },

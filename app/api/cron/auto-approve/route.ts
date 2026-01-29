@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        // 5件以上の場合、自動承認
-        if (reportCount >= 5) {
+        // 2件以上の場合、自動承認
+        if (reportCount >= 2) {
           // イベントの現在のステータスを取得
           const event = await prisma.speechEvent.findUnique({
             where: { id: req.eventId },

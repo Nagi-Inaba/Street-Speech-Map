@@ -348,7 +348,7 @@ export async function PATCH(request: NextRequest) {
         }
 
         // REPORT_START/REPORT_ENDは自動処理されるため、手動承認は不要
-        // （PublicReportとして5件以上で自動的にステータスが更新される）
+        // （PublicReportとして2件以上で自動的にステータスが更新される）
         if (req.type === "REPORT_START" || req.type === "REPORT_END") {
           throw new Error(
             "開始/終了報告は自動処理されます。公開側の「演説中」「演説終了」ボタンから報告してください。"
