@@ -10,8 +10,8 @@ import {
 } from "@/lib/og-image-generator";
 
 /**
- * すべてのOGP画像を強制的に再生成するAPI
- * デプロイ後に呼び出して、全画像を生成する
+ * すべてのOGP画像を強制的に再生成し、Blobに上書き保存するAPI
+ * 初回デプロイ後やBlob初期化時に1回呼び出し（home / area / 全候補者 / 全イベント）
  */
 export async function POST(request: NextRequest) {
   const session = await auth();

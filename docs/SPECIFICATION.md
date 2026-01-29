@@ -214,6 +214,7 @@ public/                  # 静的ファイル
 - **フォント**: Noto Sans JP（自動ダウンロードスクリプト付き）
 - **フォールバック**: 地図生成失敗時はテキストのみの OGP 画像を動的生成
 - **自動更新**: イベント作成・更新・削除時に OGP 画像を自動再生成（Blob またはローカルに保存）
+- **初回Blob初期化**: 全OGP画像を新規作成してBlobに上書き保存するには、管理画面から「全OGP画像の強制再生成」API（`POST /api/admin/generate-all-og-images`）を1回呼ぶか、Cron用エンドポイント（`GET /api/cron/seed-og-blob`、`Authorization: Bearer <CRON_SECRET>`）を1回呼ぶ。対象は home / area / 全候補者 / 全イベント（PLANNED・LIVE）。
 
 ### 今後の改善予定
 - 施設データのクラスタリング
