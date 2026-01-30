@@ -11,7 +11,8 @@ import {
 
 /**
  * すべてのOGP画像を強制的に再生成し、Blobに上書き保存するAPI
- * 初回デプロイ後やBlob初期化時に1回呼び出し（home / area / 全候補者 / 全イベント）
+ * 通常運用では不要。イベントの作成・更新・削除時に該当画像だけ自動で再生成される。
+ * 初回Blob導入時や、終了演説サムネイルの一括差し替えなど、特別なときのみ手動で1回呼ぶ。
  */
 export async function POST(request: NextRequest) {
   const session = await auth();

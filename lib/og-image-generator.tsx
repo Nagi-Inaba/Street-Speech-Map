@@ -14,17 +14,25 @@ import { putOgBlob } from "./og-blob";
 
 /**
  * フォールバック用：地図なしのテキストのみのOGP画像を生成（ファイル保存なし）
+ * 終了(ENDED)の演説は地図を使わずこの文字ベース画像でBlob容量を節約する。
  */
 function generateFallbackEventOgImage(
   event: SpeechEvent & { candidate: Candidate }
 ): ImageResponse {
   const isLive = event.status === "LIVE";
-  const statusText = isLive ? "実施中" : "予定";
+  const isEnded = event.status === "ENDED";
+  const statusText = isEnded ? "終了" : isLive ? "実施中" : "予定";
 
   let dateTimeText = "時間未定";
   if (event.startAt) {
     dateTimeText = formatJSTWithoutYear(event.startAt);
   }
+
+  const badgeStyle = isEnded
+    ? { border: "3px solid #6b7280", backgroundColor: "#f3f4f6", color: "#374151" }
+    : isLive
+      ? { border: "3px solid #16a34a", backgroundColor: "#dcfce7", color: "#166534" }
+      : { border: "3px solid #f97316", backgroundColor: "#fff7ed", color: "#9a3412" };
 
   return new ImageResponse(
     (
@@ -69,9 +77,7 @@ function generateFallbackEventOgImage(
               fontWeight: "bold",
               marginBottom: "40px",
               letterSpacing: "0.08em",
-              border: isLive ? "3px solid #16a34a" : "3px solid #f97316",
-              backgroundColor: isLive ? "#dcfce7" : "#fff7ed",
-              color: isLive ? "#166534" : "#9a3412",
+              ...badgeStyle,
             }}
           >
             {statusText}
@@ -414,10 +420,18 @@ async function saveOgImage(filename: string, imageResponse: ImageResponse): Prom
 
 /**
  * イベント個別ページのOGP画像を生成して保存
+ * 終了(ENDED)の演説は地図を使わず文字ベース画像のみで保存し、Blob容量を演説中・予定用に開放する。
  */
 export async function generateEventOgImage(
   event: SpeechEvent & { candidate: Candidate }
 ): Promise<string> {
+  // 終了した演説は地図画像を使わず文字ベースサムネイルのみで保存（Blob節約）
+  if (event.status === "ENDED") {
+    const imageResponse = generateFallbackEventOgImage(event);
+    const filename = `event-${event.id}.png`;
+    return await saveOgImage(filename, imageResponse);
+  }
+
   const isLive = event.status === "LIVE";
   const statusText = isLive ? "実施中" : "予定";
 

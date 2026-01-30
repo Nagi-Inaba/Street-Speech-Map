@@ -1,2 +1,9 @@
-{}
+{
+  "crons": [
+    {
+      "path": "/api/cron/regenerate-ended-og",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
 

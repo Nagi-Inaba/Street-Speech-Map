@@ -21,6 +21,7 @@
     "create:admin-user": "tsx scripts/create-admin-user.ts",
     "seed": "tsx scripts/seed.ts",
     "generate:og-images": "tsx scripts/generate-og-images.ts",
+    "regenerate:ended-og": "tsx scripts/regenerate-ended-event-og-images.ts",
     "test": "vitest",
     "test:e2e": "playwright test"
   },

@@ -24,7 +24,8 @@ function isAuthorized(request: NextRequest): boolean {
 
 /**
  * 初回Blob初期化用: 全OGP画像を新規作成してBlobに上書き保存する
- * Deploy Hookや手動で1回呼ぶ想定（CRON_SECRET必須）
+ * 通常運用では不要。イベントの作成・更新・削除時に該当OGPだけ自動で再生成される。
+ * 初回Blob導入時や一括差し替えなど、特別なときのみ手動で1回呼ぶ（CRON_SECRET必須）。
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {

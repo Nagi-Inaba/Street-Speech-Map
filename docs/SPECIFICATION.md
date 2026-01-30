@@ -138,7 +138,7 @@ public/                  # 静的ファイル
 - `DELETE /api/admin/events/[id]`: 演説予定削除
 - `GET /api/admin/requests`: リクエスト一覧取得
 - `PUT /api/admin/requests/[id]`: リクエスト承認/却下
-- `POST /api/admin/generate-all-og-images`: 全OGP画像の強制再生成
+- `POST /api/admin/generate-all-og-images`: 全OGP画像の強制再生成（初回Blob導入・一括差し替えなど特別なときのみ）
 
 ### OGP画像エンドポイント
 - `GET /opengraph-image`: トップページのOGP画像
@@ -148,6 +148,7 @@ public/                  # 静的ファイル
 
 ### Cronエンドポイント
 - `GET /api/cron/auto-approve`: 自動承認バッチ処理（Vercel Cronから呼び出し）
+- `GET /api/cron/regenerate-ended-og`: 終了(ENDED)演説のOGPを文字ベースに差し替え（1時間ごと。デプロイ時は何もしない）
 
 ## データ管理
 
@@ -213,8 +214,10 @@ public/                  # 静的ファイル
 - **地図生成**: Canvas API（`@napi-rs/canvas`）を使用して OpenStreetMap タイルを合成
 - **フォント**: Noto Sans JP（自動ダウンロードスクリプト付き）
 - **フォールバック**: 地図生成失敗時はテキストのみの OGP 画像を動的生成
-- **自動更新**: イベント作成・更新・削除時に OGP 画像を自動再生成（Blob またはローカルに保存）
-- **初回Blob初期化**: 全OGP画像を新規作成してBlobに上書き保存するには、管理画面から「全OGP画像の強制再生成」API（`POST /api/admin/generate-all-og-images`）を1回呼ぶか、Cron用エンドポイント（`GET /api/cron/seed-og-blob`、`Authorization: Bearer <CRON_SECRET>`）を1回呼ぶ。対象は home / area / 全候補者 / 全イベント（PLANNED・LIVE）。
+- **終了演説のBlob節約**: 終了(ENDED)の演説は地図画像を使わず文字ベースサムネイルのみで保存し、Blob容量を演説中・予定用に開放する。
+- **自動更新（通常運用）**: イベントの作成・更新・削除時に、**該当するOGP画像だけ**が自動で再生成される。場所や時間の変更があったときも、そのイベント（および関連候補者）の画像だけ更新される。**デプロイ時は何もしない。通常は全OGP再生成は不要**。
+- **1時間ごとのCron**: `GET /api/cron/regenerate-ended-og` を毎時実行し、終了(ENDED)の演説OGPだけを文字ベースに差し替えてBlob容量を節約する（vercel.json の crons で `0 * * * *` に設定）。
+- **全OGP再生成（特別なときのみ）**: 初回Blob導入時や、既存の終了演説サムネイルを一括で文字ベースに差し替えたいときなど、必要に応じて「全OGP画像の強制再生成」API（`POST /api/admin/generate-all-og-images`）または Cron（`GET /api/cron/seed-og-blob`）を手動で1回呼ぶ。日常運用では使わない。
 
 ### 今後の改善予定
 - 施設データのクラスタリング
