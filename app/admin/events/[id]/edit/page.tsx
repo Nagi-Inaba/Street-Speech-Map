@@ -419,7 +419,8 @@ export default function EditEventPage() {
                         if (value) {
                           const [, month, day] = value.split("-");
                           setStartDate(`${month}-${day}`);
-                        } else {
+                        } else if (!timeUnknown) {
+                          // 時間未定のときは空のonChangeを無視（モバイルでレイアウト変化時に誤発火することがある）
                           setStartDate("");
                         }
                       }}
