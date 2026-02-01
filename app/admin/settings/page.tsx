@@ -183,7 +183,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
+    <div className="min-w-0 overflow-x-hidden">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">サイト設定</h1>
 
       <Card className="max-w-2xl w-full">
@@ -249,7 +249,7 @@ export default function SettingsPage() {
               value={candidateLabel}
               onChange={(e) => setCandidateLabel(e.target.value)}
               placeholder="空白可（空白の場合は「候補者」は表示されません）"
-              className="max-w-md"
+              className="max-w-md min-h-[44px] text-base"
             />
           </div>
 

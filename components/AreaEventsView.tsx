@@ -160,7 +160,7 @@ export default function AreaEventsView({
         <CardContent className="py-2 pt-0">
           <Link
             href={`/c/${candidate.slug}#event-${event.id}`}
-            className="text-sm text-primary hover:underline"
+            className="inline-flex items-center min-h-[44px] text-sm text-primary hover:underline py-2 -mx-1 px-1 rounded"
           >
             {candidate.name}さんのページへ →
           </Link>
@@ -266,7 +266,7 @@ export default function AreaEventsView({
             id="area-filter"
             value={areaId}
             onChange={(e) => setAreaId(e.target.value)}
-            className="max-w-md w-full px-3 py-2 border rounded-md bg-white"
+            className="max-w-md w-full min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
           >
             <option value="all">{options[0]?.label ?? "すべてのエリア"}</option>
             <optgroup label="地域ブロック">
@@ -290,7 +290,7 @@ export default function AreaEventsView({
               id="date-filter"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="max-w-md w-full px-3 py-2 border rounded-md bg-white"
+              className="max-w-md w-full min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
             >
               <option value="all">すべての日付</option>
               <option value="today">今日</option>
@@ -302,7 +302,7 @@ export default function AreaEventsView({
                 type="date"
                 value={dateFilter.startsWith("20") ? dateFilter : new Date().toISOString().split("T")[0]}
                 onChange={(e) => setDateFilter(e.target.value || "all")}
-                className="px-3 py-2 border rounded-md bg-white"
+                className="w-full max-w-md min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
                 min={new Date().toISOString().split("T")[0]}
               />
             )}

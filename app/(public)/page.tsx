@@ -76,30 +76,58 @@ export default async function HomePage() {
     <>
       <PublicHeader />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <main className="container mx-auto px-4 py-6 sm:py-8 min-w-0 overflow-x-hidden">
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>今日の演説予定：</span>
           <span className="font-semibold text-foreground">{todayEventsCount}</span>
           <span>件</span>
         </div>
 
-        <Link
-          href="/area"
-          className="inline-block w-full sm:w-auto mb-6"
-        >
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="text-center">
-              <CardTitle className="text-xl">エリアごと演説予定を見る</CardTitle>
-            </CardHeader>
-          </Card>
-        </Link>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+          <Link
+            href="/area"
+            className="block w-full sm:flex-1 sm:min-w-0 min-h-[48px]"
+          >
+            <Card className="h-full min-h-[48px] sm:min-h-0 hover:shadow-lg transition-shadow cursor-pointer flex items-center">
+              <CardHeader className="text-center py-4 sm:py-6 w-full">
+                <CardTitle className="text-base sm:text-xl">エリアごと演説予定を見る</CardTitle>
+              </CardHeader>
+            </Card>
+          </Link>
+          <a
+            href="https://sns-profile-site.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full sm:flex-1 sm:min-w-0 min-h-[48px]"
+          >
+            <Card className="h-full min-h-[48px] sm:min-h-0 py-3 px-4 sm:py-3 sm:px-4 hover:shadow-md transition-shadow cursor-pointer border-primary/20 hover:border-primary/40 flex flex-col justify-center">
+              <CardContent className="p-0 text-sm text-primary font-medium break-words">
+                各候補者の紹介はこちら
+              </CardContent>
+              <p className="text-xs text-muted-foreground mt-1">サポーター作</p>
+            </Card>
+          </a>
+          <a
+            href="https://mirai-checker.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full sm:flex-1 sm:min-w-0 min-h-[48px]"
+          >
+            <Card className="h-full min-h-[48px] sm:min-h-0 py-3 px-4 sm:py-3 sm:px-4 hover:shadow-md transition-shadow cursor-pointer border-primary/20 hover:border-primary/40 flex flex-col justify-center">
+              <CardContent className="p-0 text-sm text-primary font-medium break-words">
+                チームみらいに投票できるかチェックする
+              </CardContent>
+              <p className="text-xs text-muted-foreground mt-1">サポーター作</p>
+            </Card>
+          </a>
+        </div>
 
-        <h2 className="text-2xl sm:text-3xl font-bold mb-6">候補者別で見る</h2>
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">候補者別で見る</h2>
 
         {visibleCandidates.length === 0 ? (
-          <p className="text-muted-foreground">登録されていません。</p>
+          <p className="text-muted-foreground text-sm sm:text-base">登録されていません。</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {visibleCandidates.map((candidate) => {
               // 表示する立候補区分のテキストを決定
               let typeText: string | null = null;
@@ -137,7 +165,7 @@ export default async function HomePage() {
                   <CardContent className="pt-0">
                     <Link
                       href={`/c/${candidate.slug}`}
-                      className="text-sm text-primary hover:underline"
+                      className="inline-flex items-center min-h-[44px] text-sm text-primary hover:underline py-2 -mx-1 px-1 rounded"
                     >
                       地図で見る
                     </Link>

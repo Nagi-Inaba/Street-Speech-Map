@@ -443,17 +443,17 @@ export default function RequestsPage() {
 
 
   return (
-    <div>
+    <div className="min-w-0 overflow-x-hidden">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">リクエスト審査</h1>
 
       {/* フィルター */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <label className="block text-sm font-medium mb-1">候補者</label>
           <select
             value={filterCandidateId}
             onChange={(e) => setFilterCandidateId(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md bg-white"
+            className="w-full min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
           >
             <option value="">すべて</option>
             {candidates.map((c) => (
@@ -463,12 +463,12 @@ export default function RequestsPage() {
             ))}
           </select>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <label className="block text-sm font-medium mb-1">状態</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md bg-white"
+            className="w-full min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
           >
             <option value="">すべて</option>
             <option value="PENDING">未承認</option>

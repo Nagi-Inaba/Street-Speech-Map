@@ -24,7 +24,7 @@ export default function AdminNav({ userRole }: AdminNavProps) {
   ];
 
   return (
-    <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto">
+    <div className="relative flex items-center gap-2 sm:gap-4 overflow-x-auto">
       {navItems.map((item) => {
         const isActive =
           item.href === "/admin"
@@ -45,6 +45,11 @@ export default function AdminNav({ userRole }: AdminNavProps) {
           </Link>
         );
       })}
+      {/* 右端のグラデーション（横スクロールできることを示す） */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent pointer-events-none sm:hidden shrink-0"
+        aria-hidden
+      />
     </div>
   );
 }

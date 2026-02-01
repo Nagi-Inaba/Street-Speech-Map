@@ -32,7 +32,7 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
   const items = getNavItems(userRole ?? "");
 
   const navLinks = (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-4">
       {items.map((item: { href: string; label: string }) => {
         const isActive =
           item.href === "/admin"
@@ -44,7 +44,7 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
             href={item.href}
             onClick={() => setMenuOpen(false)}
             className={cn(
-              "transition-colors whitespace-nowrap text-sm sm:text-base py-2 sm:py-0",
+              "transition-colors whitespace-nowrap text-sm sm:text-base min-h-[44px] flex items-center py-2 sm:py-0 sm:min-h-0",
               isActive
                 ? "text-foreground font-medium border-b-2 border-primary pb-1 sm:border-b-0 sm:border-b-2 sm:pb-1"
                 : "text-muted-foreground hover:text-foreground"
@@ -59,7 +59,7 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
 
   const userBlock = (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
-      <div className="text-sm">
+      <div className="text-sm min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground break-all">{userEmail}</span>
           <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full whitespace-nowrap">
@@ -70,7 +70,7 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
       <form action={signOutAction}>
         <button
           type="submit"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap min-h-[44px] flex items-center py-2 -mx-1 px-1 rounded sm:min-h-0"
         >
           ログアウト
         </button>
@@ -79,8 +79,8 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
   );
 
   return (
-    <nav className="border-b bg-white">
-      <div className="container mx-auto px-4 py-4">
+    <nav className="border-b bg-white overflow-hidden">
+      <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 min-w-0 max-w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           {/* 1行目: 管理画面 + メニューボタン(モバイル) / 管理画面 + ナビ(デスクトップ) */}
           <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6">
@@ -94,7 +94,7 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
               type="button"
               variant="ghost"
               size="icon"
-              className="sm:hidden shrink-0"
+              className="sm:hidden shrink-0 min-h-[44px] min-w-[44px]"
               onClick={() => setMenuOpen((o) => !o)}
               aria-expanded={menuOpen}
               aria-label={menuOpen ? "メニューを閉じる" : "メニューを開く"}

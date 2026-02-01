@@ -14,12 +14,12 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen min-w-0 overflow-x-hidden">
       <AdminHeader
         userEmail={session.user?.email}
         userRole={session.user?.role}
       />
-      <main className="container mx-auto px-4 py-4 sm:py-8">{children}</main>
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 min-w-0 overflow-x-hidden">{children}</main>
     </div>
   );
 }

@@ -106,13 +106,13 @@ export default async function AreaPage() {
   return (
     <>
       <PublicHeader />
-      <div className="container mx-auto px-4 py-2">
-        <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
+      <div className="container mx-auto px-3 sm:px-4 py-2 min-w-0 overflow-x-hidden">
+        <Link href="/" className="inline-flex items-center min-h-[44px] text-muted-foreground hover:text-foreground text-sm py-2 -mx-1 px-1 rounded">
           ← トップに戻る
         </Link>
       </div>
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6">エリアごと演説予定</h1>
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-4xl min-w-0 overflow-x-hidden">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6">エリアごと演説予定</h1>
         <p className="text-muted-foreground mb-6">
           エリアを選択すると、その地域の小選挙区候補と比例代表ブロックの候補の演説予定を表示します。
         </p>

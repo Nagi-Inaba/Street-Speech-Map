@@ -258,7 +258,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
 
       {/* フィルター */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <label htmlFor="filter-candidate" className="block text-sm font-medium mb-1">
             候補者で絞り込み
           </label>
@@ -266,7 +266,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
             id="filter-candidate"
             value={filterCandidateId}
             onChange={(e) => setFilterCandidateId(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md bg-white"
+            className="w-full min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
           >
             <option value="">すべて</option>
             {candidates.map((candidate) => (
@@ -276,7 +276,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
             ))}
           </select>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <label htmlFor="filter-status" className="block text-sm font-medium mb-1">
             ステータスで絞り込み
           </label>
@@ -284,7 +284,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
             id="filter-status"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md bg-white"
+            className="w-full min-h-[44px] px-3 py-2.5 border rounded-md bg-white text-base"
           >
             <option value={NOT_ENDED}>予定・実施中</option>
             <option value="">すべて</option>
@@ -342,9 +342,10 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
+        <Card className="overflow-hidden">
+          <div className="relative">
+            <CardContent className="p-0 overflow-x-auto">
+              <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10 px-2">
@@ -487,7 +488,16 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
+            </CardContent>
+            {/* 右端のグラデーション（横スクロールできることを示す） */}
+            <div
+              className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none sm:hidden"
+              aria-hidden
+            />
+          </div>
+          <p className="text-xs text-muted-foreground text-center py-2 px-3 border-t bg-muted/30 sm:hidden" role="status">
+            ← → 左右にスワイプして表全体を表示
+          </p>
         </Card>
       )}
     </div>

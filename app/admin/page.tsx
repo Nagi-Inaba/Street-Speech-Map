@@ -116,13 +116,13 @@ export default async function AdminDashboard() {
           <CardContent className="space-y-2">
             <Link 
               href="/admin/candidates/new"
-              className="block p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
+              className="flex items-center min-h-[44px] p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
             >
               <span className="font-medium">+ 新しい候補者を追加</span>
             </Link>
             <Link 
               href="/admin/events/new"
-              className="block p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
+              className="flex items-center min-h-[44px] p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
             >
               <span className="font-medium">+ 新しい演説予定を追加</span>
             </Link>
@@ -140,7 +140,7 @@ export default async function AdminDashboard() {
             <Link 
               href="/"
               target="_blank"
-              className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center min-h-[44px] px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
               公開サイトを開く →
             </Link>
@@ -149,8 +149,8 @@ export default async function AdminDashboard() {
       </div>
 
       <section id="candidates" className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="min-w-0">
             <h2 className="text-xl font-bold">候補者一覧</h2>
             <p className="text-sm text-muted-foreground">
               各候補者の演説予定数（今日 / 明日以降、予定・実施中のみ）
@@ -158,7 +158,7 @@ export default async function AdminDashboard() {
           </div>
           <Link
             href="/admin/candidates/new"
-            className="shrink-0 text-sm font-medium text-primary hover:underline"
+            className="shrink-0 flex items-center min-h-[44px] text-sm font-medium text-primary hover:underline py-2 -mx-1 px-1 rounded"
           >
             + 新しい候補者を追加
           </Link>
@@ -198,14 +198,14 @@ export default async function AdminDashboard() {
                   <div className="flex flex-wrap gap-2">
                     <Link
                       href={`/admin/events/new?candidate=${c.id}`}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                      className="inline-flex items-center min-h-[44px] gap-1.5 text-sm font-medium text-primary hover:underline py-2 -mx-1 px-1 rounded"
                     >
                       <CalendarPlus className="h-4 w-4" />
                       新規予定追加
                     </Link>
                     <Link
                       href={`/admin/candidates/${c.id}/edit`}
-                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                      className="inline-flex items-center min-h-[44px] gap-1.5 text-sm text-muted-foreground hover:text-foreground py-2 -mx-1 px-1 rounded"
                     >
                       <Pencil className="h-4 w-4" />
                       編集

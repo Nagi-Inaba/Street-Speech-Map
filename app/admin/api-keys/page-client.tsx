@@ -188,10 +188,10 @@ export default function ApiKeysPageClient({ apiKeys: initialApiKeys }: ApiKeysPa
   };
 
   return (
-    <div>
+    <div className="min-w-0 overflow-x-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold">APIキー管理</h1>
-        <Button onClick={() => setShowCreateDialog(true)}>
+        <Button onClick={() => setShowCreateDialog(true)} className="min-h-[44px] w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           新規作成
         </Button>

@@ -254,26 +254,31 @@ export default function BulkImportPage() {
                 プレビュー: {events.length} 件を登録します
                 {events.length < preview.length && `（${preview.length - events.length} 件はスキップ）`}
               </p>
-              <div className="overflow-x-auto max-h-48 border rounded p-2 text-xs">
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      <th className="text-left p-1">候補者</th>
-                      <th className="text-left p-1">日付・時刻</th>
-                      <th className="text-left p-1">場所</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events.slice(0, 10).map((e, i) => (
-                      <tr key={i}>
-                        <td className="p-1">{candidates.find((c) => c.id === e.candidateId)?.name ?? e.candidateId}</td>
-                        <td className="p-1">{e.startAt ?? "時間未定"}</td>
-                        <td className="p-1">{e.locationText}</td>
+              <div className="relative">
+                <div className="overflow-x-auto max-h-48 border rounded p-2 text-xs">
+                  <table className="w-full min-w-[320px]">
+                    <thead>
+                      <tr>
+                        <th className="text-left p-1">候補者</th>
+                        <th className="text-left p-1">日付・時刻</th>
+                        <th className="text-left p-1">場所</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {events.length > 10 && <p className="text-muted-foreground mt-1">… 他 {events.length - 10} 件</p>}
+                    </thead>
+                    <tbody>
+                      {events.slice(0, 10).map((e, i) => (
+                        <tr key={i}>
+                          <td className="p-1">{candidates.find((c) => c.id === e.candidateId)?.name ?? e.candidateId}</td>
+                          <td className="p-1">{e.startAt ?? "時間未定"}</td>
+                          <td className="p-1">{e.locationText}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {events.length > 10 && <p className="text-muted-foreground mt-1">… 他 {events.length - 10} 件</p>}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1.5 text-center sm:hidden" role="status">
+                  ← → 左右にスワイプして全体を表示
+                </p>
               </div>
             </div>
           )}

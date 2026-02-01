@@ -253,13 +253,13 @@ export default async function CandidatePage({
   return (
     <>
       <PublicHeader />
-      <div className="container mx-auto px-4 py-2">
-        <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
+      <div className="container mx-auto px-3 sm:px-4 py-2 min-w-0 overflow-x-hidden">
+        <Link href="/" className="inline-flex items-center min-h-[44px] text-muted-foreground hover:text-foreground text-sm py-2 -mx-1 px-1 rounded">
           ← 一覧に戻る
         </Link>
       </div>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-4xl min-w-0 overflow-x-hidden">
         <div className="mb-8">
           {candidate.imageUrl && (
             <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden">
@@ -323,8 +323,8 @@ export default async function CandidatePage({
         {/* 地図と予定の間の注意書き（白背景・黒字・左線で目を引く） */}
         {showEvents && (allMarkers.length > 0 || candidate.events.length > 0) && (
           <section className="mb-6">
-            <div className="bg-white border border-border rounded-lg px-4 py-3 shadow-sm border-l-4 border-l-amber-500">
-              <p className="text-sm font-medium text-foreground">
+            <div className="bg-white border border-border rounded-lg px-3 py-3 sm:px-4 shadow-sm border-l-4 border-l-amber-500">
+              <p className="text-sm font-medium text-foreground break-words">
                 予定は変更になる場合があります。最新の情報は候補者のXをご確認ください。
               </p>
             </div>

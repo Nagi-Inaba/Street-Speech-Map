@@ -156,14 +156,14 @@ export default async function EventPage({
   return (
     <>
       <PublicHeader />
-      <div className="container mx-auto px-4 py-2">
-        <Link href={`/c/${slug}`} className="text-muted-foreground hover:text-foreground text-sm">
+      <div className="container mx-auto px-3 sm:px-4 py-2 min-w-0 overflow-x-hidden">
+        <Link href={`/c/${slug}`} className="inline-flex items-center min-h-[44px] text-muted-foreground hover:text-foreground text-sm py-2 -mx-1 px-1 rounded break-words">
           ← {event.candidate.name}の演説予定一覧を見る
         </Link>
       </div>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-4xl min-w-0 overflow-x-hidden">
+        <div className="mb-6 sm:mb-8">
           {event.candidate.imageUrl && (
             <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden">
               <Image
@@ -174,7 +174,7 @@ export default async function EventPage({
               />
             </div>
           )}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">{event.candidate.name}</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 break-words">{event.candidate.name}</h1>
         </div>
 
         {/* 地図エリア */}
