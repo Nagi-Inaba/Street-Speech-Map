@@ -20,7 +20,8 @@
 ## コミットメッセージ
 
 - 明確で簡潔なコミットメッセージを使用
-- 日本語または英語で記述
+- **日本語**で書く場合: このリポジトリでは `i18n.commitEncoding` と `i18n.logOutputEncoding` を UTF-8 に設定済みです。PowerShell などで文字化けする場合は、ターミナルのエンコーディングを UTF-8（`chcp 65001`）にしてください
+- **英語**で書く場合: 文字化けの心配がなく、GitHub 上でも読みやすいので推奨です（例: `feat: add X account link to candidate page`）
 
 ## プルリクエスト
 

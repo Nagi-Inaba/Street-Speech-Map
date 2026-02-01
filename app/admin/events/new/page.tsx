@@ -289,11 +289,13 @@ export default function NewEventPage() {
           <CardContent>
             {existingEvents === null ? (
               <p className="text-sm text-muted-foreground">読み込み中...</p>
-            ) : existingEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">登録済みの予定はありません</p>
-            ) : (
+            ) : (() => {
+                const notEnded = existingEvents.filter((ev) => ev.status !== "ENDED");
+                return notEnded.length === 0 ? (
+              <p className="text-sm text-muted-foreground">予定・実施中の登録済み予定はありません</p>
+                ) : (
               <ul className="space-y-2 max-h-60 overflow-y-auto">
-                {existingEvents.map((ev) => (
+                {notEnded.map((ev) => (
                   <li key={ev.id} className="flex items-center justify-between gap-2 py-2 border-b border-border last:border-b-0 text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{ev.locationText}</p>
@@ -306,12 +308,10 @@ export default function NewEventPage() {
                         className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
                           ev.status === "LIVE"
                             ? "bg-red-100 text-red-800"
-                            : ev.status === "ENDED"
-                            ? "bg-gray-100 text-gray-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {ev.status === "PLANNED" ? "予定" : ev.status === "LIVE" ? "実施中" : "終了"}
+                        {ev.status === "PLANNED" ? "予定" : "実施中"}
                       </span>
                     </div>
                     <Link
@@ -326,7 +326,8 @@ export default function NewEventPage() {
                   </li>
                 ))}
               </ul>
-            )}
+                );
+              })()}
           </CardContent>
         </Card>
       )}

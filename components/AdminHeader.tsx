@@ -16,7 +16,7 @@ interface AdminHeaderProps {
 
 function getNavItems(userRole: string) {
   return [
-    { href: "/admin/candidates", label: "候補者" },
+    { href: "/admin", label: "ダッシュボード" },
     { href: "/admin/events", label: "演説予定" },
     { href: "/admin/requests", label: "リクエスト" },
     { href: "/admin/settings", label: "設定" },
@@ -34,7 +34,10 @@ export default function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
   const navLinks = (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
       {items.map((item: { href: string; label: string }) => {
-        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+        const isActive =
+          item.href === "/admin"
+            ? pathname === "/admin"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
         return (
           <Link
             key={item.href}

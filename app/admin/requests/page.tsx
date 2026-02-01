@@ -881,15 +881,17 @@ export default function RequestsPage() {
                     </div>
                   )}
 
-                  {/* この候補者の登録済み予定（重複確認用） */}
+                  {/* この候補者の登録済み予定（重複確認用・予定・実施中のみ、終了は非表示） */}
                   {detailModal.candidateId && (
                     <div>
                       <h3 className="font-semibold mb-2">この候補者の登録済み予定（重複確認用）</h3>
                       {detailCandidateEvents?.loading ? (
                         <p className="text-sm text-muted-foreground">読み込み中...</p>
-                      ) : detailCandidateEvents && detailCandidateEvents.events.length > 0 ? (
+                      ) : (() => {
+                          const notEnded = detailCandidateEvents?.events.filter((ev) => ev.status !== "ENDED") ?? [];
+                          return notEnded.length > 0 ? (
                         <ul className="bg-muted p-3 rounded-md space-y-2 max-h-60 overflow-y-auto">
-                          {detailCandidateEvents.events.map((ev) => (
+                          {notEnded.map((ev) => (
                             <li key={ev.id} className="text-sm border-b border-border last:border-b-0 pb-2 last:pb-0">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
@@ -903,12 +905,10 @@ export default function RequestsPage() {
                                     className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
                                       ev.status === "LIVE"
                                         ? "bg-red-100 text-red-800"
-                                        : ev.status === "ENDED"
-                                        ? "bg-gray-100 text-gray-800"
                                         : "bg-blue-100 text-blue-800"
                                     }`}
                                   >
-                                    {ev.status === "PLANNED" ? "予定" : ev.status === "LIVE" ? "実施中" : "終了"}
+                                    {ev.status === "PLANNED" ? "予定" : "実施中"}
                                   </span>
                                 </div>
                                 <Link
@@ -924,9 +924,10 @@ export default function RequestsPage() {
                             </li>
                           ))}
                         </ul>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">登録済みの予定はありません</p>
-                      )}
+                          ) : (
+                        <p className="text-sm text-muted-foreground">予定・実施中の登録済み予定はありません</p>
+                          );
+                        })()}
                     </div>
                   )}
 
