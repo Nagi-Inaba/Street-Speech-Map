@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LeafletMap from "@/components/Map/LeafletMap";
-import { X, MapPin, Info } from "lucide-react";
+import Link from "next/link";
+import { X, MapPin, Info, ExternalLink, Loader2 } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -59,6 +60,14 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: "却下",
   DUPLICATE: "重複",
 };
+
+interface RegisteredEvent {
+  id: string;
+  locationText: string;
+  startAt: string | null;
+  endAt: string | null;
+  status: string;
+}
 
 interface RequestItemProps {
   request: PublicRequest;
@@ -197,6 +206,7 @@ function RequestItem({
               disabled={isProcessing}
               className="h-7 text-xs"
             >
+              {isProcessing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
               承認
             </Button>
             <Button
@@ -209,6 +219,7 @@ function RequestItem({
               disabled={isProcessing}
               className="h-7 text-xs"
             >
+              {isProcessing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
               却下
             </Button>
           </>
@@ -230,6 +241,11 @@ export default function RequestsPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mapModal, setMapModal] = useState<{ lat: number; lng: number; locationText?: string } | null>(null);
   const [detailModal, setDetailModal] = useState<PublicRequest | null>(null);
+  const processingRef = useRef(false);
+  const [detailCandidateEvents, setDetailCandidateEvents] = useState<{
+    loading: boolean;
+    events: RegisteredEvent[];
+  } | null>(null);
 
   const fetchRequests = async () => {
     setIsLoading(true);
@@ -271,6 +287,30 @@ export default function RequestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterCandidateId, filterStatus, groupByEvent]);
 
+  // 詳細モーダルで候補者が決まっているとき、その候補者の登録済み予定を取得
+  useEffect(() => {
+    if (!detailModal?.candidateId) {
+      setDetailCandidateEvents(null);
+      return;
+    }
+    setDetailCandidateEvents({ loading: true, events: [] });
+    fetch(`/api/admin/events?candidateId=${encodeURIComponent(detailModal.candidateId)}`)
+      .then((res) => res.ok ? res.json() : [])
+      .then((raw: { id: string; locationText: string; startAt: string | null; endAt: string | null; status: string }[]) => {
+        setDetailCandidateEvents({
+          loading: false,
+          events: raw.map((e) => ({
+            id: e.id,
+            locationText: e.locationText,
+            startAt: e.startAt,
+            endAt: e.endAt,
+            status: e.status,
+          })),
+        });
+      })
+      .catch(() => setDetailCandidateEvents({ loading: false, events: [] }));
+  }, [detailModal?.candidateId]);
+
   const handleSelectAll = () => {
     // groupByEventがtrueの場合、eventsWithRequestsからすべてのリクエストを収集
     let allPendingRequests: PublicRequest[] = [];
@@ -303,13 +343,14 @@ export default function RequestsPage() {
   };
 
   const handleBulkAction = async (action: "approve" | "reject", idsToProcess?: Set<string>) => {
+    if (processingRef.current) return;
     const ids = idsToProcess || selectedIds;
     if (ids.size === 0) return;
     
     if (!confirm(`${ids.size}件のリクエストを${action === "approve" ? "承認" : "却下"}しますか？`)) {
       return;
     }
-
+    processingRef.current = true;
     setIsProcessing(true);
     try {
       const res = await fetch("/api/admin/requests", {
@@ -366,6 +407,7 @@ export default function RequestsPage() {
         error instanceof Error ? error.message : "エラーが発生しました";
       alert(`エラーが発生しました: ${errorMessage}`);
     } finally {
+      processingRef.current = false;
       setIsProcessing(false);
     }
   };
@@ -477,6 +519,7 @@ export default function RequestsPage() {
             disabled={selectedIds.size === 0 || isProcessing}
             className="text-xs sm:text-sm"
           >
+            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isProcessing ? "処理中..." : `一括承認 (${selectedIds.size})`}
           </Button>
           <Button
@@ -486,7 +529,8 @@ export default function RequestsPage() {
             disabled={selectedIds.size === 0 || isProcessing}
             className="text-xs sm:text-sm"
           >
-            一括却下 ({selectedIds.size})
+            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isProcessing ? "処理中..." : `一括却下 (${selectedIds.size})`}
           </Button>
           </div>
         );
@@ -673,10 +717,11 @@ export default function RequestsPage() {
                           size="sm"
                           onClick={() => {
                             setSelectedIds(new Set([representative.id]));
-                            handleBulkAction("approve");
+                            handleBulkAction("approve", new Set([representative.id]));
                           }}
                           disabled={isProcessing}
                         >
+                          {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           承認
                         </Button>
                         <Button
@@ -684,10 +729,11 @@ export default function RequestsPage() {
                           size="sm"
                           onClick={() => {
                             setSelectedIds(new Set([representative.id]));
-                            handleBulkAction("reject");
+                            handleBulkAction("reject", new Set([representative.id]));
                           }}
                           disabled={isProcessing}
                         >
+                          {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           却下
                         </Button>
                       </>
@@ -835,6 +881,55 @@ export default function RequestsPage() {
                     </div>
                   )}
 
+                  {/* この候補者の登録済み予定（重複確認用） */}
+                  {detailModal.candidateId && (
+                    <div>
+                      <h3 className="font-semibold mb-2">この候補者の登録済み予定（重複確認用）</h3>
+                      {detailCandidateEvents?.loading ? (
+                        <p className="text-sm text-muted-foreground">読み込み中...</p>
+                      ) : detailCandidateEvents && detailCandidateEvents.events.length > 0 ? (
+                        <ul className="bg-muted p-3 rounded-md space-y-2 max-h-60 overflow-y-auto">
+                          {detailCandidateEvents.events.map((ev) => (
+                            <li key={ev.id} className="text-sm border-b border-border last:border-b-0 pb-2 last:pb-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium truncate">{ev.locationText}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {ev.startAt
+                                      ? `${new Date(ev.startAt).toLocaleString("ja-JP")} ～ ${ev.endAt ? new Date(ev.endAt).toLocaleString("ja-JP") : "—"}`
+                                      : "時間未定"}
+                                  </p>
+                                  <span
+                                    className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${
+                                      ev.status === "LIVE"
+                                        ? "bg-red-100 text-red-800"
+                                        : ev.status === "ENDED"
+                                        ? "bg-gray-100 text-gray-800"
+                                        : "bg-blue-100 text-blue-800"
+                                    }`}
+                                  >
+                                    {ev.status === "PLANNED" ? "予定" : ev.status === "LIVE" ? "実施中" : "終了"}
+                                  </span>
+                                </div>
+                                <Link
+                                  href={`/admin/events/${ev.id}/edit`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="shrink-0 text-xs text-primary hover:underline flex items-center gap-0.5"
+                                >
+                                  編集
+                                  <ExternalLink className="h-3 w-3" />
+                                </Link>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">登録済みの予定はありません</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* 変更情報（REPORT_MOVE, REPORT_TIME_CHANGE） */}
                   {(payload.newLat || payload.newLng) && (
                     <div>
@@ -877,6 +972,7 @@ export default function RequestsPage() {
                         }}
                         disabled={isProcessing}
                       >
+                        {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         承認
                       </Button>
                       <Button
@@ -888,6 +984,7 @@ export default function RequestsPage() {
                         }}
                         disabled={isProcessing}
                       >
+                        {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         却下
                       </Button>
                     </div>

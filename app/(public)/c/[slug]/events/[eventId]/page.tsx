@@ -271,6 +271,9 @@ export default async function EventPage({
                 <p className="text-sm text-muted-foreground">
                   登録時刻: {formatJST(event.submittedAt)}
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  最終更新: {formatJST(event.updatedAt)}
+                </p>
                 {(isLive || isPlanned) && (
                   <ShareButtons
                     eventUrl={`/c/${slug}/events/${eventId}`}

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -44,6 +44,7 @@ export default function BulkImportPage() {
   const [preview, setPreview] = useState<Array<Record<string, string>>>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [submitResult, setSubmitResult] = useState<{ created: number; errors?: { index: number; message: string }[] } | null>(null);
 
   useEffect(() => {
@@ -156,11 +157,13 @@ export default function BulkImportPage() {
   };
 
   const handleSubmit = async () => {
+    if (submittingRef.current) return;
     const events = buildEvents();
     if (events.length === 0) {
       alert("有効な行がありません。候補者・場所を確認し、CSVの1行目をヘッダーにしてください。");
       return;
     }
+    submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitResult(null);
     try {
@@ -184,6 +187,7 @@ export default function BulkImportPage() {
       console.error(e);
       alert("エラーが発生しました");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -281,6 +285,7 @@ export default function BulkImportPage() {
           )}
           <div className="flex gap-2">
             <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? "登録中..." : `${events.length} 件を登録`}
             </Button>
             <Link href="/admin/events">

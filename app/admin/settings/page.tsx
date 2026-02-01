@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -26,6 +27,9 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingDefaultCandidate, setIsSavingDefaultCandidate] = useState(false);
   const [updatingCandidateId, setUpdatingCandidateId] = useState<string | null>(null);
+  const savingRef = useRef(false);
+  const savingDefaultCandidateRef = useRef(false);
+  const updatingCandidateRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -71,6 +75,8 @@ export default function SettingsPage() {
   };
 
   const handleSaveDefaultCandidate = async () => {
+    if (savingDefaultCandidateRef.current) return;
+    savingDefaultCandidateRef.current = true;
     setIsSavingDefaultCandidate(true);
     try {
       const res = await fetch("/api/admin/me", {
@@ -89,11 +95,14 @@ export default function SettingsPage() {
       console.error("Error saving default candidate:", error);
       alert("エラーが発生しました");
     } finally {
+      savingDefaultCandidateRef.current = false;
       setIsSavingDefaultCandidate(false);
     }
   };
 
   const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setIsSaving(true);
     try {
       const res = await fetch("/api/admin/settings", {
@@ -117,11 +126,14 @@ export default function SettingsPage() {
       console.error("Error saving settings:", error);
       alert("エラーが発生しました");
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
 
   const handleToggleCandidateShowEvents = async (candidateId: string, currentValue: boolean) => {
+    if (updatingCandidateRef.current === candidateId) return;
+    updatingCandidateRef.current = candidateId;
     setUpdatingCandidateId(candidateId);
     try {
       const candidate = candidates.find((c) => c.id === candidateId);
@@ -161,6 +173,7 @@ export default function SettingsPage() {
       console.error("Error updating candidate:", error);
       alert("エラーが発生しました");
     } finally {
+      updatingCandidateRef.current = null;
       setUpdatingCandidateId(null);
     }
   };
@@ -242,6 +255,7 @@ export default function SettingsPage() {
 
           <div className="pt-4 border-t">
             <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSaving ? "保存中..." : "設定を保存"}
             </Button>
           </div>
@@ -292,6 +306,7 @@ export default function SettingsPage() {
 
           <div className="pt-4 border-t">
             <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSaving ? "保存中..." : "設定を保存"}
             </Button>
           </div>
@@ -325,6 +340,7 @@ export default function SettingsPage() {
             </select>
           </div>
           <Button onClick={handleSaveDefaultCandidate} disabled={isSavingDefaultCandidate}>
+            {isSavingDefaultCandidate && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isSavingDefaultCandidate ? "保存中..." : "保存"}
           </Button>
         </CardContent>

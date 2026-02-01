@@ -13,7 +13,7 @@ export default function AdminNav({ userRole }: AdminNavProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/admin/candidates", label: "候補者" },
+    { href: "/admin", label: "ダッシュボード" },
     { href: "/admin/events", label: "演説予定" },
     { href: "/admin/requests", label: "リクエスト" },
     { href: "/admin/settings", label: "設定" },
@@ -26,7 +26,10 @@ export default function AdminNav({ userRole }: AdminNavProps) {
   return (
     <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto">
       {navItems.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+        const isActive =
+          item.href === "/admin"
+            ? pathname === "/admin"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
         return (
           <Link
             key={item.href}

@@ -1,10 +1,8 @@
-import { prisma } from "@/lib/db";
-import CandidatesPageClient from "./page-client";
-import { sortCandidatesByRegion } from "@/lib/sort-candidates";
+import { redirect } from "next/navigation";
 
-export default async function CandidatesPage() {
-  const candidates = await prisma.candidate.findMany();
-  const sortedCandidates = sortCandidatesByRegion(candidates);
-
-  return <CandidatesPageClient candidates={sortedCandidates} />;
+/**
+ * 候補者一覧はダッシュボードに統合済み。このURLはダッシュボードの候補者セクションへリダイレクトする。
+ */
+export default function CandidatesPage() {
+  redirect("/admin#candidates");
 }

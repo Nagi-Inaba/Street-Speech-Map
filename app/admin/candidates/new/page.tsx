@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
+import { Loader2 } from "lucide-react";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
 
 export default function NewCandidatePage() {
@@ -17,6 +18,7 @@ export default function NewCandidatePage() {
   const [singleDistrict, setSingleDistrict] = useState("");
   const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     // 小選挙区データを読み込む
@@ -25,6 +27,8 @@ export default function NewCandidatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -68,6 +72,7 @@ export default function NewCandidatePage() {
     } catch (error) {
       alert("エラーが発生しました");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -227,6 +232,7 @@ export default function NewCandidatePage() {
 
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? "作成中..." : "作成"}
               </Button>
               <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
+import { Loader2 } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -18,6 +19,7 @@ interface Candidate {
   region: string | null;
   imageUrl: string | null;
   showEvents: boolean;
+  xAccountUrl: string | null;
 }
 
 export default function EditCandidatePage() {
@@ -35,7 +37,9 @@ export default function EditCandidatePage() {
   const [singleDistricts, setSingleDistricts] = useState<Record<string, SingleDistrict[]>>({});
   const [imageUrl, setImageUrl] = useState("");
   const [showEvents, setShowEvents] = useState(false);
+  const [xAccountUrl, setXAccountUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -59,6 +63,7 @@ export default function EditCandidatePage() {
         setProportionalBlock(data.type === "PROPORTIONAL" ? (data.region || "") : "");
         setSingleDistrict(data.type === "SINGLE" ? (data.region || "") : "");
         setShowEvents(data.showEvents ?? false);
+        setXAccountUrl(data.xAccountUrl ?? "");
         setIsLoading(false);
       })
       .catch((error) => {
@@ -70,6 +75,8 @@ export default function EditCandidatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -103,6 +110,7 @@ export default function EditCandidatePage() {
           region: regionValue,
           imageUrl: null,
           showEvents,
+          xAccountUrl: xAccountUrl.trim() || null,
         }),
       });
 
@@ -115,6 +123,7 @@ export default function EditCandidatePage() {
     } catch (error) {
       alert("エラーが発生しました");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -285,6 +294,23 @@ export default function EditCandidatePage() {
               </>
             )}
 
+            <div>
+              <label htmlFor="xAccountUrl" className="block text-sm font-medium mb-1">
+                X（旧Twitter）アカウントURL
+              </label>
+              <input
+                id="xAccountUrl"
+                type="url"
+                value={xAccountUrl}
+                onChange={(e) => setXAccountUrl(e.target.value)}
+                placeholder="https://x.com/username"
+                className="w-full px-3 py-2 border rounded-md bg-white"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                公開ページの名前横に「候補者X」リンクとして表示されます。空欄の場合は非表示です。
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
               <div className="space-y-0.5 flex-1">
                 <Label htmlFor="show-events" className="text-base">
@@ -306,6 +332,7 @@ export default function EditCandidatePage() {
 
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? "更新中..." : "更新"}
               </Button>
               <Button

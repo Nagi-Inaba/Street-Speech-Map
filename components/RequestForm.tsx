@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 
 interface RequestFormProps {
@@ -37,6 +37,7 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
   const [lat, setLat] = useState(35.6812);
   const [lng, setLng] = useState(139.7671);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const handleMapClick = (newLat: number, newLng: number) => {
@@ -55,6 +56,8 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     setIsSuccess(false);
 
@@ -111,6 +114,7 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
     } catch (error) {
       alert("エラーが発生しました");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -303,6 +307,7 @@ export default function RequestForm({ candidateId, candidateName }: RequestFormP
           </div>
 
           <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isSubmitting ? "送信中..." : "送信"}
           </Button>
         </form>

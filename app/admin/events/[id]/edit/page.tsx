@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 import { getPrefectureCoordinates } from "@/lib/constants";
-import { Calendar, Plus, X } from "lucide-react";
+import { Calendar, Plus, X, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -77,6 +77,7 @@ export default function EditEventPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([35.6812, 139.7671]);
   const [mapZoom, setMapZoom] = useState(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // 候補者一覧を取得
@@ -209,6 +210,8 @@ export default function EditEventPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -255,6 +258,7 @@ export default function EditEventPage() {
       console.error("Error updating event:", error);
       alert("エラーが発生しました");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -591,6 +595,7 @@ export default function EditEventPage() {
 
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? "更新中..." : "更新"}
               </Button>
               <Button

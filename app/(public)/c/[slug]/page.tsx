@@ -271,7 +271,22 @@ export default async function CandidatePage({
               />
             </div>
           )}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">{candidate.name}</h1>
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">{candidate.name}</h1>
+            {candidate.xAccountUrl && (
+              <a
+                href={candidate.xAccountUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden>
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                候補者X
+              </a>
+            )}
+          </div>
           {(() => {
             // 党首の場合は常に「党首」と表示
             if (candidate.type === "PARTY_LEADER") {
@@ -302,6 +317,17 @@ export default async function CandidatePage({
                 <CandidateMap center={mapCenter} markers={allMarkers} />
               </CardContent>
             </Card>
+          </section>
+        )}
+
+        {/* 地図と予定の間の注意書き（白背景・黒字・左線で目を引く） */}
+        {showEvents && (allMarkers.length > 0 || candidate.events.length > 0) && (
+          <section className="mb-6">
+            <div className="bg-white border border-border rounded-lg px-4 py-3 shadow-sm border-l-4 border-l-amber-500">
+              <p className="text-sm font-medium text-foreground">
+                予定は変更になる場合があります。最新の情報は候補者のXをご確認ください。
+              </p>
+            </div>
           </section>
         )}
 
@@ -376,6 +402,9 @@ export default async function CandidatePage({
                       <p className="text-sm text-muted-foreground">
                         登録時刻: {formatJST(event.submittedAt)}
                       </p>
+                      <p className="text-sm text-muted-foreground">
+                        最終更新: {formatJST(event.updatedAt)}
+                      </p>
                       <ShareButtons
                         eventUrl={`/c/${candidate.slug}/events/${event.id}`}
                         candidateName={candidate.name}
@@ -437,6 +466,9 @@ export default async function CandidatePage({
                       <p className="text-sm text-muted-foreground">
                         登録時刻: {formatJST(event.submittedAt)}
                       </p>
+                      <p className="text-sm text-muted-foreground">
+                        最終更新: {formatJST(event.updatedAt)}
+                      </p>
                       <ShareButtons
                         eventUrl={`/c/${candidate.slug}/events/${event.id}`}
                         candidateName={candidate.name}
@@ -482,6 +514,11 @@ export default async function CandidatePage({
                         : "時間未定"}
                     </CardDescription>
                   </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      最終更新: {formatJST(event.updatedAt)}
+                    </p>
+                  </CardContent>
                 </Card>
               ))}
             </div>

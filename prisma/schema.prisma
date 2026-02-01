@@ -17,16 +17,17 @@ datasource db {
 // CandidateType: "SINGLE" | "PROPORTIONAL"
 
 model Candidate {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  name      String
-  imageUrl  String?
-  type      String   // "SINGLE" | "PROPORTIONAL"
-  prefecture String? // 小選挙区の場合の都道府県
-  region    String?  // 例: 選挙区や運用上の地域
-  showEvents Boolean  @default(false) // 演説予定の表示（候補者個別設定、デフォルトは非表示）
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  imageUrl    String?
+  type        String   // "SINGLE" | "PROPORTIONAL"
+  prefecture  String?  // 小選挙区の場合の都道府県
+  region      String?  // 例: 選挙区や運用上の地域
+  showEvents  Boolean  @default(false) // 演説予定の表示（候補者個別設定、デフォルトは非表示）
+  xAccountUrl String?  // X（旧Twitter）アカウントのURL（例: https://x.com/username）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   events    SpeechEvent[]
   requests  PublicRequest[]

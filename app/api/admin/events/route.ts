@@ -19,13 +19,17 @@ const eventSchema = z.object({
   isPublic: z.boolean().optional().default(true),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session || !hasPermission(session.user, "SiteStaff")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const candidateId = searchParams.get("candidateId") || undefined;
+
   const events = await prisma.speechEvent.findMany({
+    where: candidateId ? { candidateId } : undefined,
     include: {
       candidate: true,
       additionalCandidates: {

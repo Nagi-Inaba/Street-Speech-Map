@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit, ExternalLink, Upload } from "lucide-react";
+import { Plus, Trash2, Edit, ExternalLink, Upload, Loader2 } from "lucide-react";
 import { formatJSTWithoutYear, formatJSTTime } from "@/lib/time";
 
 interface Candidate {
@@ -60,15 +60,19 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const bulkUpdatingRef = useRef(false);
+  const deletingRef = useRef<string | null>(null);
+  const updatingStatusRef = useRef<string | null>(null);
   const [filterCandidateId, setFilterCandidateId] = useState<string>(defaultCandidateId ?? "");
   const [filterStatus, setFilterStatus] = useState<string>(NOT_ENDED);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleDelete = async (id: string, locationText: string) => {
+    if (deletingRef.current) return;
     if (!confirm(`「${locationText}」の演説予定を削除しますか？この操作は取り消せません。`)) {
       return;
     }
-
+    deletingRef.current = id;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/admin/events/${id}`, {
@@ -84,11 +88,13 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
       console.error("Error deleting event:", error);
       alert("エラーが発生しました");
     } finally {
+      deletingRef.current = null;
       setDeletingId(null);
     }
   };
 
   const handleStatusChange = async (eventId: string, currentStatus: string, newStatus: string, locationText: string) => {
+    if (updatingStatusRef.current === eventId) return;
     // ステータスが変更されない場合は何もしない
     if (currentStatus === newStatus) {
       return;
@@ -107,7 +113,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
     if (!confirm(`「${locationText}」のステータスを${currentLabel}→${newLabel}に変更しますか？`)) {
       return;
     }
-
+    updatingStatusRef.current = eventId;
     setUpdatingStatusId(eventId);
     try {
       const res = await fetch(`/api/admin/events/${eventId}`, {
@@ -125,6 +131,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
       console.error("Error updating status:", error);
       alert("エラーが発生しました");
     } finally {
+      updatingStatusRef.current = null;
       setUpdatingStatusId(null);
     }
   };
@@ -196,10 +203,12 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
   };
 
   const handleBulkStatusChange = async (newStatus: "LIVE" | "ENDED") => {
+    if (bulkUpdatingRef.current) return;
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     const label = newStatus === "LIVE" ? "実施中" : "終了";
     if (!confirm(`選択した ${ids.length} 件のステータスを「${label}」に変更しますか？`)) return;
+    bulkUpdatingRef.current = true;
     setBulkUpdating(true);
     try {
       const results = await Promise.all(
@@ -222,6 +231,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
       console.error(e);
       alert("一括更新中にエラーが発生しました。");
     } finally {
+      bulkUpdatingRef.current = false;
       setBulkUpdating(false);
     }
   };
@@ -305,6 +315,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                 onClick={() => handleBulkStatusChange("LIVE")}
                 disabled={bulkUpdating}
               >
+                {bulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 選択を実施中に
               </Button>
               <Button
@@ -313,6 +324,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                 onClick={() => handleBulkStatusChange("ENDED")}
                 disabled={bulkUpdating}
               >
+                {bulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 選択を終了に
               </Button>
               <span className="text-sm text-muted-foreground">{selectedIds.size} 件選択中</span>
@@ -398,6 +410,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                             onClick={() => handleStatusChange(event.id, event.status, "LIVE", event.locationText)}
                             disabled={updatingStatusId === event.id}
                           >
+                            {updatingStatusId === event.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                             開始に変更
                           </Button>
                         )}
@@ -409,6 +422,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                             onClick={() => handleStatusChange(event.id, event.status, "ENDED", event.locationText)}
                             disabled={updatingStatusId === event.id}
                           >
+                            {updatingStatusId === event.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                             終了に変更
                           </Button>
                         )}
@@ -465,7 +479,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                           disabled={deletingId === event.id}
                           className="h-8 text-red-600 hover:text-red-700"
                         >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          {deletingId === event.id ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />}
                         </Button>
                       </div>
                     </TableCell>

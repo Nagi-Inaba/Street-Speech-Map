@@ -84,3 +84,11 @@ export function getTodayJSTDateRange(): { start: Date; end: Date } {
   const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - JST_OFFSET_MS);
   return { start, end };
 }
+
+/**
+ * 明日（JST）の 00:00:00 を UTC の Date で返す（明日以降の演説数を数える用）
+ */
+export function getTomorrowJSTStart(): Date {
+  const { end } = getTodayJSTDateRange();
+  return new Date(end.getTime() + 1);
+}
