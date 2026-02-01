@@ -47,6 +47,8 @@ export default function NewEventPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([35.6812, 139.7671]);
   const [mapZoom, setMapZoom] = useState(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 地図上でユーザーがピンを打った後は、候補者変更で場所を上書きしない
+  const [userHasSetLocation, setUserHasSetLocation] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/candidates")
@@ -54,13 +56,13 @@ export default function NewEventPage() {
       .then((data) => setCandidates(data));
   }, []);
 
-  // 候補者選択時に地図の中心を立候補地域に設定
+  // 候補者選択時に地図の中心を立候補地域に設定（ユーザーがまだ場所を設定していない場合のみ lat/lng を更新）
   useEffect(() => {
+    if (userHasSetLocation) return;
     if (candidateId) {
       const candidate = candidates.find((c) => c.id === candidateId);
       if (candidate) {
         if (candidate.type === "SINGLE" && candidate.prefecture) {
-          // 小選挙区の場合：都道府県の座標を使用
           const coords = getPrefectureCoordinates(candidate.prefecture);
           if (coords) {
             setMapCenter(coords);
@@ -69,7 +71,6 @@ export default function NewEventPage() {
             setLng(coords[1]);
           }
         } else if (candidate.type === "PROPORTIONAL" && candidate.region) {
-          // 比例の場合：比例ブロックに応じた座標を使用
           const blockCoords: Record<string, [number, number]> = {
             "北海道ブロック": [43.0642, 141.3469],
             "東北ブロック": [38.2682, 140.8694],
@@ -91,11 +92,12 @@ export default function NewEventPage() {
         }
       }
     }
-  }, [candidateId, candidates]);
+  }, [candidateId, candidates, userHasSetLocation]);
 
   const handleMapClick = (newLat: number, newLng: number) => {
     setLat(newLat);
     setLng(newLng);
+    setUserHasSetLocation(true);
   };
 
   // 月日と時刻をISO形式の日時文字列に変換（年は現在の年を使用）

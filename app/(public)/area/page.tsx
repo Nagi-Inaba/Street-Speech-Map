@@ -53,6 +53,7 @@ export default async function AreaPage() {
     prisma.candidate.findMany({
       include: {
         events: {
+          where: { isPublic: true },
           include: {
             additionalCandidates: {
               include: {

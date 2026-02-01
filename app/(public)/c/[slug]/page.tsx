@@ -36,6 +36,7 @@ export async function generateMetadata({
     include: {
       events: {
         where: {
+          isPublic: true,
           status: {
             in: ["PLANNED", "LIVE"],
           },
@@ -117,6 +118,7 @@ export default async function CandidatePage({
       where: { slug },
       include: {
         events: {
+          where: { isPublic: true },
           include: {
             moveHints: {
               where: {
@@ -147,7 +149,14 @@ export default async function CandidatePage({
 
   const plannedEvents = candidate.events.filter((e) => e.status === "PLANNED");
   const liveEvents = candidate.events.filter((e) => e.status === "LIVE");
-  const endedEvents = candidate.events.filter((e) => e.status === "ENDED");
+  // 終了は「直近で終了」が上になるよう endAt 降順（なければ startAt 降順）
+  const endedEvents = candidate.events
+    .filter((e) => e.status === "ENDED")
+    .sort((a, b) => {
+      const aTime = a.endAt?.getTime() ?? a.startAt?.getTime() ?? 0;
+      const bTime = b.endAt?.getTime() ?? b.startAt?.getTime() ?? 0;
+      return bTime - aTime;
+    });
 
   // 地図用のマーカー（通常のイベントピン）
   // 吹き出しに候補者名、場所名、時間を表示
@@ -191,6 +200,12 @@ export default async function CandidatePage({
 
   // すべてのマーカーを結合
   const allMarkers = [...mapMarkers, ...moveHintMarkers];
+
+  // 場所変更報告があるか（予定・実施中のいずれかに active な MoveHint がある）
+  const hasAnyMoveHints =
+    candidate.events
+      .filter((e) => e.status === "PLANNED" || e.status === "LIVE")
+      .some((e) => (e.moveHints?.length ?? 0) > 0) ?? false;
 
   // 地図の中心位置を決定
   // 1. 予定がある場合: 演説中 > 直近の予定の位置を優先
@@ -280,7 +295,7 @@ export default async function CandidatePage({
 
         {/* 地図エリア（上部に配置） */}
         {showEvents && allMarkers.length > 0 && (
-          <section className="mb-8">
+          <section id="event-map" className="mb-8 scroll-mt-4">
             <h2 className="text-xl sm:text-2xl font-bold mb-4">地図</h2>
             <Card>
               <CardContent className="p-2 sm:p-4">
@@ -289,6 +304,35 @@ export default async function CandidatePage({
             </Card>
           </section>
         )}
+
+        {/* 場所変更報告がある場合の注意喚起 */}
+        {showEvents && hasAnyMoveHints && (() => {
+          const moveHintList = candidate.events
+            .filter((e) => e.status === "PLANNED" || e.status === "LIVE")
+            .flatMap((e) => (e.moveHints ?? []).map((h) => ({ lat: h.lat, lng: h.lng, count: h.count })));
+          return (
+            <section className="mb-6">
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="p-4">
+                  <p className="text-sm text-amber-900 mb-3">
+                    場所変更報告で演説場所が変更になった可能性があります。最新の情報は候補者のXをご確認ください。
+                  </p>
+                  <p className="text-sm font-medium text-amber-900 mb-2">移動した可能性のある場所：</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-amber-900">
+                    {moveHintList.map((hint, i) => (
+                      <li key={`${hint.lat}-${hint.lng}-${i}`}>
+                        こちらに移動した可能性があります（{hint.count}件の報告より）
+                        <a href="#event-map" className="ml-1 text-amber-700 underline hover:no-underline">
+                          地図で見る
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </section>
+          );
+        })()}
 
         {/* 実施中の演説予定 */}
         {showEvents && liveEvents.length > 0 && (

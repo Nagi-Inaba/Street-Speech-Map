@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import LeafletMapWithSearch from "@/components/Map/LeafletMapWithSearch";
 import { getPrefectureCoordinates } from "@/lib/constants";
 import { Calendar, Plus, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Candidate {
   id: string;
@@ -28,6 +30,7 @@ interface SpeechEvent {
   lat: number;
   lng: number;
   notes: string | null;
+  isPublic?: boolean;
   additionalCandidates?: Array<{
     id: string;
     candidateId: string;
@@ -68,6 +71,7 @@ export default function EditEventPage() {
   const [timeUnknown, setTimeUnknown] = useState(false);
   const [locationText, setLocationText] = useState("");
   const [notes, setNotes] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
   const [lat, setLat] = useState(35.6812);
   const [lng, setLng] = useState(139.7671);
   const [mapCenter, setMapCenter] = useState<[number, number]>([35.6812, 139.7671]);
@@ -126,6 +130,7 @@ export default function EditEventPage() {
         }
         setLat(data.lat);
         setLng(data.lng);
+        setIsPublic(data.isPublic ?? true);
         setTimeUnknown(data.timeUnknown);
         setMapCenter([data.lat, data.lng]);
         setMapZoom(15);
@@ -236,6 +241,7 @@ export default function EditEventPage() {
           lat,
           lng,
           notes: notes || null,
+          isPublic,
         }),
       });
 
@@ -541,6 +547,17 @@ export default function EditEventPage() {
                 className="w-full px-3 py-2 border rounded-md bg-white"
                 placeholder="応援演説などの備考を入力してください"
               />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="isPublic"
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
+              />
+              <Label htmlFor="isPublic" className="text-sm font-medium">
+                公開（サイトに表示する）
+              </Label>
             </div>
 
             <div>

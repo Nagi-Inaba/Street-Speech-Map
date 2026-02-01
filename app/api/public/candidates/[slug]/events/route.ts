@@ -18,6 +18,7 @@ export async function GET(
         where: { slug },
         include: {
           events: {
+            where: { isPublic: true },
             orderBy: [
               { startAt: "asc" },
               { createdAt: "desc" },

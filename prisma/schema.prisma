@@ -54,6 +54,9 @@ model SpeechEvent {
   // 予約入力時刻（公開表示するため、承認時刻ではない）
   submittedAt DateTime    @default(now())
 
+  // 公開/非公開（演説予定ごと）
+  isPublic    Boolean     @default(true)
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -202,6 +205,7 @@ model User {
   name      String?
   role      String // "SiteAdmin" "SiteStaff" "PartyAdmin" "RegionEditor"
   region    String? // 地域担当の場合
+  defaultCandidateId String? // 演説予定一覧で初期表示する候補者
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

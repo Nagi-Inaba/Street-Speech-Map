@@ -20,6 +20,7 @@ const updateEventSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   notes: z.string().nullable().optional(),
+  isPublic: z.boolean().optional(),
 });
 
 // 演説予定取得
@@ -133,6 +134,7 @@ export async function PUT(
         lat: data.lat,
         lng: data.lng,
         notes: data.notes || null,
+        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
         additionalCandidates: {
           create: (data.additionalCandidateIds || [])
             .filter((id) => id && id !== data.candidateId)

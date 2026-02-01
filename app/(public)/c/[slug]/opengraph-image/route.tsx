@@ -40,6 +40,7 @@ export async function GET(
       include: {
         events: {
           where: {
+            isPublic: true,
             status: {
               in: ["PLANNED", "LIVE"],
             },

@@ -98,9 +98,10 @@ export default function AreaEventsView({
     };
     live.sort(sortByStart);
     planned.sort(sortByStart);
+    // 終了は直近で終了が上：endAt 降順（なければ startAt 降順）
     ended.sort((a, b) => {
-      const pa = a.startAt ? new Date(a.startAt).getTime() : 0;
-      const pb = b.startAt ? new Date(b.startAt).getTime() : 0;
+      const pa = (a.endAt ? new Date(a.endAt).getTime() : null) ?? (a.startAt ? new Date(a.startAt).getTime() : 0);
+      const pb = (b.endAt ? new Date(b.endAt).getTime() : null) ?? (b.startAt ? new Date(b.startAt).getTime() : 0);
       return pb - pa;
     });
 

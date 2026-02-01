@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Edit, ExternalLink, Upload } from "lucide-react";
 import { formatJSTWithoutYear, formatJSTTime } from "@/lib/time";
 
 interface Candidate {
@@ -34,6 +34,7 @@ interface SpeechEvent {
   lat: number;
   lng: number;
   notes: string | null;
+  isPublic?: boolean;
   submittedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -49,14 +50,19 @@ interface SpeechEvent {
 interface EventsPageClientProps {
   events: SpeechEvent[];
   candidates: Candidate[];
+  defaultCandidateId?: string;
 }
 
-export default function EventsPageClient({ events, candidates }: EventsPageClientProps) {
+const NOT_ENDED = "NOT_ENDED";
+
+export default function EventsPageClient({ events, candidates, defaultCandidateId }: EventsPageClientProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
-  const [filterCandidateId, setFilterCandidateId] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [filterCandidateId, setFilterCandidateId] = useState<string>(defaultCandidateId ?? "");
+  const [filterStatus, setFilterStatus] = useState<string>(NOT_ENDED);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleDelete = async (id: string, locationText: string) => {
     if (!confirm(`「${locationText}」の演説予定を削除しますか？この操作は取り消せません。`)) {
@@ -127,6 +133,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
   const filteredEvents = events
     .filter((event) => {
       if (filterCandidateId && event.candidateId !== filterCandidateId) return false;
+      if (filterStatus === NOT_ENDED) return event.status !== "ENDED";
       if (filterStatus && event.status !== filterStatus) return false;
       return true;
     })
@@ -134,15 +141,18 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
       // ステータスが「ENDED」のものを最下部に移動
       if (a.status === "ENDED" && b.status !== "ENDED") return 1;
       if (a.status !== "ENDED" && b.status === "ENDED") return -1;
-      
-      // 両方ともENDEDでない場合、または両方ともENDEDの場合、日時順でソート
+      // 両方ともENDEDのときは直近で終了が上：endAt 降順（なければ startAt 降順）
+      if (a.status === "ENDED" && b.status === "ENDED") {
+        const aTime = a.endAt ? new Date(a.endAt).getTime() : a.startAt ? new Date(a.startAt).getTime() : 0;
+        const bTime = b.endAt ? new Date(b.endAt).getTime() : b.startAt ? new Date(b.startAt).getTime() : 0;
+        return bTime - aTime;
+      }
+      // それ以外は日時順（startAt 昇順）
       if (a.startAt && b.startAt) {
         return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
       }
       if (a.startAt) return -1;
       if (b.startAt) return 1;
-      
-      // 日時がない場合は作成日時順
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
@@ -168,16 +178,72 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredEvents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredEvents.map((e) => e.id)));
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: "LIVE" | "ENDED") => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const label = newStatus === "LIVE" ? "実施中" : "終了";
+    if (!confirm(`選択した ${ids.length} 件のステータスを「${label}」に変更しますか？`)) return;
+    setBulkUpdating(true);
+    try {
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/admin/events/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: newStatus }),
+          })
+        )
+      );
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length > 0) {
+        alert(`${failed.length} 件の更新に失敗しました。`);
+      } else {
+        setSelectedIds(new Set());
+        router.refresh();
+      }
+    } catch (e) {
+      console.error(e);
+      alert("一括更新中にエラーが発生しました。");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold">演説予定一覧</h1>
-        <Link href="/admin/events/new" className="w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            新規追加
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Link href="/admin/events/new" className="flex-1 sm:flex-none">
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              新規追加
+            </Button>
+          </Link>
+          <Link href="/admin/events/bulk" className="flex-1 sm:flex-none">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <Upload className="mr-2 h-4 w-4" />
+              一括入稿
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* フィルター */}
@@ -210,6 +276,7 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
             onChange={(e) => setFilterStatus(e.target.value)}
             className="w-full px-3 py-2 border rounded-md bg-white"
           >
+            <option value={NOT_ENDED}>予定・実施中</option>
             <option value="">すべて</option>
             <option value="PLANNED">予定</option>
             <option value="LIVE">実施中</option>
@@ -217,6 +284,42 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
           </select>
         </div>
       </div>
+
+      {/* 一括操作 */}
+      {filteredEvents.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === filteredEvents.length && filteredEvents.length > 0}
+              onChange={toggleSelectAll}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">すべて選択</span>
+          </label>
+          {selectedIds.size > 0 && (
+            <>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleBulkStatusChange("LIVE")}
+                disabled={bulkUpdating}
+              >
+                選択を実施中に
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleBulkStatusChange("ENDED")}
+                disabled={bulkUpdating}
+              >
+                選択を終了に
+              </Button>
+              <span className="text-sm text-muted-foreground">{selectedIds.size} 件選択中</span>
+            </>
+          )}
+        </div>
+      )}
 
       {filteredEvents.length === 0 ? (
         <Card>
@@ -232,9 +335,18 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 px-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === filteredEvents.length && filteredEvents.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4"
+                      aria-label="すべて選択"
+                    />
+                  </TableHead>
                   <TableHead className="whitespace-nowrap min-w-[120px]">候補者</TableHead>
                   <TableHead className="whitespace-nowrap min-w-[150px]">時間</TableHead>
-                  <TableHead className="w-16 whitespace-nowrap min-w-[80px]">状態</TableHead>
+                  <TableHead className="whitespace-nowrap min-w-[80px]">状態</TableHead>
                   <TableHead className="min-w-[100px]">備考</TableHead>
                   <TableHead className="text-right whitespace-nowrap min-w-[200px]">操作</TableHead>
                 </TableRow>
@@ -242,6 +354,15 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
               <TableBody>
                 {filteredEvents.map((event) => (
                   <TableRow key={event.id}>
+                    <TableCell className="w-10 px-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(event.id)}
+                        onChange={() => toggleSelect(event.id)}
+                        className="w-4 h-4"
+                        aria-label={`${event.locationText} を選択`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
                         <div className="flex flex-col gap-1">
@@ -256,6 +377,9 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
                           )}
                         </div>
                         <span className="text-sm text-muted-foreground">{event.locationText}</span>
+                        {event.isPublic === false && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 ml-1">非公開</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -266,20 +390,43 @@ export default function EventsPageClient({ events, candidates }: EventsPageClien
                         : "時間未定"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <select
-                        value={event.status}
-                        onChange={(e) => handleStatusChange(event.id, event.status, e.target.value, event.locationText)}
-                        disabled={updatingStatusId === event.id}
-                        className="text-xs px-2 py-1 rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{
-                          backgroundColor: event.status === "LIVE" ? "#fee2e2" : event.status === "ENDED" ? "#f3f4f6" : "#dbeafe",
-                          color: event.status === "LIVE" ? "#991b1b" : event.status === "ENDED" ? "#374151" : "#1e40af",
-                        }}
-                      >
-                        <option value="PLANNED">予定</option>
-                        <option value="LIVE">実施中</option>
-                        <option value="ENDED">終了</option>
-                      </select>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {event.status === "PLANNED" && (
+                          <Button
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white h-8 min-w-[72px]"
+                            onClick={() => handleStatusChange(event.id, event.status, "LIVE", event.locationText)}
+                            disabled={updatingStatusId === event.id}
+                          >
+                            開始
+                          </Button>
+                        )}
+                        {event.status === "LIVE" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 min-w-[72px]"
+                            onClick={() => handleStatusChange(event.id, event.status, "ENDED", event.locationText)}
+                            disabled={updatingStatusId === event.id}
+                          >
+                            終了
+                          </Button>
+                        )}
+                        <select
+                          value={event.status}
+                          onChange={(e) => handleStatusChange(event.id, event.status, e.target.value, event.locationText)}
+                          disabled={updatingStatusId === event.id}
+                          className="text-xs px-2 py-1 rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            backgroundColor: event.status === "LIVE" ? "#fee2e2" : event.status === "ENDED" ? "#f3f4f6" : "#dbeafe",
+                            color: event.status === "LIVE" ? "#991b1b" : event.status === "ENDED" ? "#374151" : "#1e40af",
+                          }}
+                        >
+                          <option value="PLANNED">予定</option>
+                          <option value="LIVE">実施中</option>
+                          <option value="ENDED">終了</option>
+                        </select>
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
                       {event.notes || "-"}

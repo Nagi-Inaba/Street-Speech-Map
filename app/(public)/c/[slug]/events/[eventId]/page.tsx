@@ -175,11 +175,35 @@ export default async function EventPage({
 
         {/* 地図エリア */}
         {allMarkers.length > 0 && (
-          <section className="mb-8">
+          <section id="event-map" className="mb-8 scroll-mt-4">
             <h2 className="text-xl sm:text-2xl font-bold mb-4">地図</h2>
             <Card>
               <CardContent className="p-2 sm:p-4">
                 <CandidateMap center={mapCenter} markers={allMarkers} />
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* 場所変更報告がある場合の注意喚起 */}
+        {(isLive || isPlanned) && event.moveHints.length > 0 && (
+          <section className="mb-6">
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="p-4">
+                <p className="text-sm text-amber-900 mb-3">
+                  場所変更報告で演説場所が変更になった可能性があります。最新の情報は候補者のXをご確認ください。
+                </p>
+                <p className="text-sm font-medium text-amber-900 mb-2">移動した可能性のある場所：</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-amber-900">
+                  {event.moveHints.map((hint) => (
+                    <li key={hint.id}>
+                      こちらに移動した可能性があります（{hint.count}件の報告より）
+                      <a href="#event-map" className="ml-1 text-amber-700 underline hover:no-underline">
+                        地図で見る
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           </section>

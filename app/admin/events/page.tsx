@@ -1,9 +1,21 @@
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import EventsPageClient from "./page-client";
 import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 
+export const dynamic = "force-dynamic";
+
 export default async function EventsPage() {
   try {
+    const session = await auth();
+    let defaultCandidateId: string | null = null;
+    if (session?.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { defaultCandidateId: true },
+      });
+      defaultCandidateId = user?.defaultCandidateId ?? null;
+    }
     // EventCandidateテーブルが存在するか確認
     let events;
     try {
@@ -84,6 +96,7 @@ export default async function EventsPage() {
         lat: event.lat,
         lng: event.lng,
         notes: event.notes,
+        isPublic: event.isPublic,
         submittedAt: event.submittedAt,
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
@@ -92,7 +105,13 @@ export default async function EventsPage() {
       };
     });
 
-    return <EventsPageClient events={eventsWithCheckCount} candidates={sortedCandidates} />;
+    return (
+      <EventsPageClient
+        events={eventsWithCheckCount}
+        candidates={sortedCandidates}
+        defaultCandidateId={defaultCandidateId ?? undefined}
+      />
+    );
   } catch (error) {
     console.error("Error in EventsPage:", error);
     return (

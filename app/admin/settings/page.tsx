@@ -21,8 +21,10 @@ export default function SettingsPage() {
   const [shareTemplateLive, setShareTemplateLive] = useState("");
   const [shareTemplatePlanned, setShareTemplatePlanned] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [defaultCandidateId, setDefaultCandidateId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDefaultCandidate, setIsSavingDefaultCandidate] = useState(false);
   const [updatingCandidateId, setUpdatingCandidateId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,9 +33,10 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const [settingsRes, candidatesRes] = await Promise.all([
+      const [settingsRes, candidatesRes, meRes] = await Promise.all([
         fetch("/api/admin/settings"),
         fetch("/api/admin/candidates"),
+        fetch("/api/admin/me"),
       ]);
 
       if (settingsRes.ok) {
@@ -55,10 +58,38 @@ export default function SettingsPage() {
           }))
         );
       }
+
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        setDefaultCandidateId(meData.defaultCandidateId ?? "");
+      }
     } catch (error) {
       console.error("Error fetching settings:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveDefaultCandidate = async () => {
+    setIsSavingDefaultCandidate(true);
+    try {
+      const res = await fetch("/api/admin/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          defaultCandidateId: defaultCandidateId || null,
+        }),
+      });
+      if (res.ok) {
+        alert("演説予定一覧の初期表示候補者を保存しました");
+      } else {
+        alert("保存に失敗しました");
+      }
+    } catch (error) {
+      console.error("Error saving default candidate:", error);
+      alert("エラーが発生しました");
+    } finally {
+      setIsSavingDefaultCandidate(false);
     }
   };
 
@@ -264,6 +295,38 @@ export default function SettingsPage() {
               {isSaving ? "保存中..." : "設定を保存"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl w-full mt-6">
+        <CardHeader>
+          <CardTitle>演説予定一覧の初期表示</CardTitle>
+          <CardDescription>
+            管理画面の演説予定一覧を開いたときに、最初に表示する候補者を選べます。担当の候補者を選ぶと操作が少なくなります。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="default-candidate" className="text-base">
+              初期表示する候補者
+            </Label>
+            <select
+              id="default-candidate"
+              value={defaultCandidateId}
+              onChange={(e) => setDefaultCandidateId(e.target.value)}
+              className="w-full max-w-md px-3 py-2 border rounded-md bg-white"
+            >
+              <option value="">指定しない（すべて表示）</option>
+              {candidates.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button onClick={handleSaveDefaultCandidate} disabled={isSavingDefaultCandidate}>
+            {isSavingDefaultCandidate ? "保存中..." : "保存"}
+          </Button>
         </CardContent>
       </Card>
 

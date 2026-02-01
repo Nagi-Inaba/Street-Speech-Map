@@ -16,6 +16,7 @@ const eventSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   notes: z.string().nullable().optional(),
+  isPublic: z.boolean().optional().default(true),
 });
 
 export async function GET() {
@@ -118,6 +119,7 @@ export async function POST(request: NextRequest) {
         lng: data.lng,
         notes: data.notes || null,
         status: "PLANNED",
+        isPublic: data.isPublic ?? true,
         additionalCandidates: {
           create: validAdditionalCandidateIds
             .filter((id) => id !== data.candidateId)
