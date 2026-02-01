@@ -128,17 +128,21 @@ export default async function EventPage({
       <div style="font-size: 12px;">${event.locationText}</div>
     </div>
   `;
-  const mapMarkers = [
-    {
-      id: event.id,
-      position: [event.lat, event.lng] as [number, number],
-      popup: popupContent,
-      color: isLive ? "red" : "blue",
-    },
-  ];
+  // 終了した演説は地図に表示しない
+  const mapMarkers =
+    isEnded
+      ? []
+      : [
+          {
+            id: event.id,
+            position: [event.lat, event.lng] as [number, number],
+            popup: popupContent,
+            color: isLive ? "red" : "blue",
+          },
+        ];
 
-  // MoveHint用のマーカー
-  const moveHintMarkers = event.moveHints.map((hint) => ({
+  // MoveHint用のマーカー（終了時は表示しない）
+  const moveHintMarkers = isEnded ? [] : event.moveHints.map((hint) => ({
     id: `move-hint-${hint.id}`,
     position: [hint.lat, hint.lng] as [number, number],
     popup: `推定位置（${hint.count}件の報告より）`,

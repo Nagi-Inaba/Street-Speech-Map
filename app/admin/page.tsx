@@ -6,9 +6,13 @@ import Link from "next/link";
 export default async function AdminDashboard() {
   const session = await auth();
 
-  const [candidatesCount, eventsCount, pendingRequestsCount] = await Promise.all([
+  const [candidatesCount, eventsByStatus, pendingRequestsCount] = await Promise.all([
     prisma.candidate.count(),
-    prisma.speechEvent.count(),
+    Promise.all([
+      prisma.speechEvent.count({ where: { status: "PLANNED" } }),
+      prisma.speechEvent.count({ where: { status: "LIVE" } }),
+      prisma.speechEvent.count({ where: { status: "ENDED" } }),
+    ]).then(([planned, live, ended]) => ({ planned, live, ended })),
     prisma.publicRequest.count({
       where: { status: "PENDING" },
     }),
@@ -37,11 +41,22 @@ export default async function AdminDashboard() {
         <Link href="/admin/events">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader>
-              <CardTitle className="text-lg">演説予定数</CardTitle>
+              <CardTitle className="text-lg">演説予定</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-primary">{eventsCount}</p>
-              <p className="text-sm text-muted-foreground mt-1">登録済み演説予定</p>
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <span className="text-2xl sm:text-3xl font-bold text-blue-600">{eventsByStatus.planned}</span>
+                <span className="text-sm text-muted-foreground">予定</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-2xl sm:text-3xl font-bold text-red-600">{eventsByStatus.live}</span>
+                <span className="text-sm text-muted-foreground">実施中</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-2xl sm:text-3xl font-bold text-gray-600">{eventsByStatus.ended}</span>
+                <span className="text-sm text-muted-foreground">終了済み</span>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+                合計 {eventsByStatus.planned + eventsByStatus.live + eventsByStatus.ended} 件
+              </p>
             </CardContent>
           </Card>
         </Link>

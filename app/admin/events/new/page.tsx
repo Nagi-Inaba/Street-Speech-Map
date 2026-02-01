@@ -420,13 +420,11 @@ export default function NewEventPage() {
                 center={mapCenter}
                 zoom={mapZoom}
                 editable
-                onMapClick={(newLat, newLng) => {
-                  setLat(newLat);
-                  setLng(newLng);
-                }}
+                onMapClick={handleMapClick}
                 onCenterChange={(newLat, newLng) => {
                   setLat(newLat);
                   setLng(newLng);
+                  setUserHasSetLocation(true);
                 }}
                 markers={[
                   {

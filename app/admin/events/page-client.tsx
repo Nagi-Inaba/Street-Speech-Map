@@ -398,7 +398,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                             onClick={() => handleStatusChange(event.id, event.status, "LIVE", event.locationText)}
                             disabled={updatingStatusId === event.id}
                           >
-                            開始
+                            開始に変更
                           </Button>
                         )}
                         {event.status === "LIVE" && (
@@ -409,7 +409,7 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
                             onClick={() => handleStatusChange(event.id, event.status, "ENDED", event.locationText)}
                             disabled={updatingStatusId === event.id}
                           >
-                            終了
+                            終了に変更
                           </Button>
                         )}
                         <select

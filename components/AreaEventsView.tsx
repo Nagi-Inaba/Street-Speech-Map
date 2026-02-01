@@ -169,9 +169,9 @@ export default function AreaEventsView({
     );
   };
 
-  // 地図用のマーカーを生成
+  // 地図用のマーカーを生成（終了した演説は地図に表示しない）
   const mapMarkers = useMemo(() => {
-    const allEvents = [...liveEvents, ...plannedEvents, ...endedEvents];
+    const allEvents = [...liveEvents, ...plannedEvents];
     return allEvents.map((event) => {
       const candidate = candidates.find((c) => c.id === event.candidateId)!;
       const names = [event.candidate.name];
@@ -200,10 +200,10 @@ export default function AreaEventsView({
         id: event.id,
         position: [event.lat, event.lng] as [number, number],
         popup: popupContent,
-        color: event.status === "LIVE" ? "red" : event.status === "ENDED" ? undefined : "blue",
+        color: event.status === "LIVE" ? "red" : "blue",
       };
     });
-  }, [liveEvents, plannedEvents, endedEvents, candidates]);
+  }, [liveEvents, plannedEvents, candidates]);
 
   // 地図の中心位置とズームレベルを計算
   const { mapCenter, mapZoom } = useMemo(() => {

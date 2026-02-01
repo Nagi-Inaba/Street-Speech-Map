@@ -457,6 +457,9 @@ export default async function CandidatePage({
           </section>
         )}
 
+        {/* リクエスト送信フォーム（終了した演説より上に表示） */}
+        <RequestForm candidateId={candidate.id} candidateName={candidate.name} />
+
         {/* 終了した演説予定 */}
         {showEvents && endedEvents.length > 0 && (
           <section className="mb-8">
@@ -496,9 +499,6 @@ export default async function CandidatePage({
             演説予定の表示は現在非表示になっています。
           </p>
         )}
-
-        {/* リクエスト送信フォーム */}
-        <RequestForm candidateId={candidate.id} candidateName={candidate.name} />
       </main>
     </>
   );
