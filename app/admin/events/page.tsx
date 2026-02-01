@@ -5,8 +5,13 @@ import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 
 export const dynamic = "force-dynamic";
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ candidate?: string }>;
+}) {
   try {
+    const { candidate: candidateFromUrl } = await searchParams;
     const session = await auth();
     let defaultCandidateId: string | null = null;
     if (session?.user?.id) {
@@ -109,7 +114,7 @@ export default async function EventsPage() {
       <EventsPageClient
         events={eventsWithCheckCount}
         candidates={sortedCandidates}
-        defaultCandidateId={defaultCandidateId ?? undefined}
+        defaultCandidateId={candidateFromUrl ?? defaultCandidateId ?? undefined}
       />
     );
   } catch (error) {

@@ -86,26 +86,31 @@ export default function LeafletMapWithSearch({
   return (
     <div className="space-y-2">
       {/* 住所検索バー */}
-      <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="住所を検索（例: 東京都千代田区）"
-            className="w-full px-3 py-2 pl-10 border rounded-md bg-white"
-          />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="space-y-1">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="住所・地名・郵便番号（7桁）で検索"
+              className="w-full px-3 py-2 pl-10 border rounded-md bg-white"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          </div>
+          <Button
+            type="button"
+            onClick={handleSearch}
+            disabled={isSearching || !searchQuery.trim()}
+            size="sm"
+          >
+            {isSearching ? "検索中..." : "検索"}
+          </Button>
         </div>
-        <Button
-          type="button"
-          onClick={handleSearch}
-          disabled={isSearching || !searchQuery.trim()}
-          size="sm"
-        >
-          {isSearching ? "検索中..." : "検索"}
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          ヒットしない場合は「○○駅」「○○駅西口」や郵便番号（7桁）で試してください。位置がずれたら地図上でピンを動かして調整できます。
+        </p>
       </div>
 
       {/* 地図 */}

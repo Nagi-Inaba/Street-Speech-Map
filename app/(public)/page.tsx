@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import Image from "next/image";
 import PublicHeader from "@/components/PublicHeader";
 import { sortCandidatesByRegion } from "@/lib/sort-candidates";
+import { getTodayJSTDateRange } from "@/lib/time";
 import type { Metadata } from "next";
 
 // ベースURLを取得（環境変数から、またはデフォルト値を使用）
@@ -50,17 +51,25 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const candidates = await prisma.candidate.findMany();
+  const { start: todayStart, end: todayEnd } = getTodayJSTDateRange();
+
+  const [candidates, settings, todayEventsCount] = await Promise.all([
+    prisma.candidate.findMany(),
+    prisma.siteSettings.findUnique({
+      where: { id: "site-settings" },
+    }),
+    prisma.speechEvent.count({
+      where: {
+        status: { in: ["PLANNED", "LIVE"] },
+        startAt: { gte: todayStart, lte: todayEnd },
+        isPublic: true,
+      },
+    }),
+  ]);
+
   const sortedCandidates = sortCandidatesByRegion(candidates);
-  
-  // 設定を取得
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: "site-settings" },
-  });
   const showCandidateInfo = settings?.showCandidateInfo ?? true;
   const candidateLabel = settings?.candidateLabel !== undefined ? settings.candidateLabel : "候補者";
-
-  // すべての候補者を表示（立候補区分の有無に関わらず）
   const visibleCandidates = sortedCandidates;
 
   return (
@@ -68,6 +77,12 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>今日の演説予定：</span>
+          <span className="font-semibold text-foreground">{todayEventsCount}</span>
+          <span>件</span>
+        </div>
+
         <Link
           href="/area"
           className="inline-block w-full sm:w-auto mb-6"

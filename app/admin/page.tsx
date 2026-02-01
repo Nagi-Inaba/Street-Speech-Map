@@ -6,17 +6,36 @@ import Link from "next/link";
 export default async function AdminDashboard() {
   const session = await auth();
 
-  const [candidatesCount, eventsByStatus, pendingRequestsCount] = await Promise.all([
-    prisma.candidate.count(),
-    Promise.all([
-      prisma.speechEvent.count({ where: { status: "PLANNED" } }),
-      prisma.speechEvent.count({ where: { status: "LIVE" } }),
-      prisma.speechEvent.count({ where: { status: "ENDED" } }),
-    ]).then(([planned, live, ended]) => ({ planned, live, ended })),
-    prisma.publicRequest.count({
-      where: { status: "PENDING" },
-    }),
-  ]);
+  const [candidatesCount, eventsByStatus, pendingRequestsCount, candidatesWithEventCount] =
+    await Promise.all([
+      prisma.candidate.count(),
+      Promise.all([
+        prisma.speechEvent.count({ where: { status: "PLANNED" } }),
+        prisma.speechEvent.count({ where: { status: "LIVE" } }),
+        prisma.speechEvent.count({ where: { status: "ENDED" } }),
+      ]).then(([planned, live, ended]) => ({ planned, live, ended })),
+      prisma.publicRequest.count({
+        where: { status: "PENDING" },
+      }),
+      (async () => {
+        const [candidates, countByCandidate] = await Promise.all([
+          prisma.candidate.findMany({
+            orderBy: { name: "asc" },
+            select: { id: true, name: true, slug: true },
+          }),
+          prisma.speechEvent.groupBy({
+            by: ["candidateId"],
+            where: { status: { in: ["PLANNED", "LIVE"] } },
+            _count: true,
+          }),
+        ]);
+        const countMap = new Map(countByCandidate.map((r) => [r.candidateId, r._count]));
+        return candidates.map((c) => ({
+          ...c,
+          eventCount: countMap.get(c.id) ?? 0,
+        }));
+      })(),
+    ]);
 
   return (
     <div>
@@ -73,6 +92,29 @@ export default async function AdminDashboard() {
           </Card>
         </Link>
       </div>
+
+      <Card className="mb-6 sm:mb-8">
+        <CardHeader>
+          <CardTitle className="text-lg">候補者別演説予定数</CardTitle>
+          <CardDescription>各候補者の演説予定数（予定・実施中のみ、終了は含まない）</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {candidatesWithEventCount.length === 0 ? (
+            <p className="text-sm text-muted-foreground">候補者がいません</p>
+          ) : (
+            <ul className="space-y-2">
+              {candidatesWithEventCount.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-4 py-1 border-b border-border last:border-b-0">
+                  <Link href={`/admin/events?candidate=${c.id}`} className="text-sm font-medium hover:underline">
+                    {c.name}
+                  </Link>
+                  <span className="text-sm text-muted-foreground">{c.eventCount} 件</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card>
