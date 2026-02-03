@@ -54,6 +54,12 @@ export default function BulkImportPage() {
   }, []);
 
   useEffect(() => {
+    if (!defaultCandidateId && candidates.length > 0) {
+      setDefaultCandidateId(candidates[0].id);
+    }
+  }, [candidates, defaultCandidateId]);
+
+  useEffect(() => {
     if (!csvText.trim() || candidates.length === 0) {
       if (!csvText.trim()) setPreview([]);
       return;
@@ -114,7 +120,7 @@ export default function BulkImportPage() {
       const candidateId = nameToId.get(cand) ?? (candidates.find((c) => c.id === cand) ? cand : defaultCandidateId || null);
       if (!candidateId) continue;
 
-      const dateStr = (row["日付"] ?? row["date"] ?? row["日"] ?? "").trim();
+      const rawDate = (row["日付"] ?? row["date"] ?? row["日"] ?? "").trim();
       const startTime = (row["開始"] ?? row["start"] ?? row["開始時刻"] ?? "").trim();
       const endTime = (row["終了"] ?? row["end"] ?? row["終了時刻"] ?? "").trim();
       const locationText = (row["場所"] ?? row["location"] ?? row["場所名"] ?? "").trim();
@@ -126,16 +132,22 @@ export default function BulkImportPage() {
 
       let startAt: string | null = null;
       let endAt: string | null = null;
-      const timeUnknown = !dateStr && !startTime;
-      if (dateStr && startTime) {
+      const timeUnknown = !rawDate && !startTime;
+      const normalizedDate = rawDate
+        ? (() => {
+            const replaced = rawDate.replace(/\//g, "-");
+            return /^\d{4}-\d{2}-\d{2}$/.test(replaced) ? replaced : `${currentYear}-${replaced}`;
+          })()
+        : "";
+      if (normalizedDate && startTime) {
         const [h, m] = startTime.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        startAt = `${currentYear}-${dateStr.replace(/\//g, "-")}T${h}:${m}:00.000Z`;
-      } else if (dateStr) {
-        startAt = `${currentYear}-${dateStr.replace(/\//g, "-")}T00:00:00.000Z`;
+        startAt = `${normalizedDate}T${h}:${m}:00.000Z`;
+      } else if (normalizedDate) {
+        startAt = `${normalizedDate}T00:00:00.000Z`;
       }
-      if (dateStr && endTime) {
+      if (normalizedDate && endTime) {
         const [h, m] = endTime.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        endAt = `${currentYear}-${dateStr.replace(/\//g, "-")}T${h}:${m}:00.000Z`;
+        endAt = `${normalizedDate}T${h}:${m}:00.000Z`;
       }
 
       const parsedLat = latStr ? parseFloat(latStr) : undefined;
@@ -210,7 +222,7 @@ export default function BulkImportPage() {
           <CardDescription>
             スプレッドシートやCSVのデータを貼り付けて一括登録できます。1行目はヘッダーにしてください。
             <br />
-            列の例: 候補者名（または候補者ID）, 日付(YYYY-MM-DD), 開始時刻(HH:mm), 終了時刻(HH:mm), 場所, 緯度, 経度, 備考
+            列の例: 候補者名（または候補者ID）, 日付(MM-DD), 開始時刻(HH:mm), 終了時刻(HH:mm), 場所, 緯度, 経度, 備考
             <br />
             緯度/経度を空欄にしても登録できます。空欄の場合は東京駅付近の座標で保存されます。
             <br />
@@ -237,6 +249,9 @@ export default function BulkImportPage() {
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              選択がない場合、候補者一覧の最初の候補者を自動で既定に設定します。
+            </p>
           </div>
           <div>
             <Label htmlFor="csv" className="block text-sm font-medium mb-1">
@@ -258,32 +273,38 @@ export default function BulkImportPage() {
                 プレビュー: {events.length} 件を登録します
                 {events.length < preview.length && `（${preview.length - events.length} 件はスキップ）`}
               </p>
-              <div className="relative">
-                <div className="overflow-x-auto max-h-48 border rounded p-2 text-xs">
-                  <table className="w-full min-w-[320px]">
-                    <thead>
-                      <tr>
-                        <th className="text-left p-1">候補者</th>
-                        <th className="text-left p-1">日付・時刻</th>
-                        <th className="text-left p-1">場所</th>
+            <div className="relative">
+              <div className="overflow-x-auto max-h-48 border rounded p-2 text-xs">
+                <table className="w-full min-w-[680px]">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-1">候補者</th>
+                      <th className="text-left p-1">日付・時刻</th>
+                      <th className="text-left p-1">場所</th>
+                      <th className="text-left p-1">緯度</th>
+                      <th className="text-left p-1">経度</th>
+                      <th className="text-left p-1">備考</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.slice(0, 10).map((e, i) => (
+                      <tr key={i}>
+                        <td className="p-1">{candidates.find((c) => c.id === e.candidateId)?.name ?? e.candidateId}</td>
+                        <td className="p-1">{e.startAt ?? "時間未定"}</td>
+                        <td className="p-1">{e.locationText}</td>
+                        <td className="p-1">{typeof e.lat === "number" ? e.lat.toFixed(6) : "―"}</td>
+                        <td className="p-1">{typeof e.lng === "number" ? e.lng.toFixed(6) : "―"}</td>
+                        <td className="p-1 break-words max-w-[200px]">{e.notes ?? "―"}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {events.slice(0, 10).map((e, i) => (
-                        <tr key={i}>
-                          <td className="p-1">{candidates.find((c) => c.id === e.candidateId)?.name ?? e.candidateId}</td>
-                          <td className="p-1">{e.startAt ?? "時間未定"}</td>
-                          <td className="p-1">{e.locationText}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {events.length > 10 && <p className="text-muted-foreground mt-1">… 他 {events.length - 10} 件</p>}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1.5 text-center sm:hidden" role="status">
-                  ← → 左右にスワイプして全体を表示
-                </p>
+                    ))}
+                  </tbody>
+                </table>
+                {events.length > 10 && <p className="text-muted-foreground mt-1">… 他 {events.length - 10} 件</p>}
               </div>
+              <p className="text-xs text-muted-foreground mt-1.5 text-center" role="status">
+                横長のテーブルは横スクロール可能です。<span className="hidden sm:inline">マウスホイールやトラックパッドで左右に移動できます。</span>
+              </p>
+            </div>
             </div>
           )}
           {submitResult && (
