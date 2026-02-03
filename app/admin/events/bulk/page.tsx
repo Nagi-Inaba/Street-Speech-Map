@@ -90,8 +90,8 @@ export default function BulkImportPage() {
     endAt: string | null;
     timeUnknown: boolean;
     locationText: string;
-    lat: number;
-    lng: number;
+    lat?: number;
+    lng?: number;
     notes: string | null;
     isPublic: boolean;
   }> => {
@@ -102,8 +102,8 @@ export default function BulkImportPage() {
       endAt: string | null;
       timeUnknown: boolean;
       locationText: string;
-      lat: number;
-      lng: number;
+      lat?: number;
+      lng?: number;
       notes: string | null;
       isPublic: boolean;
     }> = [];
@@ -138,8 +138,8 @@ export default function BulkImportPage() {
         endAt = `${currentYear}-${dateStr.replace(/\//g, "-")}T${h}:${m}:00.000Z`;
       }
 
-      const lat = latStr ? parseFloat(latStr) : 35.6812;
-      const lng = lngStr ? parseFloat(lngStr) : 139.7671;
+      const parsedLat = latStr ? parseFloat(latStr) : undefined;
+      const parsedLng = lngStr ? parseFloat(lngStr) : undefined;
 
       events.push({
         candidateId,
@@ -147,10 +147,10 @@ export default function BulkImportPage() {
         endAt,
         timeUnknown,
         locationText,
-        lat: Number.isFinite(lat) ? lat : 35.6812,
-        lng: Number.isFinite(lng) ? lng : 139.7671,
+        lat: Number.isFinite(parsedLat) ? parsedLat : undefined,
+        lng: Number.isFinite(parsedLng) ? parsedLng : undefined,
         notes,
-        isPublic: true,
+        isPublic: false,
       });
     }
     return events;
@@ -212,7 +212,11 @@ export default function BulkImportPage() {
             <br />
             列の例: 候補者名（または候補者ID）, 日付(YYYY-MM-DD), 開始時刻(HH:mm), 終了時刻(HH:mm), 場所, 緯度, 経度, 備考
             <br />
-            候補者名の列がない行は、下の「既定の候補者」で指定した候補者として登録されます。
+            緯度/経度を空欄にしても登録できます。空欄の場合は東京駅付近の座標で保存されます。
+            <br />
+            CSV内に候補者名の列がない行は、下の「既定の候補者」で指定した候補者として登録されます。
+            <br />
+            このページから作成したイベントはすべて非公開で保存されるため、管理画面で個別に公開しない限り外部には表示されません。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

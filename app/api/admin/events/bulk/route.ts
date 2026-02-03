@@ -6,6 +6,9 @@ import { hasPermission } from "@/lib/rbac";
 import { z } from "zod";
 import { generateEventOgImage, generateCandidateOgImage } from "@/lib/og-image-generator";
 
+const DEFAULT_LAT = 35.6812;
+const DEFAULT_LNG = 139.7671;
+
 const eventItemSchema = z.object({
   candidateId: z.string(),
   additionalCandidateIds: z.array(z.string()).optional().default([]),
@@ -13,10 +16,10 @@ const eventItemSchema = z.object({
   endAt: z.string().nullable().optional(),
   timeUnknown: z.boolean().default(false),
   locationText: z.string().min(1),
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
   notes: z.string().nullable().optional(),
-  isPublic: z.boolean().optional().default(true),
+  isPublic: z.boolean().optional().default(false),
 });
 
 const bulkSchema = z.object({
@@ -59,6 +62,8 @@ export async function POST(request: NextRequest) {
         (id) => id && id.trim() !== "" && id !== item.candidateId
       );
       try {
+        const normalizedLat = typeof item.lat === "number" && Number.isFinite(item.lat) ? item.lat : DEFAULT_LAT;
+        const normalizedLng = typeof item.lng === "number" && Number.isFinite(item.lng) ? item.lng : DEFAULT_LNG;
         const event = await prisma.speechEvent.create({
           data: {
             candidateId: item.candidateId,
@@ -66,11 +71,11 @@ export async function POST(request: NextRequest) {
             endAt: item.endAt ? new Date(item.endAt) : null,
             timeUnknown: item.timeUnknown,
             locationText: item.locationText,
-            lat: item.lat,
-            lng: item.lng,
+            lat: normalizedLat,
+            lng: normalizedLng,
             notes: item.notes || null,
             status: "PLANNED",
-            isPublic: item.isPublic ?? true,
+            isPublic: item.isPublic ?? false,
             additionalCandidates: {
               create: validAdditionalCandidateIds.map((candidateId) => ({ candidateId })),
             },
