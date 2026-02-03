@@ -94,6 +94,7 @@ export default function BulkImportPage() {
     candidateId: string;
     startAt: string | null;
     endAt: string | null;
+    displayTime: string;
     timeUnknown: boolean;
     locationText: string;
     lat?: number;
@@ -106,6 +107,7 @@ export default function BulkImportPage() {
       candidateId: string;
       startAt: string | null;
       endAt: string | null;
+      displayTime: string;
       timeUnknown: boolean;
       locationText: string;
       lat?: number;
@@ -139,16 +141,23 @@ export default function BulkImportPage() {
             return /^\d{4}-\d{2}-\d{2}$/.test(replaced) ? replaced : `${currentYear}-${replaced}`;
           })()
         : "";
+      const buildIsoWithOffset = (date: string, time: string) => {
+        const [h, m] = time.split(/[:\s]/).map((s) => s.padStart(2, "0"));
+        return `${date}T${h}:${m}:00+09:00`;
+      };
       if (normalizedDate && startTime) {
         const [h, m] = startTime.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        startAt = `${normalizedDate}T${h}:${m}:00.000Z`;
+        startAt = buildIsoWithOffset(normalizedDate, `${h}:${m}`);
       } else if (normalizedDate) {
-        startAt = `${normalizedDate}T00:00:00.000Z`;
+        startAt = `${normalizedDate}T00:00:00+09:00`;
       }
       if (normalizedDate && endTime) {
         const [h, m] = endTime.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        endAt = `${normalizedDate}T${h}:${m}:00.000Z`;
+        endAt = buildIsoWithOffset(normalizedDate, `${h}:${m}`);
       }
+      const displayTime = normalizedDate
+        ? `${normalizedDate}${startTime ? ` ${startTime}` : ""}${endTime ? `–${endTime}` : ""}`
+        : "時間未定";
 
       const parsedLat = latStr ? parseFloat(latStr) : undefined;
       const parsedLng = lngStr ? parseFloat(lngStr) : undefined;
@@ -157,6 +166,7 @@ export default function BulkImportPage() {
         candidateId,
         startAt,
         endAt,
+        displayTime,
         timeUnknown,
         locationText,
         lat: Number.isFinite(parsedLat) ? parsedLat : undefined,
@@ -290,7 +300,7 @@ export default function BulkImportPage() {
                     {events.slice(0, 10).map((e, i) => (
                       <tr key={i}>
                         <td className="p-1">{candidates.find((c) => c.id === e.candidateId)?.name ?? e.candidateId}</td>
-                        <td className="p-1">{e.startAt ?? "時間未定"}</td>
+                        <td className="p-1">{e.displayTime}</td>
                         <td className="p-1">{e.locationText}</td>
                         <td className="p-1">{typeof e.lat === "number" ? e.lat.toFixed(6) : "―"}</td>
                         <td className="p-1">{typeof e.lng === "number" ? e.lng.toFixed(6) : "―"}</td>
