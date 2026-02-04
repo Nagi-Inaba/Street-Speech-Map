@@ -108,9 +108,15 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    await prisma.candidate.delete({
-      where: { id },
-    });
+    await prisma.$transaction([
+      prisma.user.updateMany({
+        where: { defaultCandidateId: id },
+        data: { defaultCandidateId: null },
+      }),
+      prisma.candidate.delete({
+        where: { id },
+      }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

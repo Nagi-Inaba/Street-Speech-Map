@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CANDIDATE_TYPES, PREFECTURES, PROPORTIONAL_BLOCKS, SingleDistrict } from "@/lib/constants";
 import { loadSingleDistrictsFromCSV } from "@/lib/single-districts";
+import { hasPermission } from "@/lib/rbac";
 import { Loader2 } from "lucide-react";
 
 interface Candidate {
@@ -27,6 +28,7 @@ export default function EditCandidatePage() {
   const params = useParams();
   const candidateId = params.id as string;
 
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -39,8 +41,11 @@ export default function EditCandidatePage() {
   const [showEvents, setShowEvents] = useState(false);
   const [xAccountUrl, setXAccountUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const submittingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const canDelete = hasPermission({ role: userRole || "" }, "SiteAdmin");
 
   useEffect(() => {
     // 小選挙区データを読み込む
@@ -72,6 +77,13 @@ export default function EditCandidatePage() {
         router.push("/admin/candidates");
       });
   }, [candidateId, router]);
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((session) => setUserRole(session?.user?.role ?? null))
+      .catch(() => setUserRole(null));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +137,38 @@ export default function EditCandidatePage() {
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!canDelete) {
+      alert("削除はSiteAdminのみ実行できます。");
+      return;
+    }
+
+    const displayName = name || candidate?.name || "";
+    const ok = window.confirm(
+      `候補者${displayName ? `「${displayName}」` : ""}を削除します。\n関連する演説予定も削除されます。\nこの操作は取り消せません。\n本当に削除しますか？`
+    );
+    if (!ok) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/candidates/${candidateId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        router.push("/admin/candidates");
+        return;
+      }
+
+      const error = await res.json().catch(() => null);
+      alert(error?.error || error?.message || "削除に失敗しました。");
+    } catch (error) {
+      alert("削除に失敗しました。");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -330,8 +374,8 @@ export default function EditCandidatePage() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <Button type="submit" disabled={isSubmitting || isDeleting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? "更新中..." : "更新"}
               </Button>
@@ -339,9 +383,23 @@ export default function EditCandidatePage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
+                disabled={isSubmitting || isDeleting}
               >
                 キャンセル
               </Button>
+
+              {canDelete && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="sm:ml-auto"
+                  onClick={handleDelete}
+                  disabled={isSubmitting || isDeleting}
+                >
+                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isDeleting ? "削除中..." : "候補者を削除"}
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
@@ -349,4 +407,3 @@ export default function EditCandidatePage() {
     </div>
   );
 }
-
