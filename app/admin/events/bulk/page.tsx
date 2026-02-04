@@ -36,6 +36,27 @@ function parseCsv(text: string): string[][] {
   });
 }
 
+function pad2(value: string): string {
+  return value.padStart(2, "0");
+}
+
+function normalizeTimePart(value: string): string {
+  const raw = value.trim();
+  if (!raw) return "";
+  const colonMatch = raw.match(/(\d{1,2})\s*[:：]\s*(\d{1,2})/);
+  const dotMatch = raw.match(/(\d{1,2})\s*[.．]\s*(\d{1,2})/);
+  const jpMatch = raw.match(/(\d{1,2})\s*時\s*(\d{1,2})?/);
+  const hourOnlyMatch = raw.match(/^(\d{1,2})$/);
+  const match = colonMatch ?? dotMatch ?? jpMatch ?? hourOnlyMatch;
+  if (!match) return "";
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2] ?? "00");
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return "";
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+  return `${pad2(String(hour))}:${pad2(String(minute))}`;
+}
+
 export default function BulkImportPage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -134,29 +155,26 @@ export default function BulkImportPage() {
 
       let startAt: string | null = null;
       let endAt: string | null = null;
-      const timeUnknown = !rawDate && !startTime;
+      const normalizedStartTime = normalizeTimePart(startTime);
+      const normalizedEndTime = normalizeTimePart(endTime);
+      const timeUnknown = !rawDate && !normalizedStartTime;
       const normalizedDate = rawDate
         ? (() => {
             const replaced = rawDate.replace(/\//g, "-");
             return /^\d{4}-\d{2}-\d{2}$/.test(replaced) ? replaced : `${currentYear}-${replaced}`;
           })()
         : "";
-      const buildIsoWithOffset = (date: string, time: string) => {
-        const [h, m] = time.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        return `${date}T${h}:${m}:00+09:00`;
-      };
-      if (normalizedDate && startTime) {
-        const [h, m] = startTime.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        startAt = buildIsoWithOffset(normalizedDate, `${h}:${m}`);
+      const buildIsoWithOffset = (date: string, time: string) => `${date}T${time}:00+09:00`;
+      if (normalizedDate && normalizedStartTime) {
+        startAt = buildIsoWithOffset(normalizedDate, normalizedStartTime);
       } else if (normalizedDate) {
         startAt = `${normalizedDate}T00:00:00+09:00`;
       }
-      if (normalizedDate && endTime) {
-        const [h, m] = endTime.split(/[:\s]/).map((s) => s.padStart(2, "0"));
-        endAt = buildIsoWithOffset(normalizedDate, `${h}:${m}`);
+      if (normalizedDate && normalizedEndTime) {
+        endAt = buildIsoWithOffset(normalizedDate, normalizedEndTime);
       }
       const displayTime = normalizedDate
-        ? `${normalizedDate}${startTime ? ` ${startTime}` : ""}${endTime ? `–${endTime}` : ""}`
+        ? `${normalizedDate}${normalizedStartTime ? ` ${normalizedStartTime}` : ""}${normalizedEndTime ? `–${normalizedEndTime}` : ""}`
         : "時間未定";
 
       const parsedLat = latStr ? parseFloat(latStr) : undefined;
