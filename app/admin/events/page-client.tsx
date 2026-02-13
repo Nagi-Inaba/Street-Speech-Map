@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit, ExternalLink, Upload, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit, ExternalLink, Upload, Loader2, Download } from "lucide-react";
 import { formatJSTWithoutYear, formatJSTTime } from "@/lib/time";
 
 interface Candidate {
@@ -251,6 +251,12 @@ export default function EventsPageClient({ events, candidates, defaultCandidateI
             <Button variant="outline" className="w-full sm:w-auto">
               <Upload className="mr-2 h-4 w-4" />
               一括入稿
+            </Button>
+          </Link>
+          <Link href="/api/admin/events/export" className="flex-1 sm:flex-none">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <Download className="mr-2 h-4 w-4" />
+              CSVダウンロード
             </Button>
           </Link>
         </div>
