@@ -5,30 +5,16 @@ import AreaEventsView from "@/components/AreaEventsView";
 import type { CandidateWithEventsForArea } from "@/components/AreaEventsView";
 import type { Metadata } from "next";
 
-// ベースURLを取得（環境変数から、またはデフォルト値を使用）
-function getBaseUrl() {
-  if (process.env.NEXTAUTH_URL) {
-    return process.env.NEXTAUTH_URL;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return "http://localhost:3000";
-}
-
-const baseUrl = getBaseUrl();
-
 export const metadata: Metadata = {
   title: "エリアごと演説予定 | チームみらい 街頭演説マップ",
   description: "エリアごとに候補者の街頭演説予定・実施中・終了を一覧で表示",
   openGraph: {
     title: "エリアごと演説予定 | チームみらい 街頭演説マップ",
     description: "エリアごとに候補者の街頭演説予定・実施中・終了を一覧で表示",
-    url: `${baseUrl}/area`,
     siteName: "チームみらい 街頭演説マップ",
     images: [
       {
-        url: `${baseUrl}/area/opengraph-image`,
+        url: "/og-images/area.png",
         width: 1200,
         height: 630,
         alt: "エリアごと演説予定",
@@ -41,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "エリアごと演説予定 | チームみらい 街頭演説マップ",
     description: "エリアごとに候補者の街頭演説予定・実施中・終了を一覧で表示",
-    images: [`${baseUrl}/area/opengraph-image`],
+    images: ["/og-images/area.png"],
   },
 };
 

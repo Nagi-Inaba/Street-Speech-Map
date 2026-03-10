@@ -11,24 +11,12 @@ import RequestForm from "@/components/RequestForm";
 import EventReportButtons from "@/components/EventReportButtons";
 import PublicHeader from "@/components/PublicHeader";
 
-// ベースURLを取得（環境変数から、またはデフォルト値を使用）
-function getBaseUrl() {
-  if (process.env.NEXTAUTH_URL) {
-    return process.env.NEXTAUTH_URL;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return "http://localhost:3000";
-}
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string; eventId: string }>;
 }): Promise<Metadata> {
   const { slug, eventId } = await params;
-  const baseUrl = getBaseUrl();
 
   const event = await prisma.speechEvent.findUnique({
     where: { id: eventId },
@@ -57,8 +45,7 @@ export async function generateMetadata({
     description = `${event.candidate.name}さんは現在${event.locationText}付近で演説中です。`;
   }
 
-  // OG画像のURL（個別イベント用）
-  const ogImageUrl = `${baseUrl}/c/${slug}/events/${eventId}/opengraph-image`;
+  const ogImageUrl = `/og-images/candidate-${slug}.png`;
 
   return {
     title,
@@ -66,7 +53,6 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      url: `${baseUrl}/c/${slug}/events/${eventId}`,
       siteName: "チームみらい 街頭演説マップ",
       images: [
         {
