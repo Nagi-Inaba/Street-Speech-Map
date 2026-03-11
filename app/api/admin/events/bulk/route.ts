@@ -4,8 +4,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@/lib/rbac";
 import { z } from "zod";
-import { generateEventOgImage, generateCandidateOgImage } from "@/lib/og-image-generator";
-
 const DEFAULT_LAT = 35.6812;
 const DEFAULT_LNG = 139.7671;
 
@@ -85,11 +83,6 @@ export async function POST(request: NextRequest) {
           },
         });
         created.push({ id: event.id, locationText: event.locationText });
-        try {
-          await generateEventOgImage(event);
-        } catch {
-          // 続行
-        }
       } catch (err) {
         errors.push({
           index: i + 1,
@@ -99,22 +92,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (created.length > 0) {
-      const candidateWithEvents = await prisma.candidate.findUnique({
-        where: { id: data.events[0].candidateId },
-        include: {
-          events: {
-            where: { status: { in: ["PLANNED", "LIVE"] } },
-            orderBy: [{ status: "asc" }, { startAt: "asc" }],
-          },
-        },
-      });
-      if (candidateWithEvents) {
-        try {
-          await generateCandidateOgImage(candidateWithEvents);
-        } catch {
-          // 続行
-        }
-      }
       revalidatePath("/admin/events");
       revalidatePath("/c/[slug]", "page");
     }
