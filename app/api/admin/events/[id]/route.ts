@@ -83,26 +83,7 @@ export async function PUT(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // 変更履歴を記録
-    await prisma.eventHistory.create({
-      data: {
-        eventId: id,
-        fromLat: existingEvent.lat,
-        fromLng: existingEvent.lng,
-        fromText: existingEvent.locationText,
-        fromStartAt: existingEvent.startAt,
-        fromEndAt: existingEvent.endAt,
-        toLat: data.lat,
-        toLng: data.lng,
-        toText: data.locationText,
-        toStartAt: data.startAt ? new Date(data.startAt) : null,
-        toEndAt: data.endAt ? new Date(data.endAt) : null,
-        reason: "管理画面から編集",
-        changedByUserId: session.user.id,
-      },
-    });
-
-    // メイン候補者と合同演説者が重複していないかチェック
+    // バリデーション: メイン候補者と合同演説者が重複していないかチェック（DB更新前）
     const allCandidateIds = [data.candidateId, ...(data.additionalCandidateIds || [])];
     const uniqueCandidateIds = [...new Set(allCandidateIds)];
     if (uniqueCandidateIds.length !== allCandidateIds.length) {
@@ -112,42 +93,64 @@ export async function PUT(
       );
     }
 
-    // 既存の合同演説者を削除
-    await prisma.eventCandidate.deleteMany({
-      where: { eventId: id },
-    });
+    // トランザクション: 変更履歴の記録・合同演説者の削除・イベント更新を一括実行
+    const additionalCandidateIds = (data.additionalCandidateIds || []).filter(
+      (cid) => cid && cid !== data.candidateId
+    );
 
-    // 演説予定を更新
-    const event = await prisma.speechEvent.update({
-      where: { id },
-      data: {
-        candidateId: data.candidateId,
-        status: data.status,
-        startAt: data.startAt ? new Date(data.startAt) : null,
-        endAt: data.endAt ? new Date(data.endAt) : null,
-        timeUnknown: data.timeUnknown,
-        locationText: data.locationText,
-        lat: data.lat,
-        lng: data.lng,
-        notes: data.notes || null,
-        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
-        additionalCandidates: {
-          create: (data.additionalCandidateIds || [])
-            .filter((id) => id && id !== data.candidateId)
-            .map((candidateId) => ({
+    const [, , event] = await prisma.$transaction([
+      // 変更履歴を記録
+      prisma.eventHistory.create({
+        data: {
+          eventId: id,
+          fromLat: existingEvent.lat,
+          fromLng: existingEvent.lng,
+          fromText: existingEvent.locationText,
+          fromStartAt: existingEvent.startAt,
+          fromEndAt: existingEvent.endAt,
+          toLat: data.lat,
+          toLng: data.lng,
+          toText: data.locationText,
+          toStartAt: data.startAt ? new Date(data.startAt) : null,
+          toEndAt: data.endAt ? new Date(data.endAt) : null,
+          reason: "管理画面から編集",
+          changedByUserId: session.user.id,
+        },
+      }),
+      // 既存の合同演説者を削除
+      prisma.eventCandidate.deleteMany({
+        where: { eventId: id },
+      }),
+      // 演説予定を更新
+      prisma.speechEvent.update({
+        where: { id },
+        data: {
+          candidateId: data.candidateId,
+          status: data.status,
+          startAt: data.startAt ? new Date(data.startAt) : null,
+          endAt: data.endAt ? new Date(data.endAt) : null,
+          timeUnknown: data.timeUnknown,
+          locationText: data.locationText,
+          lat: data.lat,
+          lng: data.lng,
+          notes: data.notes || null,
+          ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+          additionalCandidates: {
+            create: additionalCandidateIds.map((candidateId) => ({
               candidateId,
             })),
-        },
-      },
-      include: {
-        candidate: true,
-        additionalCandidates: {
-          include: {
-            candidate: true,
           },
         },
-      },
-    });
+        include: {
+          candidate: true,
+          additionalCandidates: {
+            include: {
+              candidate: true,
+            },
+          },
+        },
+      }),
+    ]);
 
     // ページのキャッシュを無効化
     const candidateSlug = event.candidate.slug;

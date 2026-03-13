@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { generateDedupeKey, getTimeSlot } from "@/lib/dedupe";
 import { z } from "zod";
 import crypto from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const requestSchema = z.object({
   type: z.enum([
@@ -43,17 +44,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = requestSchema.parse(body);
 
-    // レート制限（簡易実装）
+    // レート制限: reporterHash 単位で 1分間に最大 10件
     const reporterHash = generateReporterHash(request);
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const recentCount = await prisma.publicRequest.count({
       where: {
         createdAt: {
           gte: new Date(Date.now() - 60 * 1000), // 1分以内
         },
+        // reporterHash フィールドがないため IP ベースのキーで代替
+        // TODO: PublicRequest に reporterHash カラムを追加すれば完全な hash 単位制限が可能
       },
     });
 
-    if (recentCount > 10) {
+    // メモリベースの reporterHash 単位レート制限（DB クエリと組み合わせ）
+    const rateLimitKey = `requests:${ip}:${reporterHash}`;
+    const rateLimit = checkRateLimit(rateLimitKey, 10);
+    if (!rateLimit.allowed || recentCount > 100) {
       return NextResponse.json(
         { error: "Too many requests" },
         { status: 429 }

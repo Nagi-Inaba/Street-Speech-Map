@@ -23,7 +23,7 @@
 - 公開リクエスト審査（絞り込み・一括承認/却下）
 - サイト設定（表示制御・共有テンプレート）
 - APIキー管理UI（SiteAdmin向け）
-- OGP再生成API（全件再生成・運用補助）
+- 画像アップロードAPI（候補者画像・管理者のみ）
 
 ### 公開API
 - `GET /api/public/candidates`（APIキー必須）
@@ -32,9 +32,7 @@
 - `GET /api/docs`（OpenAPI JSON）
 
 ### Cron / 自動処理
-- `GET /api/cron/regenerate-ended-og`（終了イベントOGPの定期再生成）
 - `GET /api/cron/auto-approve`（報告ベースの自動承認）
-- `GET /api/cron/seed-og-blob`（初回Blob投入向け）
 
 ## 技術スタック
 
@@ -44,7 +42,7 @@
 - 地図: Leaflet + React Leaflet
 - 認証: NextAuth.js v5（Credentials）
 - DB: PostgreSQL + Prisma
-- ストレージ: Vercel Blob（OGP/画像用途）
+- ストレージ: `public/og-images`（OG画像） + Vercel Blob（管理画面の画像アップロード用途・任意）
 - 分析: Vercel Analytics（`@vercel/analytics`）
 - テスト環境: Vitest / Playwright（実行基盤あり）
 
@@ -139,8 +137,6 @@ npm run dev
 ### 管理・運用
 - `npm run create:admin-user`
 - `npm run seed`
-- `npm run generate:og-images`
-- `npm run regenerate:ended-og`
 
 ### データ取込・クリーンアップ
 - `npm run ingest:facilities`
@@ -157,23 +153,16 @@ npm run dev
 
 ### 必須設定
 - 環境変数をVercelに登録（特に `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `REPORTER_HASH_SALT`）
-- OGPをBlob運用する場合は `BLOB_READ_WRITE_TOKEN` を設定
+- 画像アップロード機能を使う場合のみ `BLOB_READ_WRITE_TOKEN` を設定
 - Cron保護のため `CRON_SECRET` の設定を推奨
 
 ### 現在の `vercel.json`
 
 ```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/regenerate-ended-og",
-      "schedule": "0 * * * *"
-    }
-  ]
-}
+{}
 ```
 
-必要に応じて `auto-approve` などのCronを追加してください。
+`/api/cron/auto-approve` を使う場合のみ、必要に応じて Cron を追加してください。
 
 ## 実装ギャップ（現状）
 

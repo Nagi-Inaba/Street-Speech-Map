@@ -140,10 +140,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // OGP画像とページのキャッシュを無効化
+    // 公開ページのキャッシュを無効化
     const candidateSlug = event.candidate.slug;
     revalidatePath(`/c/${candidateSlug}`);
-    revalidatePath(`/c/${candidateSlug}/opengraph-image`);
 
     return NextResponse.json(event);
   } catch (error) {

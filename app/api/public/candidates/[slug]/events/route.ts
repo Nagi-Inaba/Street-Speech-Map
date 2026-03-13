@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withApiMiddleware, addCorsHeaders, handleCorsPreflight } from "@/lib/api-middleware";
 
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return handleCorsPreflight(request) ?? new NextResponse(null, { status: 204 });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }

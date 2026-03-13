@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { handleCorsPreflight, addCorsHeaders } from "@/lib/api-middleware";
+
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return handleCorsPreflight(request) ?? new NextResponse(null, { status: 204 });
+}
 
 // 公開設定取得（認証不要）
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     let settings = await prisma.siteSettings.findUnique({
       where: { id: "site-settings" },
@@ -17,27 +22,30 @@ export async function GET() {
 
     // 設定が存在しない場合はデフォルト値
     if (!settings) {
-      return NextResponse.json({
+      return addCorsHeaders(NextResponse.json({
         showCandidateInfo: true,
         candidateLabel: "候補者",
         showEvents: true,
         shareTemplateLive: "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
         shareTemplatePlanned: "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
-      });
+      }), request);
     }
 
-    return NextResponse.json(settings);
+    return addCorsHeaders(NextResponse.json(settings), request);
   } catch (error) {
     console.error("Error fetching public settings:", error);
-    return NextResponse.json(
-      {
-        showCandidateInfo: true,
-        candidateLabel: "候補者",
-        showEvents: true,
-        shareTemplateLive: "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
-        shareTemplatePlanned: "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
-      },
-      { status: 200 }
+    return addCorsHeaders(
+      NextResponse.json(
+        {
+          showCandidateInfo: true,
+          candidateLabel: "候補者",
+          showEvents: true,
+          shareTemplateLive: "{候補者名}さんが現在{場所}で街頭演説を行っています #チームみらい #{候補者名}",
+          shareTemplatePlanned: "{時間}から{候補者名}さんの街頭演説が{場所}で予定されています #チームみらい #{候補者名}",
+        },
+        { status: 200 }
+      ),
+      request
     );
   }
 }

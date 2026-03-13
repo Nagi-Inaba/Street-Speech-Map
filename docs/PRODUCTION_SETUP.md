@@ -97,7 +97,12 @@ REPORTER_HASH_SALT=your-random-salt-here
 #### オプションの環境変数
 
 ```
+# 管理画面の画像アップロード機能を使う場合のみ設定
 BLOB_READ_WRITE_TOKEN=your-vercel-blob-token
+
+# /api/cron/auto-approve を有効化する場合は必須
+CRON_SECRET=your-random-cron-secret
+
 NEXT_PUBLIC_UMAMI_WEBSITE_ID=your-umami-website-id
 NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://your-umami-instance.com/script.js
 ```
@@ -145,35 +150,37 @@ node -e "console.log(require('crypto').randomBytes(16).toString('base64'))"
 - [ ] 候補者の追加・編集ができる
 - [ ] 演説予定の追加・編集ができる
 
-## ステップ4: Vercel Blobの設定（OGP画像はBlob運用が基本方針）
+## ステップ4: Vercel Blobの設定（任意）
 
-OGP画像の保存・配信は **Blob運用を基本方針** としています。本番では設定を推奨します。画像アップロード機能でも利用します。
+OGP画像は静的ファイル（`public/og-images`）で運用します。  
+Vercel Blobは管理画面の画像アップロード機能を使う場合のみ設定してください。
 
 1. Vercelダッシュボードで「Storage」→「Create Database」→「Blob」を選択
 2. ストレージ名を入力して作成
 3. 「Settings」タブから`BLOB_READ_WRITE_TOKEN`をコピー
 4. Vercelの環境変数に`BLOB_READ_WRITE_TOKEN`を追加
 
-## ステップ5: Cronジョブの設定
+## ステップ5: Cronジョブの設定（任意）
 
-自動承認機能を使用する場合、Vercel Cronが自動的に設定されます。
+リポジトリの `vercel.json` はデフォルトで Cron 未設定です（`{}`）。
+自動承認機能（`/api/cron/auto-approve`）を使う場合のみ、手動で Cron を追加してください。
 
-`vercel.json`に以下の設定が含まれています：
+例:
 
 ```json
 {
   "crons": [
     {
       "path": "/api/cron/auto-approve",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/10 * * * *"
     }
   ]
 }
 ```
 
-この設定により、5分ごとに自動承認処理が実行されます。
+この設定により、10分ごとに自動承認処理が実行されます。
 
-**注意**: `/api/cron/auto-approve`エンドポイントが実装されている必要があります。
+**注意**: `CRON_SECRET` が未設定だと本番環境では `401 Unauthorized` になります。
 
 ## トラブルシューティング
 

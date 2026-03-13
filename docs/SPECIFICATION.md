@@ -28,8 +28,8 @@
 ### デプロイ・インフラ
 - **ホスティング**: Vercel（推奨）
 - **Cron**: Vercel Cron（自動承認バッチ処理）
-- **OGP画像生成**: 事前生成方式（`@vercel/og` + `@napi-rs/canvas`）
-- **OGP画像ストレージ**: **Vercel Blob 運用を基本方針**（本番は Blob に保存・配信。ローカルは `public/og-images` は開発用のみ）
+- **OGP画像運用**: `public/og-images` の静的画像を配信
+- **画像アップロード（任意）**: 管理画面の画像アップロードで Vercel Blob を使用可能
 - **分析**: Umami Analytics（基盤実装済み、統合予定）
 
 ### 開発ツール
@@ -138,17 +138,14 @@ public/                  # 静的ファイル
 - `DELETE /api/admin/events/[id]`: 演説予定削除
 - `GET /api/admin/requests`: リクエスト一覧取得
 - `PUT /api/admin/requests/[id]`: リクエスト承認/却下
-- `POST /api/admin/generate-all-og-images`: 全OGP画像の強制再生成（初回Blob導入・一括差し替えなど特別なときのみ）
 
-### OGP画像エンドポイント
-- `GET /opengraph-image`: トップページのOGP画像
-- `GET /area/opengraph-image`: エリアページのOGP画像
-- `GET /c/[slug]/opengraph-image`: 候補者ページのOGP画像
-- `GET /c/[slug]/events/[eventId]/opengraph-image`: イベントページのOGP画像
+### OGP画像参照パス（静的ファイル）
+- `/og-images/home.png`: トップページ
+- `/og-images/area.png`: エリアページ
+- `/og-images/candidate-{slug}.png`: 候補者ページ/イベントページ
 
 ### Cronエンドポイント
 - `GET /api/cron/auto-approve`: 自動承認バッチ処理（Vercel Cronから呼び出し）
-- `GET /api/cron/regenerate-ended-og`: 終了(ENDED)演説のOGPを文字ベースに差し替え（1時間ごと。デプロイ時は何もしない）
 
 ## データ管理
 
@@ -171,7 +168,7 @@ public/                  # 静的ファイル
 - `REPORTER_HASH_SALT`: レポーターハッシュ用ソルト
 
 ### オプション環境変数
-- `BLOB_READ_WRITE_TOKEN`: Vercel Blob トークン（**本番推奨**。Blob運用の基本方針のため、設定時は OGP 画像は Blob に保存・配信）
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob トークン（管理画面の画像アップロード機能を使う場合のみ）
 - `NEXT_PUBLIC_UMAMI_WEBSITE_ID`: Umami Analytics Website ID
 - `NEXT_PUBLIC_UMAMI_SCRIPT_URL`: Umami Analytics Script URL
 
@@ -209,19 +206,13 @@ public/                  # 静的ファイル
 - 画像最適化（Next.js Image）
 
 ### OGP画像生成仕様
-- **ストレージ方針**: **Blob運用を基本方針**。本番（`BLOB_READ_WRITE_TOKEN` 設定時）は Vercel Blob に保存し、opengraph-image は Blob URL へリダイレクト。ローカルは `public/og-images` を参照可能（開発用）。
-- **生成方式**: 事前生成（Blob またはローカルの `public/og-images/`）
-- **地図生成**: Canvas API（`@napi-rs/canvas`）を使用して OpenStreetMap タイルを合成
-- **フォント**: Noto Sans JP（自動ダウンロードスクリプト付き）
-- **フォールバック**: 地図生成失敗時はテキストのみの OGP 画像を動的生成
-- **終了演説のBlob節約**: 終了(ENDED)の演説は地図画像を使わず文字ベースサムネイルのみで保存し、Blob容量を演説中・予定用に開放する。
-- **自動更新（通常運用）**: イベントの作成・更新・削除時に、**該当するOGP画像だけ**が自動で再生成される。場所や時間の変更があったときも、そのイベント（および関連候補者）の画像だけ更新される。**デプロイ時は何もしない。通常は全OGP再生成は不要**。
-- **1時間ごとのCron**: `GET /api/cron/regenerate-ended-og` を毎時実行し、終了(ENDED)の演説OGPだけを文字ベースに差し替えてBlob容量を節約する（vercel.json の crons で `0 * * * *` に設定）。
-- **全OGP再生成（特別なときのみ）**: 初回Blob導入時や、既存の終了演説サムネイルを一括で文字ベースに差し替えたいときなど、必要に応じて「全OGP画像の強制再生成」API（`POST /api/admin/generate-all-og-images`）または Cron（`GET /api/cron/seed-og-blob`）を手動で1回呼ぶ。日常運用では使わない。
+- **配信方式**: `public/og-images` の静的画像をそのまま参照
+- **更新方式**: 画像更新はリポジトリの静的ファイル更新として管理
+- **Blobとの関係**: OGP用途ではBlobを使用しない（Blobは管理画面の任意アップロード用途）
 
 ### 今後の改善予定
 - 施設データのクラスタリング
 - 地図表示の最適化
 - キャッシュ戦略の見直し
-- OGP画像生成の最適化（並列処理、キャッシュ戦略）
+- OGP画像の運用自動化（必要時のみ）
 

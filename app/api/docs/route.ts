@@ -194,6 +194,10 @@ const openApiSpec = {
   },
 };
 
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return handleCorsPreflight(request) ?? new NextResponse(null, { status: 204 });
+}
+
 export async function GET(request: NextRequest) {
   // CORS preflight リクエストを処理
   const corsResponse = handleCorsPreflight(request);

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { z } from "zod";
 import crypto from "crypto";
 import { generateMoveHints } from "@/lib/move-hint";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const reportSchema = z.object({
   eventId: z.string(),
@@ -18,21 +19,32 @@ function generateReporterHash(request: NextRequest): string {
   const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
   const ua = request.headers.get("user-agent") || "unknown";
   const salt = process.env.REPORTER_HASH_SALT || "default-salt-change-in-production";
-  
+
   const hash = crypto
     .createHash("sha256")
     .update(`${salt}:${ip}:${ua}`)
     .digest("hex");
-  
+
   return hash.substring(0, 32);
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const data = reportSchema.parse(body);
-
     const reporterHash = generateReporterHash(request);
+
+    // レート制限: IP/hash 単位で 1分間に最大 10件
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const rateLimitKey = `reports:${ip}:${reporterHash}`;
+    const rateLimit = checkRateLimit(rateLimitKey, 10);
+    if (!rateLimit.allowed) {
+      const resetSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: "Too many requests", retryAfter: resetSeconds },
+        { status: 429 }
+      );
+    }
+    const data = reportSchema.parse(body);
 
     // 既存の報告をチェック（ユニーク制約）
     const existing = await prisma.publicReport.findUnique({

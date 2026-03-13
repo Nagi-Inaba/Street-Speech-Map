@@ -29,11 +29,15 @@ export async function verifyApiKey(apiKey: string | null): Promise<{
     return { valid: false };
   }
 
-  // 最終使用時刻を更新
-  await prisma.apiKey.update({
-    where: { id: apiKeyRecord.id },
-    data: { lastUsedAt: new Date() },
-  });
+  // lastUsedAt は 1時間に1回だけ更新（DB 書き込みを間引いてコストを削減）
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  if (!apiKeyRecord.lastUsedAt || apiKeyRecord.lastUsedAt < oneHourAgo) {
+    await prisma.apiKey.update({
+      where: { id: apiKeyRecord.id },
+      data: { lastUsedAt: now },
+    });
+  }
 
   return {
     valid: true,
@@ -61,11 +65,10 @@ export function getApiKeyFromRequest(request: NextRequest): string | null {
     return apiKeyHeader;
   }
 
-  // 3. クエリパラメータから取得（非推奨だが互換性のため）
+  // 3. クエリパラメータ api_key は廃止済み（セキュリティ上の理由によりログに記録し無視する）
   const { searchParams } = new URL(request.url);
-  const apiKeyParam = searchParams.get("api_key");
-  if (apiKeyParam) {
-    return apiKeyParam;
+  if (searchParams.get("api_key")) {
+    console.warn("[api-auth] api_key query parameter is deprecated and no longer accepted.");
   }
 
   return null;
