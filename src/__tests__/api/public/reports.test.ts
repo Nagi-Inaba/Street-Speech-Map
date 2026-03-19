@@ -3,8 +3,7 @@ import { mockPrisma } from '../../helpers/prisma-mock'
 
 // Mock rate-limit so we can control it per test
 vi.mock('@/lib/rate-limit', () => ({
-  checkRateLimit: vi.fn(() => ({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })),
-  cleanupRateLimitStore: vi.fn(),
+  checkRateLimit: vi.fn(async () => ({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })),
 }))
 
 // Mock move-hint
@@ -25,11 +24,11 @@ const makeRequest = (body: object, headers: Record<string, string> = {}) =>
 describe('POST /api/public/reports', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(checkRateLimit).mockReturnValue({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })
+    vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })
   })
 
   it('should return 429 when rate limit exceeded', async () => {
-    vi.mocked(checkRateLimit).mockReturnValue({ allowed: false, remaining: 0, resetAt: Date.now() + 30000 })
+    vi.mocked(checkRateLimit).mockResolvedValue({ allowed: false, remaining: 0, resetAt: Date.now() + 30000 })
 
     const req = makeRequest({ eventId: 'event1', kind: 'check' })
     const res = await POST(req)

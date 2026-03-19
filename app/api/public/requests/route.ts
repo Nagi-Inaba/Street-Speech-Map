@@ -44,23 +44,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = requestSchema.parse(body);
 
-    // レート制限: reporterHash 単位で 1分間に最大 10件
+    // レート制限: reporterHash 単位で 1分間に最大 10件（Upstash Redis）
     const reporterHash = generateReporterHash(request);
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-    const recentCount = await prisma.publicRequest.count({
-      where: {
-        createdAt: {
-          gte: new Date(Date.now() - 60 * 1000), // 1分以内
-        },
-        // reporterHash フィールドがないため IP ベースのキーで代替
-        // TODO: PublicRequest に reporterHash カラムを追加すれば完全な hash 単位制限が可能
-      },
-    });
-
-    // メモリベースの reporterHash 単位レート制限（DB クエリと組み合わせ）
     const rateLimitKey = `requests:${ip}:${reporterHash}`;
-    const rateLimit = checkRateLimit(rateLimitKey, 10);
-    if (!rateLimit.allowed || recentCount > 100) {
+    const rateLimit = await checkRateLimit(rateLimitKey, 10);
+    if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
         { status: 429 }

@@ -63,7 +63,7 @@ export async function generateMetadata({
     description = `${candidate.name}さんは${timeText}から${firstEvent.locationText}付近で演説予定です。`;
   }
 
-  const ogImageUrl = `/og-images/candidate-${candidate.slug}.png`;
+  const ogImageUrl = `/api/og?type=candidate&slug=${candidate.slug}`;
 
   return {
     title,
@@ -349,7 +349,13 @@ export default async function CandidatePage({
         {/* 実施中の演説予定 */}
         {showEvents && liveEvents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-red-600">🔴 実施中</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-red-600 flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+              実施中
+            </h2>
             <div className="space-y-4">
               {liveEvents.map((event) => (
                 <Card key={event.id} className="border-red-200 bg-red-50">
@@ -358,7 +364,11 @@ export default async function CandidatePage({
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="break-words">{event.locationText}</span>
-                          <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800 whitespace-nowrap">
+                          <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800 whitespace-nowrap inline-flex items-center gap-1.5">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
                             実施中
                           </span>
                         </div>
@@ -401,6 +411,11 @@ export default async function CandidatePage({
                     {event.notes && (
                       <p className="text-sm text-muted-foreground mt-2">
                         備考: {event.notes}
+                      </p>
+                    )}
+                    {event.endAt && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        予定終了: {formatJSTTime(event.endAt)}（終了後に自動的にステータスが更新されます）
                       </p>
                     )}
                   </CardContent>

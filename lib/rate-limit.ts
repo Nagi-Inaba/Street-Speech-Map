@@ -1,72 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// メモリベースのレート制限ストア（本番環境ではRedisなどを推奨）
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
+import { Ratelimit } from "@upstash/ratelimit";
+import { getRedis } from "@/lib/upstash";
 
 /**
- * レート制限をチェック
- * @param identifier 識別子（APIキーIDなど）
+ * レート制限をチェック（Upstash Redis ベース）
+ * @param identifier 識別子（APIキーID、IP+hash など）
  * @param limit 1分あたりのリクエスト数
- * @returns レート制限を超えている場合はtrue
  */
-export function checkRateLimit(identifier: string, limit: number): {
+export async function checkRateLimit(identifier: string, limit: number): Promise<{
   allowed: boolean;
   remaining: number;
   resetAt: number;
-} {
-  const now = Date.now();
-  const windowMs = 60 * 1000; // 1分
-  const key = identifier;
+}> {
+  const redis = getRedis();
 
-  const entry = rateLimitStore.get(key);
-
-  if (!entry || entry.resetAt < now) {
-    // 新しいウィンドウを開始
-    const resetAt = now + windowMs;
-    rateLimitStore.set(key, { count: 1, resetAt });
-    return {
-      allowed: true,
-      remaining: limit - 1,
-      resetAt,
-    };
+  if (!redis) {
+    console.warn("[rate-limit] Upstash not configured — allowing all requests (dev mode)");
+    return { allowed: true, remaining: limit, resetAt: Date.now() + 60_000 };
   }
 
-  if (entry.count >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: entry.resetAt,
-    };
-  }
+  const ratelimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(limit, "1 m"),
+    prefix: "ratelimit",
+  });
 
-  entry.count++;
+  const result = await ratelimit.limit(identifier);
+
   return {
-    allowed: true,
-    remaining: limit - entry.count,
-    resetAt: entry.resetAt,
+    allowed: result.success,
+    remaining: result.remaining,
+    resetAt: result.reset,
   };
-}
-
-/**
- * 古いエントリをクリーンアップ（定期的に実行）
- */
-export function cleanupRateLimitStore() {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}
-
-// 5分ごとにクリーンアップを実行
-if (typeof setInterval !== "undefined") {
-  setInterval(cleanupRateLimitStore, 5 * 60 * 1000);
 }
 
 /**
@@ -77,7 +42,7 @@ export async function withRateLimit(
   apiKey: { id: string; rateLimit: number },
   handler: (request: NextRequest) => Promise<NextResponse>
 ): Promise<NextResponse> {
-  const rateLimit = checkRateLimit(apiKey.id, apiKey.rateLimit);
+  const rateLimit = await checkRateLimit(apiKey.id, apiKey.rateLimit);
 
   if (!rateLimit.allowed) {
     const resetSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
@@ -101,7 +66,6 @@ export async function withRateLimit(
 
   const response = await handler(request);
 
-  // レート制限情報をヘッダーに追加
   response.headers.set("X-RateLimit-Limit", apiKey.rateLimit.toString());
   response.headers.set("X-RateLimit-Remaining", rateLimit.remaining.toString());
   response.headers.set("X-RateLimit-Reset", new Date(rateLimit.resetAt).toISOString());

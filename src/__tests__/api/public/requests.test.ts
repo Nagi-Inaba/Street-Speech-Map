@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mockPrisma } from '../../helpers/prisma-mock'
 
 vi.mock('@/lib/rate-limit', () => ({
-  checkRateLimit: vi.fn(() => ({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })),
-  cleanupRateLimitStore: vi.fn(),
+  checkRateLimit: vi.fn(async () => ({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })),
 }))
 
 import { POST } from '@/app/api/public/requests/route'
@@ -19,8 +18,7 @@ const makeRequest = (body: object, headers: Record<string, string> = {}) =>
 describe('POST /api/public/requests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(checkRateLimit).mockReturnValue({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })
-    mockPrisma.publicRequest.count.mockResolvedValue(0)
+    vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, remaining: 9, resetAt: Date.now() + 60000 })
   })
 
   it('should return 400 for invalid request type', async () => {
@@ -50,20 +48,8 @@ describe('POST /api/public/requests', () => {
     expect(json.id).toBe('req1')
   })
 
-  it('should return 429 when memory rate limit exceeded', async () => {
-    vi.mocked(checkRateLimit).mockReturnValue({ allowed: false, remaining: 0, resetAt: Date.now() + 30000 })
-
-    const req = makeRequest({
-      type: 'CREATE_EVENT',
-      candidateId: 'cand1',
-      payload: {},
-    })
-    const res = await POST(req)
-    expect(res.status).toBe(429)
-  })
-
-  it('should return 429 when DB count exceeds 100', async () => {
-    mockPrisma.publicRequest.count.mockResolvedValue(101)
+  it('should return 429 when rate limit exceeded', async () => {
+    vi.mocked(checkRateLimit).mockResolvedValue({ allowed: false, remaining: 0, resetAt: Date.now() + 30000 })
 
     const req = makeRequest({
       type: 'CREATE_EVENT',

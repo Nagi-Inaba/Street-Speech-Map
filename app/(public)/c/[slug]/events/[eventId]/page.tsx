@@ -45,7 +45,7 @@ export async function generateMetadata({
     description = `${event.candidate.name}さんは現在${event.locationText}付近で演説中です。`;
   }
 
-  const ogImageUrl = `/og-images/candidate-${slug}.png`;
+  const ogImageUrl = `/api/og?type=candidate&slug=${slug}`;
 
   return {
     title,
@@ -216,7 +216,7 @@ export default async function EventPage({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="break-words">{event.locationText}</span>
                     <span
-                      className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                      className={`text-xs px-2 py-1 rounded whitespace-nowrap inline-flex items-center gap-1.5 ${
                         isLive
                           ? "bg-red-100 text-red-800"
                           : isEnded
@@ -224,6 +224,12 @@ export default async function EventPage({
                           : "bg-blue-100 text-blue-800"
                       }`}
                     >
+                      {isLive && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                      )}
                       {isLive ? "実施中" : isEnded ? "終了" : "予定"}
                     </span>
                   </div>
@@ -272,6 +278,11 @@ export default async function EventPage({
               </div>
               {event.notes && (
                 <p className="text-sm text-muted-foreground mt-2">備考: {event.notes}</p>
+              )}
+              {isLive && event.endAt && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  予定終了: {formatJSTTime(event.endAt)}（終了後に自動的にステータスが更新されます）
+                </p>
               )}
             </CardContent>
           </Card>

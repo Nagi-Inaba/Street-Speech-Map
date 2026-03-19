@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     // レート制限: IP/hash 単位で 1分間に最大 10件
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const rateLimitKey = `reports:${ip}:${reporterHash}`;
-    const rateLimit = checkRateLimit(rateLimitKey, 10);
+    const rateLimit = await checkRateLimit(rateLimitKey, 10);
     if (!rateLimit.allowed) {
       const resetSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
       return NextResponse.json(
