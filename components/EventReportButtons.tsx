@@ -18,7 +18,6 @@ interface EventReportButtonsProps {
 
 export default function EventReportButtons({ eventId, eventLat, eventLng, eventStatus, eventStartAt, eventEndAt }: EventReportButtonsProps) {
   const [reportedStart, setReportedStart] = useState(false);
-  const [reportedEnd, setReportedEnd] = useState(false);
   const [showMoveMap, setShowMoveMap] = useState(false);
   const [showTimeChange, setShowTimeChange] = useState(false);
   const [newLat, setNewLat] = useState(eventLat);
@@ -44,32 +43,6 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
         setReportedStart(true);
       } else if (res.status === 409) {
         setReportedStart(true); // 既に報告済み
-      } else {
-        alert("報告に失敗しました");
-      }
-    } catch (error) {
-      alert("エラーが発生しました");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEndReport = async () => {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch("/api/public/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          kind: "end",
-        }),
-      });
-
-      if (res.ok) {
-        setReportedEnd(true);
-      } else if (res.status === 409) {
-        setReportedEnd(true); // 既に報告済み
       } else {
         alert("報告に失敗しました");
       }
@@ -202,17 +175,7 @@ export default function EventReportButtons({ eventId, eventLat, eventLng, eventS
             {reportedStart ? "✓ 演説中" : "演説中"}
           </Button>
         )}
-        {(eventStatus === "PLANNED" || eventStatus === "LIVE") && (
-          <Button
-            onClick={handleEndReport}
-            disabled={isSubmitting || reportedEnd}
-            variant={reportedEnd ? "default" : "outline"}
-            size="sm"
-            className={reportedEnd ? "bg-gray-600 hover:bg-gray-700 text-white" : ""}
-          >
-            {reportedEnd ? "✓ 演説終了" : "演説終了"}
-          </Button>
-        )}
+        {/* 終了報告は廃止: 予定終了時刻から15分後に自動的にENDEDになります */}
         {eventStatus !== "ENDED" && (
           <>
             <Button

@@ -48,7 +48,7 @@ describe('PUT /api/admin/events/[id]', () => {
   })
 
   it('should return 401 when no session', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    vi.mocked(auth).mockResolvedValue(null as any)
 
     const req = makeRequest(validBody)
     const res = await PUT(req, makeParams('event1'))

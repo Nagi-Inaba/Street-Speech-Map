@@ -39,7 +39,7 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const { start: todayStart, end: todayEnd } = getTodayJSTDateRange();
 
-  const [candidates, settings, todayEventsCount] = await Promise.all([
+  const [candidates, settings, todayEventsCount, liveNowCount] = await Promise.all([
     prisma.candidate.findMany(),
     prisma.siteSettings.findUnique({
       where: { id: "site-settings" },
@@ -48,6 +48,12 @@ export default async function HomePage() {
       where: {
         status: { in: ["PLANNED", "LIVE"] },
         startAt: { gte: todayStart, lte: todayEnd },
+        isPublic: true,
+      },
+    }),
+    prisma.speechEvent.count({
+      where: {
+        status: "LIVE",
         isPublic: true,
       },
     }),
@@ -63,10 +69,21 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="container mx-auto px-4 py-6 sm:py-8 min-w-0 overflow-x-hidden">
-        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>今日の演説予定：</span>
-          <span className="font-semibold text-foreground">{todayEventsCount}</span>
-          <span>件</span>
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            今日の演説予定：
+            <span className="font-semibold text-foreground">{todayEventsCount}</span>
+            件
+          </span>
+          {liveNowCount > 0 && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-medium text-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              {liveNowCount}件 演説中
+            </span>
+          )}
         </div>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">

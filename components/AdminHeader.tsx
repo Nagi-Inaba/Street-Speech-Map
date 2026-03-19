@@ -21,7 +21,10 @@ function getNavItems(userRole: string) {
     { href: "/admin/requests", label: "リクエスト" },
     { href: "/admin/settings", label: "設定" },
     ...(hasPermission({ role: userRole || "" }, "SiteAdmin")
-      ? [{ href: "/admin/api-keys", label: "APIキー" }]
+      ? [
+          { href: "/admin/users", label: "ユーザー管理" },
+          { href: "/admin/api-keys", label: "APIキー" },
+        ]
       : []),
   ];
 }
