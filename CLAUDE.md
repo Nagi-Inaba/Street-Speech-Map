@@ -61,6 +61,8 @@
 - SiteStaff/PartyAdmin: 全候補者・イベント・リクエスト管理
 - RegionEditor: 担当地域の候補者・イベント・リクエストのみ管理可能（`lib/rbac.ts` の `canManageCandidate` で制御）
 - ユーザー管理UI: `/admin/users`（SiteAdmin専用、ID・パスワード自動生成）
+- JWTロール即時反映: session callback で毎回DBから role/region を再取得（降格・削除の即時反映）
+- RBAC: イベント作成・更新時、candidateId/additionalCandidateIds の全候補者に対して canManageCandidate チェックを実施
 
 ## 自動終了（Auto-End）
 

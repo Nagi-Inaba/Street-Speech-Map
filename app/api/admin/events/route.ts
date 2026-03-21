@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 合同演説者の存在確認
+    // 合同演説者の存在確認とRBACチェック
     if (validAdditionalCandidateIds.length > 0) {
       const additionalCandidates = await prisma.candidate.findMany({
         where: { id: { in: validAdditionalCandidateIds } },
@@ -105,6 +105,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: `合同演説者のIDが見つかりません: ${missingIds.join(", ")}` },
           { status: 400 }
+        );
+      }
+
+      // 合同演説者に対してもRBACチェック
+      const unauthorizedAdditional = additionalCandidates.filter(
+        (c) => !canManageCandidate(session.user, c.region)
+      );
+      if (unauthorizedAdditional.length > 0) {
+        return NextResponse.json(
+          { error: `以下の候補者のイベントを管理する権限がありません: ${unauthorizedAdditional.map((c) => c.name).join(", ")}` },
+          { status: 403 }
         );
       }
     }

@@ -62,6 +62,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // additionalCandidateIds に対してもRBACチェック
+    const allAdditionalIds = [
+      ...new Set(
+        data.events.flatMap((e) =>
+          (e.additionalCandidateIds || []).filter(
+            (id) => id && id.trim() !== "" && id !== e.candidateId
+          )
+        )
+      ),
+    ];
+    if (allAdditionalIds.length > 0) {
+      const additionalCandidates = await prisma.candidate.findMany({
+        where: { id: { in: allAdditionalIds } },
+        select: { id: true, region: true, name: true },
+      });
+      const unauthorizedAdditional = additionalCandidates.filter(
+        (c) => !canManageCandidate(session.user, c.region)
+      );
+      if (unauthorizedAdditional.length > 0) {
+        return NextResponse.json(
+          { error: `以下の合同演説候補者のイベントを管理する権限がありません: ${unauthorizedAdditional.map((c) => c.name).join(", ")}` },
+          { status: 403 }
+        );
+      }
+    }
+
     const created: { id: string; locationText: string }[] = [];
     const errors: { index: number; message: string }[] = [];
 

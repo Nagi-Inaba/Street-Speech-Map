@@ -129,6 +129,10 @@ describe('PUT /api/admin/events/[id]', () => {
     }
 
     mockPrisma.speechEvent.findUnique.mockResolvedValue(existingEvent)
+    // Mock candidate lookup for RBAC check on target candidateIds
+    mockPrisma.candidate.findMany.mockResolvedValue([
+      { id: 'cand1', region: '東京', name: 'テスト候補者' },
+    ])
     // $transaction receives array of prisma operations - mock to return the results
     mockPrisma.$transaction.mockImplementation(async (ops: any[]) => {
       // Resolve each mock promise in the array

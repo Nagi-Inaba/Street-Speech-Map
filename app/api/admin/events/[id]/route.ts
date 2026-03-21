@@ -103,6 +103,30 @@ export async function PUT(
       );
     }
 
+    // 新しいcandidateId・additionalCandidateIdsに対してもRBACチェック
+    const targetCandidateIds = [
+      data.candidateId,
+      ...(data.additionalCandidateIds || []),
+    ].filter((cid) => cid && cid.trim() !== "");
+    const uniqueTargetIds = [...new Set(targetCandidateIds)];
+
+    if (uniqueTargetIds.length > 0) {
+      const targetCandidates = await prisma.candidate.findMany({
+        where: { id: { in: uniqueTargetIds } },
+        select: { id: true, region: true, name: true },
+      });
+
+      const unauthorizedTargets = targetCandidates.filter(
+        (c) => !canManageCandidate(session.user, c.region)
+      );
+      if (unauthorizedTargets.length > 0) {
+        return NextResponse.json(
+          { error: `以下の候補者のイベントを管理する権限がありません: ${unauthorizedTargets.map((c) => c.name).join(", ")}` },
+          { status: 403 }
+        );
+      }
+    }
+
     // トランザクション: 変更履歴の記録・合同演説者の削除・イベント更新を一括実行
     const additionalCandidateIds = (data.additionalCandidateIds || []).filter(
       (cid) => cid && cid !== data.candidateId

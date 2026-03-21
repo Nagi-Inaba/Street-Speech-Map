@@ -73,11 +73,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      // tokenの情報をsessionに反映
+      // DBから最新のrole/regionを毎回取得（降格・削除の即時反映）
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.id as string },
+        select: { role: true, region: true },
+      });
+
+      // ユーザーがDBから削除されていた場合はセッション無効化
+      if (!dbUser) {
+        session.user.id = "";
+        session.user.role = "";
+        session.user.region = null;
+        return session;
+      }
+
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.region = token.region as string | null | undefined;
+        session.user.role = dbUser.role;
+        session.user.region = dbUser.region;
       }
       return session;
     },
