@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 import { z } from "zod";
 const DEFAULT_LAT = 35.6812;
 const DEFAULT_LNG = 139.7671;
@@ -26,7 +26,7 @@ const bulkSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,6 +48,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: `候補者IDが見つかりません: ${missingCandidateIds.join(", ")}` },
         { status: 400 }
+      );
+    }
+
+    // RegionEditor は自分の地域の候補者のイベントのみ一括作成可能
+    const unauthorizedCandidates = candidates.filter(
+      (c) => !canManageCandidate(session.user, c.region)
+    );
+    if (unauthorizedCandidates.length > 0) {
+      return NextResponse.json(
+        { error: `以下の候補者のイベントを管理する権限がありません: ${unauthorizedCandidates.map((c) => c.name).join(", ")}` },
+        { status: 403 }
       );
     }
 

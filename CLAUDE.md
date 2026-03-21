@@ -58,8 +58,8 @@
 - NextAuth.js v5 Credentials プロバイダー（数字ID + パスワード）
 - 4段階ロール: `SiteAdmin` > `SiteStaff` > `PartyAdmin` > `RegionEditor`
 - SiteAdmin: 全権限（ユーザー管理・APIキー管理を含む）
-- SiteStaff/PartyAdmin: 候補者・イベント・リクエスト管理
-- RegionEditor: 担当地域のみ
+- SiteStaff/PartyAdmin: 全候補者・イベント・リクエスト管理
+- RegionEditor: 担当地域の候補者・イベント・リクエストのみ管理可能（`lib/rbac.ts` の `canManageCandidate` で制御）
 - ユーザー管理UI: `/admin/users`（SiteAdmin専用、ID・パスワード自動生成）
 
 ## 自動終了（Auto-End）
@@ -90,6 +90,12 @@
 - `CRON_SECRET` — Cron エンドポイントの認証（本番必須）
 - `UPSTASH_REDIS_REST_URL` — Upstash Redis REST エンドポイント（レートリミット用）
 - `UPSTASH_REDIS_REST_TOKEN` — Upstash Redis 認証トークン
+
+## セキュリティヘッダー（2026-03-21 追加）
+
+`next.config.ts` の `headers()` で全ルート `/(.*)`  に以下を設定済み:
+- X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy, Strict-Transport-Security
+- geolocation=() で拒否設定 — Leaflet は地図タイル表示のみで Geolocation API 未使用
 
 ## Gotchas
 

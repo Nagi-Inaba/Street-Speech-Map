@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 import { z } from "zod";
 const eventSchema = z.object({
   candidateId: z.string(),
@@ -19,7 +19,7 @@ const eventSchema = z.object({
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -42,20 +42,23 @@ export async function GET(request: NextRequest) {
     ],
   });
 
-  return NextResponse.json(events);
+  // RegionEditor は自分の地域の候補者のイベントのみ返す
+  const filtered = events.filter((e) =>
+    canManageCandidate(session.user, e.candidate.region)
+  );
+
+  return NextResponse.json(filtered);
 }
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await request.json();
-    console.log("Received event data:", JSON.stringify(body, null, 2));
     const data = eventSchema.parse(body);
-    console.log("Parsed event data:", JSON.stringify(data, null, 2));
 
     // 空文字列を除外してから処理
     const validAdditionalCandidateIds = (data.additionalCandidateIds || []).filter(
@@ -80,6 +83,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: `候補者ID ${data.candidateId} が見つかりません` },
         { status: 400 }
+      );
+    }
+
+    // RegionEditor は自分の地域の候補者のイベントのみ作成可能
+    if (!canManageCandidate(session.user, candidate.region)) {
+      return NextResponse.json(
+        { error: "この候補者のイベントを管理する権限がありません" },
+        { status: 403 }
       );
     }
 

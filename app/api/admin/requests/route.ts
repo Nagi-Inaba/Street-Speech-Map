@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 import { generateMoveHints } from "@/lib/move-hint";
 
 // リクエスト一覧取得
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,11 +34,16 @@ export async function GET(request: NextRequest) {
       take: 1000,
     });
 
+    // RegionEditor は自分の地域の候補者のリクエストのみ表示
+    const filteredRequests = requests.filter((r) =>
+      canManageCandidate(session.user, r.candidate?.region)
+    );
+
     // eventIdでグループ化する場合
     if (groupByEvent) {
       // eventIdでグループ化
-      const groupedByEvent = new Map<string, typeof requests>();
-      for (const req of requests) {
+      const groupedByEvent = new Map<string, typeof filteredRequests>();
+      for (const req of filteredRequests) {
         if (req.eventId) {
           if (!groupedByEvent.has(req.eventId)) {
             groupedByEvent.set(req.eventId, []);
@@ -77,7 +82,7 @@ export async function GET(request: NextRequest) {
 
       // PublicReportをPublicRequest形式に変換
       // statusフィルターが指定されている場合、APPROVEDのPublicReportは除外
-      const reportRequests: typeof requests = [];
+      const reportRequests: typeof filteredRequests = [];
       eventsWithReports.forEach((event) => {
         event.reports.forEach((report) => {
           // kind: "start" -> type: "REPORT_START"
@@ -113,12 +118,12 @@ export async function GET(request: NextRequest) {
             createdAt: report.createdAt,
             reviewedAt: null,
             reviewedByUserId: null,
-          } as typeof requests[0]);
+          } as typeof filteredRequests[0]);
         });
       });
 
       // すべてのリクエストを統合
-      const allRequests = [...requests, ...reportRequests];
+      const allRequests = [...filteredRequests, ...reportRequests];
 
       // eventIdで再グループ化（eventIdがないリクエストも含める）
       const allGroupedByEvent = new Map<string, typeof allRequests>();
@@ -234,7 +239,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(result);
     }
 
-    return NextResponse.json(requests);
+    return NextResponse.json(filteredRequests);
   } catch (error) {
     console.error("Error fetching requests:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -244,7 +249,7 @@ export async function GET(request: NextRequest) {
 // 一括承認・却下
 export async function PATCH(request: NextRequest) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -260,8 +265,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    // 却下の場合は即座に更新
+    // 却下の場合もまず権限チェック
     if (action === "reject") {
+      const rejectTargets = await prisma.publicRequest.findMany({
+        where: { id: { in: ids }, status: "PENDING" },
+        include: { candidate: true },
+      });
+
+      const unauthorizedRejects = rejectTargets.filter(
+        (r) => !canManageCandidate(session.user, r.candidate?.region)
+      );
+      if (unauthorizedRejects.length > 0) {
+        return NextResponse.json(
+          { error: "一部のリクエストに対する管理権限がありません" },
+          { status: 403 }
+        );
+      }
+
       const updateResult = await prisma.publicRequest.updateMany({
         where: {
           id: { in: ids },
@@ -281,13 +301,27 @@ export async function PATCH(request: NextRequest) {
     }
 
     // 承認の場合は、処理が成功した場合のみ承認済みにする
-    // まず、リクエストを取得
+    // まず、リクエストを取得（候補者情報含む）
     const pendingRequests = await prisma.publicRequest.findMany({
       where: {
         id: { in: ids },
         status: "PENDING",
       },
+      include: {
+        candidate: true,
+      },
     });
+
+    // RegionEditor は自分の地域の候補者のリクエストのみ処理可能
+    const unauthorizedRequests = pendingRequests.filter(
+      (r) => !canManageCandidate(session.user, r.candidate?.region)
+    );
+    if (unauthorizedRequests.length > 0) {
+      return NextResponse.json(
+        { error: "一部のリクエストに対する管理権限がありません" },
+        { status: 403 }
+      );
+    }
 
     if (pendingRequests.length === 0) {
       return NextResponse.json(

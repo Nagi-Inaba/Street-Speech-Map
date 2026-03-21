@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 import { sortCandidatesByRegion } from "@/lib/sort-candidates";
 import { z } from "zod";
 
@@ -17,25 +17,35 @@ const candidateSchema = z.object({
 
 export async function GET() {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const candidates = await prisma.candidate.findMany();
-  const sortedCandidates = sortCandidatesByRegion(candidates);
+
+  // RegionEditor は自分の地域の候補者のみ返す
+  const filtered = candidates.filter((c) =>
+    canManageCandidate(session.user, c.region)
+  );
+  const sortedCandidates = sortCandidatesByRegion(filtered);
 
   return NextResponse.json(sortedCandidates);
 }
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await request.json();
     const data = candidateSchema.parse(body);
+
+    // RegionEditor は自分の地域の候補者のみ作成可能
+    if (!canManageCandidate(session.user, data.region)) {
+      return NextResponse.json({ error: "この地域の候補者を管理する権限がありません" }, { status: 403 });
+    }
 
     const candidate = await prisma.candidate.create({
       data: {

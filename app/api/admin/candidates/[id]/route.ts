@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 import { z } from "zod";
 
 const candidateSchema = z.object({
@@ -21,7 +21,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,6 +34,11 @@ export async function GET(
 
     if (!candidate) {
       return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    }
+
+    // RegionEditor は自分の地域の候補者のみ閲覧可能
+    if (!canManageCandidate(session.user, candidate.region)) {
+      return NextResponse.json({ error: "この候補者を管理する権限がありません" }, { status: 403 });
     }
 
     return NextResponse.json(candidate);
@@ -49,15 +54,31 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
 
   try {
+    // 既存候補者の地域を確認して権限チェック
+    const existingCandidate = await prisma.candidate.findUnique({
+      where: { id },
+    });
+    if (!existingCandidate) {
+      return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    }
+    if (!canManageCandidate(session.user, existingCandidate.region)) {
+      return NextResponse.json({ error: "この候補者を管理する権限がありません" }, { status: 403 });
+    }
+
     const body = await request.json();
     const data = candidateSchema.parse(body);
+
+    // 更新先の地域も権限チェック（地域変更時）
+    if (data.region !== existingCandidate.region && !canManageCandidate(session.user, data.region)) {
+      return NextResponse.json({ error: "変更先の地域を管理する権限がありません" }, { status: 403 });
+    }
 
     // slugの重複チェック（自分自身を除く）
     const existing = await prisma.candidate.findUnique({

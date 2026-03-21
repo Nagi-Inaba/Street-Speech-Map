@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 import { z } from "zod";
 
 const updateEventSchema = z.object({
@@ -25,7 +25,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,6 +48,11 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    // RegionEditor は自分の地域の候補者のイベントのみ閲覧可能
+    if (!canManageCandidate(session.user, event.candidate.region)) {
+      return NextResponse.json({ error: "このイベントを管理する権限がありません" }, { status: 403 });
+    }
+
     return NextResponse.json(event);
   } catch (error) {
     console.error("Error fetching event:", error);
@@ -61,7 +66,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -81,6 +86,11 @@ export async function PUT(
 
     if (!existingEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // RegionEditor は自分の地域の候補者のイベントのみ更新可能
+    if (!canManageCandidate(session.user, existingEvent.candidate.region)) {
+      return NextResponse.json({ error: "このイベントを管理する権限がありません" }, { status: 403 });
     }
 
     // バリデーション: メイン候補者と合同演説者が重複していないかチェック（DB更新前）
@@ -183,7 +193,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -205,6 +215,11 @@ export async function PATCH(
 
     if (!existingEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // RegionEditor は自分の地域の候補者のイベントのみステータス変更可能
+    if (!canManageCandidate(session.user, existingEvent.candidate.region)) {
+      return NextResponse.json({ error: "このイベントを管理する権限がありません" }, { status: 403 });
     }
 
     // ステータス変更履歴を記録

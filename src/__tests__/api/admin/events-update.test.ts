@@ -55,14 +55,26 @@ describe('PUT /api/admin/events/[id]', () => {
     expect(res.status).toBe(401)
   })
 
-  it('should return 401 when role is insufficient', async () => {
+  it('should return 403 when RegionEditor tries to update event outside their region', async () => {
     vi.mocked(auth).mockResolvedValue({
-      user: { id: 'user2', role: 'RegionEditor', email: 'editor@example.com' },
+      user: { id: 'user2', role: 'RegionEditor', region: '北海道', email: 'editor@example.com' },
     } as any)
+
+    mockPrisma.speechEvent.findUnique.mockResolvedValue({
+      id: 'event1',
+      candidateId: 'cand1',
+      lat: 35.0,
+      lng: 135.0,
+      locationText: '東京',
+      startAt: null,
+      endAt: null,
+      status: 'PLANNED',
+      candidate: { slug: 'test-cand', region: '東京' },
+    })
 
     const req = makeRequest(validBody)
     const res = await PUT(req, makeParams('event1'))
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(403)
   })
 
   it('should return 404 when event not found', async () => {

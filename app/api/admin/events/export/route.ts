@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, canManageCandidate } from "@/lib/rbac";
 
 const TIMEZONE = "Asia/Tokyo";
 const CSV_HEADERS = [
@@ -62,7 +62,7 @@ function toCsvRow(values: Array<string | number | boolean | null | undefined>): 
 
 export async function GET() {
   const session = await auth();
-  if (!session || !hasPermission(session.user, "SiteStaff")) {
+  if (!session || !hasPermission(session.user, "RegionEditor")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -74,6 +74,7 @@ export async function GET() {
             id: true,
             name: true,
             slug: true,
+            region: true,
           },
         },
         additionalCandidates: {
@@ -93,9 +94,14 @@ export async function GET() {
       ],
     });
 
+    // RegionEditor は自分の地域の候補者のイベントのみエクスポート可能
+    const filteredEvents = events.filter((e) =>
+      canManageCandidate(session.user, e.candidate.region)
+    );
+
     const lines: string[] = [toCsvRow([...CSV_HEADERS])];
 
-    for (const event of events) {
+    for (const event of filteredEvents) {
       const additionalCandidateIds = event.additionalCandidates.map((item) => item.candidateId).join("|");
       const additionalCandidateNames = event.additionalCandidates
         .map((item) => item.candidate.name)
