@@ -13,7 +13,7 @@
 
 ## 技術スタック
 
-- Next.js 15 (App Router) / TypeScript
+- Next.js 16 (App Router) / TypeScript
 - UI: Tailwind CSS + shadcn/ui (Radix UI)
 - 地図: Leaflet + React Leaflet
 - 認証: NextAuth.js v5 (Credentials)
@@ -105,3 +105,4 @@
 - `prisma/dev.db` は SQLite 開発用 DB。本番は PostgreSQL
 - 施設データ地図レイヤー・他党イベント管理 UI は未実装
 - Leaflet はクライアントサイドのみ（dynamic import 必須）
+- react-leaflet v4 は React 18 を peer dep に要求 — React 19 で動作するが npm install 時に警告あり。将来 react-leaflet v5 へ移行推奨
