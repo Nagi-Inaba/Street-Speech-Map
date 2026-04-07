@@ -1,0 +1,79 @@
+{
+  "branchName": "ralph/api-tests-f008",
+  "userStories": [
+    {
+      "id": 1,
+      "title": "Vitest 設定と共通モック基盤",
+      "description": "As a 開発者, I want to vitest.config.ts と共通の Prisma モックを設定する, so that テストを即座に実行できる基盤を整える",
+      "acceptanceCriteria": [
+        "vitest.config.ts が Next.js 環境（globals: true, environment: node）で動作する",
+        "__tests__/helpers/prisma-mock.ts に vi.mock('@/lib/prisma') の共通ヘルパーが存在する",
+        "npm run test コマンドで全テストが実行できる"
+      ],
+      "passes": false,
+      "priority": 1
+    },
+    {
+      "id": 2,
+      "title": "POST /api/public/reports のテスト",
+      "description": "As a 開発者, I want to POST /api/public/reports の正常系・異常系テストを書く, so that スパム対策レート制限と LIVE/ENDED ステータス遷移が壊れないことを保証する",
+      "acceptanceCriteria": [
+        "kind=start の 1 件目報告でイベントステータスが LIVE に遷移することをテストする",
+        "kind=end の 1 件目報告でイベントステータスが ENDED に遷移することをテストする",
+        "kind=move で generateMoveHints が呼ばれることをテストする",
+        "同一 IP から 10 件超の連投で 429 が返ることをテストする",
+        "イベントが存在しない場合に 404 が返ることをテストする"
+      ],
+      "passes": false,
+      "priority": 2
+    },
+    {
+      "id": 3,
+      "title": "POST /api/public/requests のテスト",
+      "description": "As a 開発者, I want to POST /api/public/requests のレート制限テストを書く, so that reporterHash 単位の制限が正しく動作することを保証する",
+      "acceptanceCriteria": [
+        "同一 reporterHash から 1 分間 10 件超で 429 が返ることをテストする",
+        "異なる reporterHash は独立して制限されること（巻き添えなし）をテストする",
+        "正常な CREATE_EVENT リクエストが PublicRequest に保存されることをテストする"
+      ],
+      "passes": false,
+      "priority": 3
+    },
+    {
+      "id": 4,
+      "title": "PUT /api/admin/events/[id] のトランザクションテスト",
+      "description": "As a 開発者, I want to PUT /api/admin/events/[id] のトランザクション挙動テストを書く, so that 部分失敗時にデータ不整合が残らないことを保証する",
+      "acceptanceCriteria": [
+        "正常な更新で speechEvent.update・eventHistory.create・eventCandidate.deleteMany が全て呼ばれることをテストする",
+        "speechEvent.update が失敗した場合、eventHistory.create も呼ばれないことをテストする（トランザクションのロールバック確認）",
+        "未認証リクエストで 401 が返ることをテストする"
+      ],
+      "passes": false,
+      "priority": 4
+    },
+    {
+      "id": 5,
+      "title": "CORS OPTIONS エンドポイントのテスト",
+      "description": "As a 開発者, I want to 各公開 API の OPTIONS ハンドラをテストする, so that preflight が正しく 204 と CORS ヘッダーを返すことを保証する",
+      "acceptanceCriteria": [
+        "OPTIONS /api/public/candidates が 204 と Access-Control-Allow-Methods ヘッダーを返すことをテストする",
+        "OPTIONS /api/public/candidates/[slug]/events が 204 を返すことをテストする",
+        "OPTIONS /api/public/settings が 204 を返すことをテストする"
+      ],
+      "passes": false,
+      "priority": 5
+    },
+    {
+      "id": 6,
+      "title": "lib/api-auth の lastUsedAt 間引きテスト",
+      "description": "As a 開発者, I want to verifyApiKey の lastUsedAt 更新ロジックをテストする, so that 1 時間以内の二重更新が発生しないことを保証する",
+      "acceptanceCriteria": [
+        "lastUsedAt が 1 時間以上前のキーで更新が実行されることをテストする",
+        "lastUsedAt が 30 分前のキーで更新がスキップされることをテストする",
+        "api_key クエリパラメータが無視されることをテストする"
+      ],
+      "passes": false,
+      "priority": 6
+    }
+  ]
+}

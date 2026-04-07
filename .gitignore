@@ -48,3 +48,6 @@ data/*.geojson
 
 # OGP images: Blob運用のためローカル生成物はコミットしない
 /public/og-images/
+# IDE local config / cursor skills (migrated to global)
+.cursor/
+.vscode/

@@ -1,0 +1,17 @@
+{
+  "rule_source": "codex_agent",
+  "rules": [
+    {
+      "id": "push-by-explicit-instruction",
+      "description": "Do not invoke `git push` unless the user explicitly asks for it.",
+      "applies_to": "Codex",
+      "enforced_since": "2026-02-03"
+    },
+    {
+      "id": "mention-no-auto-push",
+      "description": "If a user asks to prohibit automatic pushes, confirm that rule before taking any push action.",
+      "applies_to": "Codex",
+      "enforced_since": "2026-02-03"
+    }
+  ]
+}

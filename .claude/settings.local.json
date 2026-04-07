@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vercel --version)",
+      "Bash(rm -rf \"c:\\\\Users\\\\Nagi\\\\OneDrive\\\\ドキュメント\\\\GitHub\\\\Street-Speech-Map/app/\\(public\\)/c/[slug]/opengraph-image\")",
+      "Bash(rm -rf \"c:\\\\Users\\\\Nagi\\\\OneDrive\\\\ドキュメント\\\\GitHub\\\\Street-Speech-Map/app/\\(public\\)/c/[slug]/events/[eventId]/opengraph-image\")",
+      "Bash(npm install:*)",
+      "Bash(find /c/Users/Nagi/OneDrive/ドキュメント/GitHub/Street-Speech-Map -maxdepth 2 -name vercel.json -o -name next.config.*)",
+      "Bash(find /c/Users/Nagi/OneDrive/ドキュメント/GitHub/Street-Speech-Map/app -name *.tsx -path */components/*)",
+      "Bash(find /c/Users/Nagi/OneDrive/ドキュメント/GitHub/Street-Speech-Map -path .next -prune -o -name *.tsx -print)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -r \"export const dynamic\\\\|revalidate\" /c/Users/Nagi/OneDrive/ドキュメント/GitHub/Street-Speech-Map/app --include=*.tsx)",
+      "WebSearch",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
